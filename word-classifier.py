@@ -60,20 +60,32 @@ def get_next_word_without_group(words, i):
         j += 1
 
 
+def avg_or_zero(num, den):
+    if den > 0:
+        avg = 100 * num / den
+    else:
+        avg = 0
+    return avg
+
+
 def update_stats(stats_window, words):
     string = 'Total words:  {:7}'.format(len(words))
     stats_window.win_handler.addstr(1, 1, string + ' '*(stats_window.cols - 2 - len(string)))
     n_completed = len([w for w in words if w[2] != ''])
-    string = 'Completed:    {:7} ({:5.2f}%)'.format(n_completed, 100*n_completed/len(words))
+    avg = avg_or_zero(n_completed, len(words))
+    string = 'Completed:    {:7} ({:5.2f}%)'.format(n_completed, avg)
     stats_window.win_handler.addstr(2, 1, string + ' '*(stats_window.cols - 2 - len(string)))
     n_keywords = len([w for w in words if w[2] == 'k'])
-    string = 'Keywords:     {:7} ({:5.2f}%)'.format(n_keywords, 100*n_keywords/n_completed)
+    avg = avg_or_zero(n_keywords, n_completed)
+    string = 'Keywords:     {:7} ({:5.2f}%)'.format(n_keywords, avg)
     stats_window.win_handler.addstr(3, 1, string + ' '*(stats_window.cols - 2 - len(string)))
     n_noise = len([w for w in words if w[2] == 'n'])
-    string = 'Noise:        {:7} ({:5.2f}%)'.format(n_noise, 100*n_noise/n_completed)
+    avg = avg_or_zero(n_noise, n_completed)
+    string = 'Noise:        {:7} ({:5.2f}%)'.format(n_noise, avg)
     stats_window.win_handler.addstr(4, 1, string + ' '*(stats_window.cols - 2 - len(string)))
     n_not_relevant = len([w for w in words if w[2] == 'x'])
-    string = 'Not relevant: {:7} ({:5.2f}%)'.format(n_not_relevant, 100*n_not_relevant/n_completed)
+    avg = avg_or_zero(n_not_relevant, n_completed)
+    string = 'Not relevant: {:7} ({:5.2f}%)'.format(n_not_relevant, avg)
     stats_window.win_handler.addstr(5, 1, string + ' '*(stats_window.cols - 2 - len(string)))
     stats_window.win_handler.border()
     stats_window.win_handler.refresh()
