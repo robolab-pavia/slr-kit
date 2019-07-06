@@ -76,14 +76,6 @@ class Win(object):
         #print(self.words)
 
 
-def get_next_word_without_group(words, i):
-    j = i
-    for w in words[i:]:
-        if w[2] == '':
-            return w[0], j
-        j += 1
-
-
 def avg_or_zero(num, den):
     if den > 0:
         avg = 100 * num / den
