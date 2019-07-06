@@ -114,7 +114,7 @@ def get_stats_strings(words):
 
 
 def sort_words(words, word):
-    logging.debug("word: {}".format(word))
+    #logging.debug("word: {}".format(word))
     containing = [w[0] for w in words if (word in w[0]) and (w[2] == '') and (' ' in w[0])]
     #logging.debug("containing: {}".format(containing))
     not_containing = [w[0] for w in words if (not word in w[0]) and (w[2] == '')]
@@ -156,8 +156,8 @@ def main(args, words):
     for win in windows:
         windows[win].assign_words(words)
         windows[win].display_words()
-    words_window = Win(None, rows=28, cols=win_width, y=8, x=win_width)
-    stats_window = Win(None, rows=8, cols=win_width, y=0, x=win_width)
+    words_window = Win(None, rows=27, cols=win_width, y=9, x=win_width)
+    stats_window = Win(None, rows=9, cols=win_width, y=0, x=win_width)
     stats_window.words = get_stats_strings(words)
     stats_window.display_words(rev=False)
 
@@ -183,7 +183,7 @@ def main(args, words):
             if reverse_counter <= 0:
                 sort_word_key = evaluated_word
                 reverse_counter = len([w for w in words if (sort_word_key in w[0]) and (w[2] == '') and (' ' in w[0])]) + 1
-            logging.debug("reverse_counter: {}".format(reverse_counter))
+            #logging.debug("reverse_counter: {}".format(reverse_counter))
             words_window.words = sort_words(words, sort_word_key)
             #logging.debug("words_window.words: {}".format(words_window.words))
             words_window.display_words(rev=False, highlight_word=sort_word_key)
@@ -195,6 +195,7 @@ def main(args, words):
         elif c == ord('q'):
             break
         stats_window.words = get_stats_strings(words)
+        stats_window.words.append('Related:      {:7}'.format(reverse_counter if reverse_counter >= 0 else 0))
         stats_window.display_words(rev=False)
 
     curses.endwin()
