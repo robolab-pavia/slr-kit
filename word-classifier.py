@@ -92,27 +92,22 @@ def avg_or_zero(num, den):
     return avg
 
 
-def update_stats(stats_window, words):
-    string = 'Total words:  {:7}'.format(len(words))
-    stats_window.win_handler.addstr(1, 1, string + ' '*(stats_window.cols - 2 - len(string)))
+def get_stats_strings(words):
+    stats_strings = []
     n_completed = len([w for w in words if w[2] != ''])
-    avg = avg_or_zero(n_completed, len(words))
-    string = 'Completed:    {:7} ({:6.2f}%)'.format(n_completed, avg)
-    stats_window.win_handler.addstr(2, 1, string + ' '*(stats_window.cols - 2 - len(string)))
     n_keywords = len([w for w in words if w[2] == 'k'])
-    avg = avg_or_zero(n_keywords, n_completed)
-    string = 'Keywords:     {:7} ({:6.2f}%)'.format(n_keywords, avg)
-    stats_window.win_handler.addstr(3, 1, string + ' '*(stats_window.cols - 2 - len(string)))
     n_noise = len([w for w in words if w[2] == 'n'])
-    avg = avg_or_zero(n_noise, n_completed)
-    string = 'Noise:        {:7} ({:6.2f}%)'.format(n_noise, avg)
-    stats_window.win_handler.addstr(4, 1, string + ' '*(stats_window.cols - 2 - len(string)))
     n_not_relevant = len([w for w in words if w[2] == 'x'])
+    stats_strings.append('Total words:  {:7}'.format(len(words)))
+    avg = avg_or_zero(n_completed, len(words))
+    stats_strings.append('Completed:    {:7} ({:6.2f}%)'.format(n_completed, avg))
+    avg = avg_or_zero(n_keywords, n_completed)
+    stats_strings.append('Keywords:     {:7} ({:6.2f}%)'.format(n_keywords, avg))
+    avg = avg_or_zero(n_noise, n_completed)
+    stats_strings.append('Noise:        {:7} ({:6.2f}%)'.format(n_noise, avg))
     avg = avg_or_zero(n_not_relevant, n_completed)
-    string = 'Not relevant: {:7} ({:6.2f}%)'.format(n_not_relevant, avg)
-    stats_window.win_handler.addstr(5, 1, string + ' '*(stats_window.cols - 2 - len(string)))
-    stats_window.win_handler.border()
-    stats_window.win_handler.refresh()
+    stats_strings.append('Not relevant: {:7} ({:6.2f}%)'.format(n_not_relevant, avg))
+    return stats_strings
 
 
 def sort_words(words, word):
@@ -160,7 +155,8 @@ def main(args, words):
         windows[win].display_words()
     words_window = Win(None, rows=29, cols=win_width, y=7, x=win_width)
     stats_window = Win(None, rows=7, cols=win_width, y=0, x=win_width)
-    update_stats(stats_window, words)
+    stats_window.words = get_stats_strings(words)
+    stats_window.display_words(rev=False)
 
     reverse_counter = 0
     words_window.words = [w[0] for w in words if w[2] == '']
@@ -195,7 +191,8 @@ def main(args, words):
             reverse_counter -= 1
         elif c == ord('q'):
             break
-        update_stats(stats_window, words)
+        stats_window.words = get_stats_strings(words)
+        stats_window.display_words(rev=False)
 
     curses.endwin()
 
