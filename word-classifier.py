@@ -1,6 +1,7 @@
 import sys
 import csv
 import curses
+import logging
 
 
 def load_words(infile):
@@ -15,15 +16,20 @@ def load_words(infile):
             else:
                 items.append(row)
                 line_count += 1
-    return (header, items)
+    # appending incremental number to keep track of the original ordering
+    items2 = []
+    for i, x in enumerate(items):
+        x.append(i)
+        items2.append(x)
+    return (header, items2)
 
 
 def write_words(outfile):
     with open(outfile, mode='w') as out:
-        employee_writer = csv.writer(out, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        employee_writer.writerow(header)
+        writer = csv.writer(out, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        writer.writerow(header)
         for w in words:
-            employee_writer.writerow(w)
+            writer.writerow(w[:3])
 
 
 class Win(object):
@@ -39,11 +45,29 @@ class Win(object):
         self.win_handler.refresh()
         self.words = []
 
-    def display_words(self):
-        for i, w in enumerate(reversed(self.words)):
-            self.win_handler.addstr(i + 1, 1, w + ' '*(self.cols - 2 - len(w)))
-            if i >= self.rows - 3:
+    def display_words(self, rev=True, highlight_word=None):
+        if rev:
+            word_list = reversed(self.words)
+        else:
+            word_list = self.words
+        i = 0
+        for w in word_list:
+            trunc_w = w[:self.cols - 2]
+            if highlight_word is None:
+                self.win_handler.addstr(i + 1, 1, trunc_w + ' '*(self.cols - 2 - len(trunc_w)))
+            else:
+                tok = w.split(highlight_word)
+                self.win_handler.addstr(i + 1, 1, '')
+                for t in tok:
+                    self.win_handler.addstr(t)
+                    self.win_handler.addstr(highlight_word, curses.color_pair(1))
+                self.win_handler.addstr(i + 1, len(trunc_w) + 1, ' '*(self.cols - 2 - len(trunc_w)))
+            i += 1
+            if i >= self.rows - 2:
                 break
+        while i < self.rows - 2:
+            self.win_handler.addstr(i + 1, 1, ' '*(self.cols - 2))
+            i += 1
         self.win_handler.border()
         self.win_handler.refresh()
 
@@ -73,22 +97,41 @@ def update_stats(stats_window, words):
     stats_window.win_handler.addstr(1, 1, string + ' '*(stats_window.cols - 2 - len(string)))
     n_completed = len([w for w in words if w[2] != ''])
     avg = avg_or_zero(n_completed, len(words))
-    string = 'Completed:    {:7} ({:5.2f}%)'.format(n_completed, avg)
+    string = 'Completed:    {:7} ({:6.2f}%)'.format(n_completed, avg)
     stats_window.win_handler.addstr(2, 1, string + ' '*(stats_window.cols - 2 - len(string)))
     n_keywords = len([w for w in words if w[2] == 'k'])
     avg = avg_or_zero(n_keywords, n_completed)
-    string = 'Keywords:     {:7} ({:5.2f}%)'.format(n_keywords, avg)
+    string = 'Keywords:     {:7} ({:6.2f}%)'.format(n_keywords, avg)
     stats_window.win_handler.addstr(3, 1, string + ' '*(stats_window.cols - 2 - len(string)))
     n_noise = len([w for w in words if w[2] == 'n'])
     avg = avg_or_zero(n_noise, n_completed)
-    string = 'Noise:        {:7} ({:5.2f}%)'.format(n_noise, avg)
+    string = 'Noise:        {:7} ({:6.2f}%)'.format(n_noise, avg)
     stats_window.win_handler.addstr(4, 1, string + ' '*(stats_window.cols - 2 - len(string)))
     n_not_relevant = len([w for w in words if w[2] == 'x'])
     avg = avg_or_zero(n_not_relevant, n_completed)
-    string = 'Not relevant: {:7} ({:5.2f}%)'.format(n_not_relevant, avg)
+    string = 'Not relevant: {:7} ({:6.2f}%)'.format(n_not_relevant, avg)
     stats_window.win_handler.addstr(5, 1, string + ' '*(stats_window.cols - 2 - len(string)))
     stats_window.win_handler.border()
     stats_window.win_handler.refresh()
+
+
+def sort_words(words, word):
+    logging.debug("word: {}".format(word))
+    containing = [w[0] for w in words if (word in w[0]) and (w[2] == '') and (' ' in w[0])]
+    #logging.debug("containing: {}".format(containing))
+    not_containing = [w[0] for w in words if (not word in w[0]) and (w[2] == '')]
+    #logging.debug("not containing: {}".format(not_containing))
+    containing.extend(not_containing)
+    #logging.debug("containing: {}".format(containing))
+    return containing
+
+
+def mark_word(words, word, marker):
+    for w in words:
+        if w[0] == word:
+            w[2] = marker
+            break
+    return words
 
 
 def main(args, words):
@@ -100,47 +143,66 @@ def main(args, words):
     curses.noecho()
     curses.start_color()
     curses.use_default_colors()
+    curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
 
     win_width = 40
 
     # define windows
     windows = {
-        'k': Win('k', title='Keywords', rows=12, cols=win_width, y=3, x=0),
-        'n': Win('n', title='Noise', rows=12, cols=win_width, y=15, x=0),
-        'x': Win('x', title='Not-relevant', rows=12, cols=win_width, y=27, x=0)
+        'k': Win('k', title='Keywords', rows=12, cols=win_width, y=0, x=0),
+        'n': Win('n', title='Noise', rows=12, cols=win_width, y=12, x=0),
+        'x': Win('x', title='Not-relevant', rows=12, cols=win_width, y=24, x=0)
     }
     curses.ungetch(' ')
     c = stdscr.getch()
     for win in windows:
         windows[win].assign_words(words)
         windows[win].display_words()
-    command_window = Win(None, rows=3, cols=2*win_width, y=0, x=0)
-    stats_window = Win(None, rows=7, cols=win_width, y=3, x=win_width)
+    words_window = Win(None, rows=29, cols=win_width, y=7, x=win_width)
+    stats_window = Win(None, rows=7, cols=win_width, y=0, x=win_width)
     update_stats(stats_window, words)
 
-    i = 0
-    while 1:
-        word, i = get_next_word_without_group(words, i)
-        command_window.win_handler.addstr(1, 1, word + ' '*(command_window.cols - 2 - len(word)))
-        command_window.win_handler.border()
-        command_window.win_handler.refresh()
+    reverse_counter = 0
+    words_window.words = [w[0] for w in words if w[2] == '']
+    sort_word_key = None
+    while True:
+        evaluated_word = words_window.words[0]
+        words_window.display_words(rev=False, highlight_word=sort_word_key)
         c = stdscr.getch()
-        if c in [ord('k'), ord('n'), ord('x')]:
-            words[i][2] = chr(c)
+        if c in [ord('k'), ord('x')]:
+            words = mark_word(words, evaluated_word, chr(c))
             win = windows[chr(c)]
-            win.words.append(word)
+            win.words.append(evaluated_word)
+            words_window.words = words_window.words[1:]
             win.display_words()
-            i += 1
-        elif c == ord(' '):
-            i += 1
+            reverse_counter -= 1
+        elif c == ord('n'):
+            words = mark_word(words, evaluated_word, chr(c))
+            win = windows[chr(c)]
+            win.words.append(evaluated_word)
+            win.display_words()
+            if reverse_counter <= 0:
+                sort_word_key = evaluated_word
+                reverse_counter = len([w for w in words if (sort_word_key in w[0]) and (w[2] == '') and (' ' in w[0])]) + 1
+            logging.debug("reverse_counter: {}".format(reverse_counter))
+            words_window.words = sort_words(words, sort_word_key)
+            #logging.debug("words_window.words: {}".format(words_window.words))
+            words_window.display_words(rev=False, highlight_word=sort_word_key)
+            reverse_counter -= 1
+        elif c == ord('l'):
+            words = mark_word(words, evaluated_word, chr(c))
+            words_window.words = words_window.words[1:]
+            reverse_counter -= 1
         elif c == ord('q'):
             break
         update_stats(stats_window, words)
 
     curses.endwin()
 
+logging.basicConfig(filename='slr-kit.log', filemode='a', format='%(asctime)s [%(levelname)s] %(message)s', level=logging.DEBUG)
+
 (header, words) = load_words(sys.argv[1])
 
 curses.wrapper(main, words)
 
-write_words(sys.argv[1])
+#write_words(sys.argv[1])
