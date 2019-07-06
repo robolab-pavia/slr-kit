@@ -98,6 +98,7 @@ def get_stats_strings(words):
     n_keywords = len([w for w in words if w[2] == 'k'])
     n_noise = len([w for w in words if w[2] == 'n'])
     n_not_relevant = len([w for w in words if w[2] == 'x'])
+    n_later = len([w for w in words if w[2] == 'l'])
     stats_strings.append('Total words:  {:7}'.format(len(words)))
     avg = avg_or_zero(n_completed, len(words))
     stats_strings.append('Completed:    {:7} ({:6.2f}%)'.format(n_completed, avg))
@@ -107,6 +108,8 @@ def get_stats_strings(words):
     stats_strings.append('Noise:        {:7} ({:6.2f}%)'.format(n_noise, avg))
     avg = avg_or_zero(n_not_relevant, n_completed)
     stats_strings.append('Not relevant: {:7} ({:6.2f}%)'.format(n_not_relevant, avg))
+    avg = avg_or_zero(n_later, n_completed)
+    stats_strings.append('Postponed:    {:7} ({:6.2f}%)'.format(n_later, avg))
     return stats_strings
 
 
@@ -153,8 +156,8 @@ def main(args, words):
     for win in windows:
         windows[win].assign_words(words)
         windows[win].display_words()
-    words_window = Win(None, rows=29, cols=win_width, y=7, x=win_width)
-    stats_window = Win(None, rows=7, cols=win_width, y=0, x=win_width)
+    words_window = Win(None, rows=28, cols=win_width, y=8, x=win_width)
+    stats_window = Win(None, rows=8, cols=win_width, y=0, x=win_width)
     stats_window.words = get_stats_strings(words)
     stats_window.display_words(rev=False)
 
