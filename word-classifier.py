@@ -115,11 +115,20 @@ def get_stats_strings(words):
     return stats_strings
 
 
+def find_word(string, substring):
+   return any([substring == word for word in string.split()])
+
+
+def return_related_items(words, key):
+    items = [w[0] for w in words if (find_word(w[0], key)) and (w[2] == '')]
+    return items
+
+
 def sort_words(words, word):
     #logging.debug("word: {}".format(word))
-    containing = [w[0] for w in words if (word in w[0]) and (w[2] == '') and (' ' in w[0])]
+    containing = return_related_items(words, word)
     #logging.debug("containing: {}".format(containing))
-    not_containing = [w[0] for w in words if (not word in w[0]) and (w[2] == '')]
+    not_containing = [w[0] for w in words if (not find_word(w[0], word)) and (w[2] == '')]
     #logging.debug("not containing: {}".format(not_containing))
     containing.extend(not_containing)
     #logging.debug("containing: {}".format(containing))
@@ -189,7 +198,7 @@ def main(args, words):
             win.display_words()
             if related_items_count <= 0:
                 sort_word_key = evaluated_word
-                related_items_count = len([w for w in words if (sort_word_key in w[0]) and (w[2] == '') and (' ' in w[0])]) + 1
+                related_items_count = len(return_related_items(words, sort_word_key)) + 1
             #logging.debug("related_items_count: {}".format(related_items_count))
             words_window.words = sort_words(words, sort_word_key)
             #logging.debug("words_window.words: {}".format(words_window.words))
