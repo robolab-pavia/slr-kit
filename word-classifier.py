@@ -100,7 +100,7 @@ def get_stats_strings(words):
     n_keywords = len([w for w in words if w[2] == 'k'])
     n_noise = len([w for w in words if w[2] == 'n'])
     n_not_relevant = len([w for w in words if w[2] == 'x'])
-    n_later = len([w for w in words if w[2] == 'l'])
+    n_later = len([w for w in words if w[2] == 'p'])
     stats_strings.append('Total words:  {:7}'.format(len(words)))
     avg = avg_or_zero(n_completed, len(words))
     stats_strings.append('Completed:    {:7} ({:6.2f}%)'.format(n_completed, avg))
@@ -204,7 +204,7 @@ def main(args, words):
             #logging.debug("words_window.words: {}".format(words_window.words))
             words_window.display_words(rev=False, highlight_word=sort_word_key)
             related_items_count -= 1
-        elif c == ord('l'):
+        elif c == ord('p'):
             words = mark_word(words, evaluated_word, chr(c))
             words_window.words = words_window.words[1:]
             related_items_count -= 1
