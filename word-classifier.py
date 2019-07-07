@@ -2,6 +2,16 @@ import sys
 import csv
 import curses
 import logging
+import argparse
+
+
+def init_argparser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('datafile', action="store", type=str,
+        help="input CSV data file")
+    parser.add_argument('--dry-run', action='store_false', dest='dry_run',
+        help='do not write the reults on exit')
+    return parser
 
 
 def load_words(infile):
@@ -201,10 +211,13 @@ if __name__ == "__main__":
             filemode='a',
             format='%(asctime)s [%(levelname)s] %(message)s',
             level=logging.DEBUG)
+    parser = init_argparser()
+    args = parser.parse_args()
 
-    (header, words) = load_words(sys.argv[1])
+    (header, words) = load_words(args.datafile)
 
     curses.wrapper(main, words)
     curses.endwin()
 
-    #write_words(sys.argv[1])
+    if args.dry_run:
+        write_words(args.datafile)
