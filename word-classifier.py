@@ -168,7 +168,7 @@ def main(args, words):
     stats_window.words = get_stats_strings(words)
     stats_window.display_words(rev=False)
 
-    reverse_counter = 0
+    related_items_count = 0
     words_window.words = [w[0] for w in words if w[2] == '']
     sort_word_key = None
     while True:
@@ -181,28 +181,28 @@ def main(args, words):
             win.words.append(evaluated_word)
             words_window.words = words_window.words[1:]
             win.display_words()
-            reverse_counter -= 1
+            related_items_count -= 1
         elif c == ord('n'):
             words = mark_word(words, evaluated_word, chr(c))
             win = windows[chr(c)]
             win.words.append(evaluated_word)
             win.display_words()
-            if reverse_counter <= 0:
+            if related_items_count <= 0:
                 sort_word_key = evaluated_word
-                reverse_counter = len([w for w in words if (sort_word_key in w[0]) and (w[2] == '') and (' ' in w[0])]) + 1
-            #logging.debug("reverse_counter: {}".format(reverse_counter))
+                related_items_count = len([w for w in words if (sort_word_key in w[0]) and (w[2] == '') and (' ' in w[0])]) + 1
+            #logging.debug("related_items_count: {}".format(related_items_count))
             words_window.words = sort_words(words, sort_word_key)
             #logging.debug("words_window.words: {}".format(words_window.words))
             words_window.display_words(rev=False, highlight_word=sort_word_key)
-            reverse_counter -= 1
+            related_items_count -= 1
         elif c == ord('l'):
             words = mark_word(words, evaluated_word, chr(c))
             words_window.words = words_window.words[1:]
-            reverse_counter -= 1
+            related_items_count -= 1
         elif c == ord('q'):
             break
         stats_window.words = get_stats_strings(words)
-        stats_window.words.append('Related:      {:7}'.format(reverse_counter if reverse_counter >= 0 else 0))
+        stats_window.words.append('Related:      {:7}'.format(related_items_count if related_items_count >= 0 else 0))
         stats_window.display_words(rev=False)
 
 
