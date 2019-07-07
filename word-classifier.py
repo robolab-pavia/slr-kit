@@ -120,19 +120,16 @@ def find_word(string, substring):
 
 
 def return_related_items(words, key):
-    items = [w[0] for w in words if (find_word(w[0], key)) and (w[2] == '')]
-    return items
-
-
-def sort_words(words, word):
-    #logging.debug("word: {}".format(word))
-    containing = return_related_items(words, word)
-    #logging.debug("containing: {}".format(containing))
-    not_containing = [w[0] for w in words if (not find_word(w[0], word)) and (w[2] == '')]
-    #logging.debug("not containing: {}".format(not_containing))
-    containing.extend(not_containing)
-    #logging.debug("containing: {}".format(containing))
-    return containing
+    containing = []
+    not_containing = []
+    for w in words:
+        if (w[2] != ''):
+            continue
+        if (find_word(w[0], key)):
+            containing.append(w[0])
+        else:
+            not_containing.append(w[0])
+    return containing, not_containing
 
 
 def mark_word(words, word, marker):
@@ -198,9 +195,12 @@ def main(args, words):
             win.display_words()
             if related_items_count <= 0:
                 sort_word_key = evaluated_word
-                related_items_count = len(return_related_items(words, sort_word_key)) + 1
+            containing, not_containing = return_related_items(words, sort_word_key)
+            if related_items_count <= 0:
+                related_items_count = len(containing) + 1
             #logging.debug("related_items_count: {}".format(related_items_count))
-            words_window.words = sort_words(words, sort_word_key)
+            words_window.words = containing
+            words_window.words.extend(not_containing)
             #logging.debug("words_window.words: {}".format(words_window.words))
             words_window.display_words(rev=False, highlight_word=sort_word_key)
             related_items_count -= 1
