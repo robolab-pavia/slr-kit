@@ -192,10 +192,15 @@ def main(args, words):
 
     curses.endwin()
 
-logging.basicConfig(filename='slr-kit.log', filemode='a', format='%(asctime)s [%(levelname)s] %(message)s', level=logging.DEBUG)
 
-(header, words) = load_words(sys.argv[1])
+if __name__ == "__main__":
+    logging.basicConfig(filename='slr-kit.log',
+            filemode='a',
+            format='%(asctime)s [%(levelname)s] %(message)s',
+            level=logging.DEBUG)
 
-curses.wrapper(main, words)
+    (header, words) = load_words(sys.argv[1])
 
-#write_words(sys.argv[1])
+    curses.wrapper(main, words)
+
+    #write_words(sys.argv[1])
