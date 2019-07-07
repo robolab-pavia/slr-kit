@@ -124,7 +124,7 @@ def mark_word(words, word, marker):
     return words
 
 
-def main(args, words):
+def init_curses():
     # create stdscr
     stdscr = curses.initscr()
     stdscr.clear()
@@ -135,6 +135,11 @@ def main(args, words):
     curses.use_default_colors()
     curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
 
+    return stdscr
+
+
+def main(args, words):
+    stdscr = init_curses()
     win_width = 40
 
     # define windows
@@ -190,8 +195,6 @@ def main(args, words):
         stats_window.words.append('Related:      {:7}'.format(reverse_counter if reverse_counter >= 0 else 0))
         stats_window.display_words(rev=False)
 
-    curses.endwin()
-
 
 if __name__ == "__main__":
     logging.basicConfig(filename='slr-kit.log',
@@ -202,5 +205,6 @@ if __name__ == "__main__":
     (header, words) = load_words(sys.argv[1])
 
     curses.wrapper(main, words)
+    curses.endwin()
 
     #write_words(sys.argv[1])
