@@ -10,7 +10,7 @@ def init_argparser():
     parser.add_argument('datafile', action="store", type=str,
         help="input CSV data file")
     parser.add_argument('--dry-run', action='store_false', dest='dry_run',
-        help='do not write the reults on exit')
+        help='do not write the results on exit')
     return parser
 
 
