@@ -26,12 +26,7 @@ def load_words(infile):
             else:
                 items.append(row)
                 line_count += 1
-    # appending incremental number to keep track of the original ordering
-    items2 = []
-    for i, x in enumerate(items):
-        x.append(i)
-        items2.append(x)
-    return (header, items2)
+    return (header, items)
 
 
 def write_words(outfile):
@@ -154,7 +149,7 @@ def init_curses():
     return stdscr
 
 
-def main(args, words):
+def main(args, words, datafile):
     stdscr = init_curses()
     win_width = 40
 
@@ -208,6 +203,8 @@ def main(args, words):
             words = mark_word(words, evaluated_word, chr(c))
             words_window.words = words_window.words[1:]
             related_items_count -= 1
+        elif c == ord('w'):
+            write_words(datafile)
         elif c == ord('q'):
             break
         stats_window.words = get_stats_strings(words)
@@ -225,7 +222,7 @@ if __name__ == "__main__":
 
     (header, words) = load_words(args.datafile)
 
-    curses.wrapper(main, words)
+    curses.wrapper(main, words, args.datafile)
     curses.endwin()
 
     if args.dry_run:
