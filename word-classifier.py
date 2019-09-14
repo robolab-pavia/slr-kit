@@ -137,7 +137,7 @@ def get_stats_strings(words):
 
 
 def find_word(string, substring):
-   return any([substring == word for word in string.split()])
+   return substring in string
 
 
 def return_related_items(words, key):
@@ -176,6 +176,15 @@ def init_curses():
     return stdscr
 
 
+def get_last_inserted_order(words):
+    orders = [int(w[3]) for w in words if w[3] != '']
+    if len(orders) == 0:
+        order = 0
+    else:
+        order = max(orders)
+    return order
+
+
 def main(args, words, datafile):
     stdscr = init_curses()
     win_width = 40
@@ -199,24 +208,23 @@ def main(args, words, datafile):
     related_items_count = 0
     words_window.lines = [w[0] for w in words if w[2] == '']
     sort_word_key = None
-    orders = [int(w[3]) for w in words if w[3] != '']
-    if len(orders) == 0:
-        order = 0
-    else:
-        order = max(orders)
+    order = get_last_inserted_order(words)
     while True:
         evaluated_word = words_window.lines[0]
         words_window.display_lines(rev=False, highlight_word=sort_word_key)
         c = stdscr.getch()
-        if c in [ord(keys[KEYWORD]), ord(keys[NOTRELEVANT])]:
-            words = mark_word(words, evaluated_word, chr(c), order)
-            order += 1
-            win = windows[key2class[chr(c)]]
-            win.lines.append(evaluated_word)
-            words_window.lines = words_window.lines[1:]
-            win.display_lines()
-            related_items_count -= 1
-        elif c == ord(keys[NOISE]):
+        #if c in [ord(keys[KEYWORD]), ord(keys[NOTRELEVANT])]:
+        #    # classification: KEYWORD or NOTRELEVANT
+        #    words = mark_word(words, evaluated_word, chr(c), order)
+        #    order += 1
+        #    win = windows[key2class[chr(c)]]
+        #    win.lines.append(evaluated_word)
+        #    words_window.lines = words_window.lines[1:]
+        #    win.display_lines()
+        #    related_items_count -= 1
+        if c in [ord(keys[KEYWORD]), ord(keys[NOTRELEVANT]), ord(keys[NOISE])]:
+        #elif c in [ord(keys[NOISE])]:
+            # classification: KEYWORD, NOTRELEVANT or NOISE
             words = mark_word(words, evaluated_word, chr(c), order)
             order += 1
             win = windows[key2class[chr(c)]]
@@ -227,20 +235,25 @@ def main(args, words, datafile):
             containing, not_containing = return_related_items(words, sort_word_key)
             if related_items_count <= 0:
                 related_items_count = len(containing) + 1
+            #logging.debug("sort_word_key: {}".format(sort_word_key))
             #logging.debug("related_items_count: {}".format(related_items_count))
             words_window.lines = containing
             words_window.lines.extend(not_containing)
+            #logging.debug("containing: {}".format(containing))
             #logging.debug("words_window.lines: {}".format(words_window.lines))
             words_window.display_lines(rev=False, highlight_word=sort_word_key)
             related_items_count -= 1
         elif c == ord('p'):
+            # classification: POSTPONED
             words = mark_word(words, evaluated_word, chr(c), order)
             order += 1
             words_window.lines = words_window.lines[1:]
             related_items_count -= 1
         elif c == ord('w'):
+            # write to file
             write_words(datafile)
         elif c == ord('u'):
+            # undo last operation
             orders = [int(w[3]) for w in words if w[3] != '']
             if len(orders) == 0:
                 continue
@@ -254,6 +267,7 @@ def main(args, words, datafile):
             rwl.extend(words_window.lines)
             words_window.lines = rwl
         elif c == ord('q'):
+            # quit
             break
         stats_window.lines = get_stats_strings(words)
         stats_window.lines.append('Related:      {:7}'.format(related_items_count if related_items_count >= 0 else 0))
@@ -268,6 +282,7 @@ if __name__ == "__main__":
     parser = init_argparser()
     args = parser.parse_args()
 
+    logging.debug("**************** PROGRAM STARTED ****************")
     (header, words) = load_words(args.datafile)
 
     curses.wrapper(main, words, args.datafile)
