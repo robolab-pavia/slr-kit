@@ -84,6 +84,7 @@ def write_words(outfile):
         writer = csv.writer(out, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         writer.writerow(header)
         for w in words:
+            # FIXME: this ordering should depend from the header
             item = [w.word, w.count, w.group, w.order]
             writer.writerow(item)
 
