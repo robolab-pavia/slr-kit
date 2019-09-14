@@ -4,6 +4,7 @@ import curses
 import logging
 import argparse
 import operator
+from dataclasses import dataclass
 
 
 # List of class names
@@ -28,6 +29,19 @@ key2class = {
     'x': NOTRELEVANT
 }
 
+
+@dataclass
+class Word:
+    index: int
+    word: str
+    count: int
+    group: str
+    order: int
+
+    def is_grouped(self):
+        return self.group != ''
+
+
 def init_argparser():
     """Initialize the command line parser."""
     parser = argparse.ArgumentParser()
@@ -48,7 +62,19 @@ def load_words(infile):
                 header = row
                 line_count += 1
             else:
-                items.append(row)
+                order_value = row[header.index('order')]
+                if order_value == '':
+                    order = None
+                else:
+                    order = int(order_value)
+                item = Word(
+                    index=None,
+                    word=row[header.index('keyword')],
+                    count=row[header.index('count')],
+                    group=row[header.index('group')],
+                    order=order
+                )
+                items.append(item)
                 line_count += 1
     return (header, items)
 
@@ -58,7 +84,8 @@ def write_words(outfile):
         writer = csv.writer(out, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         writer.writerow(header)
         for w in words:
-            writer.writerow(w[:4])
+            item = [w.word, w.count, w.group, w.order]
+            writer.writerow(item)
 
 
 class Win(object):
@@ -102,7 +129,7 @@ class Win(object):
         self.win_handler.refresh()
 
     def assign_lines(self, lines):
-        self.lines = [w[0] for w in lines if w[2] == self.key]
+        self.lines = [w.word for w in lines if w.group == self.key]
         #print(self.lines)
 
 
@@ -117,11 +144,11 @@ def avg_or_zero(num, den):
 
 def get_stats_strings(words):
     stats_strings = []
-    n_completed = len([w for w in words if w[2] != ''])
-    n_keywords = len([w for w in words if w[2] == 'k'])
-    n_noise = len([w for w in words if w[2] == 'n'])
-    n_not_relevant = len([w for w in words if w[2] == 'x'])
-    n_later = len([w for w in words if w[2] == 'p'])
+    n_completed = len([w for w in words if w.is_grouped()])
+    n_keywords = len([w for w in words if w.group == 'k'])
+    n_noise = len([w for w in words if w.group == 'n'])
+    n_not_relevant = len([w for w in words if w.group == 'x'])
+    n_later = len([w for w in words if w.group == 'p'])
     stats_strings.append('Total words:  {:7}'.format(len(words)))
     avg = avg_or_zero(n_completed, len(words))
     stats_strings.append('Completed:    {:7} ({:6.2f}%)'.format(n_completed, avg))
@@ -144,20 +171,20 @@ def return_related_items(words, key):
     containing = []
     not_containing = []
     for w in words:
-        if (w[2] != ''):
+        if (w.group != ''):
             continue
-        if (find_word(w[0], key)):
-            containing.append(w[0])
+        if (find_word(w.word, key)):
+            containing.append(w.word)
         else:
-            not_containing.append(w[0])
+            not_containing.append(w.word)
     return containing, not_containing
 
 
 def mark_word(words, word, marker, order):
     for w in words:
-        if w[0] == word:
-            w[2] = marker
-            w[3] = order
+        if w.word == word:
+            w.group = marker
+            w.order = order
             break
     return words
 
@@ -177,7 +204,7 @@ def init_curses():
 
 
 def get_last_inserted_order(words):
-    orders = [int(w[3]) for w in words if w[3] != '']
+    orders = [w.order for w in words if w.order is not None]
     if len(orders) == 0:
         order = 0
     else:
@@ -191,9 +218,9 @@ def main(args, words, datafile):
 
     # define windows
     windows = {
-        KEYWORD: Win(KEYWORD, title='Keywords', rows=12, cols=win_width, y=0, x=0),
-        NOISE: Win(NOISE, title='Noise', rows=12, cols=win_width, y=12, x=0),
-        NOTRELEVANT: Win(NOTRELEVANT, title='Not-relevant', rows=12, cols=win_width, y=24, x=0)
+        KEYWORD: Win(keys[KEYWORD], title='Keywords', rows=12, cols=win_width, y=0, x=0),
+        NOISE: Win(keys[NOISE], title='Noise', rows=12, cols=win_width, y=12, x=0),
+        NOTRELEVANT: Win(keys[NOTRELEVANT], title='Not-relevant', rows=12, cols=win_width, y=24, x=0)
     }
     curses.ungetch(' ')
     c = stdscr.getch()
@@ -206,10 +233,12 @@ def main(args, words, datafile):
     stats_window.display_lines(rev=False)
 
     related_items_count = 0
-    words_window.lines = [w[0] for w in words if w[2] == '']
+    words_window.lines = [w.word for w in words if not w.is_grouped()]
     sort_word_key = None
     order = get_last_inserted_order(words)
     while True:
+        if len(words_window.lines) <= 0:
+            break
         evaluated_word = words_window.lines[0]
         words_window.display_lines(rev=False, highlight_word=sort_word_key)
         c = stdscr.getch()
@@ -254,12 +283,12 @@ def main(args, words, datafile):
             write_words(datafile)
         elif c == ord('u'):
             # undo last operation
-            orders = [int(w[3]) for w in words if w[3] != '']
+            orders = [w.order for w in words if w.order is not None]
             if len(orders) == 0:
                 continue
             else:
                 max_index, max_value = max(enumerate(orders), key=operator.itemgetter(1))
-            w = words[max_index][0]
+            w = words[max_index].word
             logging.debug("{} {} {}".format(max_index, max_value, w))
             words = mark_word(words, w, '', '')
             order -= 1
