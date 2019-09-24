@@ -165,7 +165,8 @@ def get_stats_strings(words):
 
 
 def find_word(string, substring):
-   return substring in string
+    return any([substring == word for word in string.split()])
+    return substring in string
 
 
 def return_related_items(words, key):
@@ -219,9 +220,10 @@ def main(args, words, datafile):
 
     # define windows
     windows = {
-        KEYWORD: Win(keys[KEYWORD], title='Keywords', rows=12, cols=win_width, y=0, x=0),
-        NOISE: Win(keys[NOISE], title='Noise', rows=12, cols=win_width, y=12, x=0),
-        NOTRELEVANT: Win(keys[NOTRELEVANT], title='Not-relevant', rows=12, cols=win_width, y=24, x=0)
+        KEYWORD: Win(keys[KEYWORD], title='Keywords', rows=8, cols=win_width, y=0, x=0),
+        RELEVANT: Win(keys[RELEVANT], title='Relevant', rows=8, cols=win_width, y=8, x=0),
+        NOISE: Win(keys[NOISE], title='Noise', rows=8, cols=win_width, y=16, x=0),
+        NOTRELEVANT: Win(keys[NOTRELEVANT], title='Not-relevant', rows=8, cols=win_width, y=24, x=0)
     }
     curses.ungetch(' ')
     c = stdscr.getch()
@@ -252,7 +254,7 @@ def main(args, words, datafile):
         #    words_window.lines = words_window.lines[1:]
         #    win.display_lines()
         #    related_items_count -= 1
-        if c in [ord(keys[KEYWORD]), ord(keys[NOTRELEVANT]), ord(keys[NOISE])]:
+        if c in [ord(keys[KEYWORD]), ord(keys[NOTRELEVANT]), ord(keys[NOISE]), ord(keys[RELEVANT])]:
         #elif c in [ord(keys[NOISE])]:
             # classification: KEYWORD, NOTRELEVANT or NOISE
             words = mark_word(words, evaluated_word, chr(c), order)
