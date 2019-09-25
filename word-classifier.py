@@ -256,7 +256,8 @@ def main(args, words, datafile):
         #    related_items_count -= 1
         if c in [ord(keys[KEYWORD]), ord(keys[NOTRELEVANT]), ord(keys[NOISE]), ord(keys[RELEVANT])]:
         #elif c in [ord(keys[NOISE])]:
-            # classification: KEYWORD, NOTRELEVANT or NOISE
+            # classification: KEYWORD, RELEVANT, NOTRELEVANT or NOISE
+            logging.debug("KEYWORD {} AS {}".format(evaluated_word, key2class[chr(c)]))
             words = mark_word(words, evaluated_word, chr(c), order)
             order += 1
             win = windows[key2class[chr(c)]]
@@ -314,10 +315,11 @@ if __name__ == "__main__":
     parser = init_argparser()
     args = parser.parse_args()
 
-    logging.debug("**************** PROGRAM STARTED ****************")
+    logging.info("**************** PROGRAM STARTED ****************")
     (header, words) = load_words(args.datafile)
 
     curses.wrapper(main, words, args.datafile)
+    logging.info("**************** PROGRAM TERMINATED ****************")
     curses.endwin()
 
     if args.dry_run:
