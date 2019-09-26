@@ -297,7 +297,7 @@ def main(args, words, datafile, logger=None, profiler=None):
             related_items_count -= 1
         elif c == ord('w'):
             # write to file
-            write_words(datafile)
+            words.to_csv(datafile)
         elif c == ord('u'):
             # undo last operation
             last = words.get_last_inserted_order()
