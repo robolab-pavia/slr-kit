@@ -7,6 +7,19 @@ import operator
 from dataclasses import dataclass
 
 
+def setup_logger(name, log_file, formatter=logging.Formatter('%(asctime)s %(levelname)s %(message)s'), level=logging.INFO):
+    """Function to setup a generic loggers."""
+    handler = logging.FileHandler(log_file)
+    handler.setFormatter(formatter)
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    logger.addHandler(handler)
+    return logger
+
+profiler_logger = setup_logger('profiler_logger', 'profiler.log')
+debug_logger = setup_logger('debug_logger', 'slr-kit.log', level=logging.DEBUG)
+
+
 # List of class names
 KEYWORD = 'keyword'
 NOISE = 'noise'
@@ -52,41 +65,76 @@ def init_argparser():
     return parser
 
 
-def load_words(infile):
-    with open(infile) as csv_file:
-        csv_reader = csv.reader(csv_file, delimiter=',')
-        line_count = 0
-        items = []
-        for row in csv_reader:
-            if line_count == 0:
-                header = row
-                line_count += 1
-            else:
-                order_value = row[header.index('order')]
-                if order_value == '':
-                    order = None
+class WordList(object):
+    def __init__(self, items=None):
+        self.items = items
+        self.csv_header = None
+
+    def from_csv(self, infile):
+        with open(infile) as csv_file:
+            csv_reader = csv.reader(csv_file, delimiter=',')
+            header = None
+            line_count = 0
+            items = []
+            for row in csv_reader:
+                if line_count == 0:
+                    header = row
+                    line_count += 1
                 else:
-                    order = int(order_value)
-                item = Word(
-                    index=None,
-                    word=row[header.index('keyword')],
-                    count=row[header.index('count')],
-                    group=row[header.index('group')],
-                    order=order
-                )
-                items.append(item)
-                line_count += 1
-    return (header, items)
+                    order_value = row[header.index('order')]
+                    if order_value == '':
+                        order = None
+                    else:
+                        order = int(order_value)
+                    item = Word(
+                        index=None,
+                        word=row[header.index('keyword')],
+                        count=row[header.index('count')],
+                        group=row[header.index('group')],
+                        order=order
+                    )
+                    items.append(item)
+                    line_count += 1
+        self.csv_header = header
+        self.items = items
+        return (header, items)
 
+    def to_csv(self, outfile):
+        with open(outfile, mode='w') as out:
+            writer = csv.writer(out, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            writer.writerow(self.csv_header)
+            for w in self.items:
+                # FIXME: this ordering should depend from the header
+                item = [w.word, w.count, w.group, w.order]
+                writer.writerow(item)
 
-def write_words(outfile):
-    with open(outfile, mode='w') as out:
-        writer = csv.writer(out, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        writer.writerow(header)
-        for w in words:
-            # FIXME: this ordering should depend from the header
-            item = [w.word, w.count, w.group, w.order]
-            writer.writerow(item)
+    def get_last_inserted_order(self):
+        orders = [w.order for w in self.items if w.order is not None]
+        if len(orders) == 0:
+            order = 0
+        else:
+            order = max(orders)
+        return order
+
+    def mark_word(self, word, marker, order):
+        for w in self.items:
+            if w.word == word:
+                w.group = marker
+                w.order = order
+                break
+        return words
+
+    def return_related_items(self, key):
+        containing = []
+        not_containing = []
+        for w in self.items:
+            if (w.group != ''):
+                continue
+            if (find_word(w.word, key)):
+                containing.append(w.word)
+            else:
+                not_containing.append(w.word)
+        return containing, not_containing
 
 
 class Win(object):
@@ -169,28 +217,6 @@ def find_word(string, substring):
     return substring in string
 
 
-def return_related_items(words, key):
-    containing = []
-    not_containing = []
-    for w in words:
-        if (w.group != ''):
-            continue
-        if (find_word(w.word, key)):
-            containing.append(w.word)
-        else:
-            not_containing.append(w.word)
-    return containing, not_containing
-
-
-def mark_word(words, word, marker, order):
-    for w in words:
-        if w.word == word:
-            w.group = marker
-            w.order = order
-            break
-    return words
-
-
 def init_curses():
     # create stdscr
     stdscr = curses.initscr()
@@ -203,15 +229,6 @@ def init_curses():
     curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
 
     return stdscr
-
-
-def get_last_inserted_order(words):
-    orders = [w.order for w in words if w.order is not None]
-    if len(orders) == 0:
-        order = 0
-    else:
-        order = max(orders)
-    return order
 
 
 def main(args, words, datafile, logger=None, profiler=None):
@@ -228,17 +245,17 @@ def main(args, words, datafile, logger=None, profiler=None):
     curses.ungetch(' ')
     c = stdscr.getch()
     for win in windows:
-        windows[win].assign_lines(words)
+        windows[win].assign_lines(words.items)
         windows[win].display_lines()
     words_window = Win(None, rows=27, cols=win_width, y=9, x=win_width)
     stats_window = Win(None, rows=9, cols=win_width, y=0, x=win_width)
-    stats_window.lines = get_stats_strings(words)
+    stats_window.lines = get_stats_strings(words.items)
     stats_window.display_lines(rev=False)
 
     related_items_count = 0
-    words_window.lines = [w.word for w in words if not w.is_grouped()]
+    words_window.lines = [w.word for w in words.items if not w.is_grouped()]
     sort_word_key = None
-    order = get_last_inserted_order(words)
+    order = words.get_last_inserted_order()
     while True:
         if len(words_window.lines) <= 0:
             break
@@ -247,7 +264,7 @@ def main(args, words, datafile, logger=None, profiler=None):
         c = stdscr.getch()
         #if c in [ord(keys[KEYWORD]), ord(keys[NOTRELEVANT])]:
         #    # classification: KEYWORD or NOTRELEVANT
-        #    words = mark_word(words, evaluated_word, chr(c), order)
+        #    words.mark_word(evaluated_word, chr(c), order)
         #    order += 1
         #    win = windows[key2class[chr(c)]]
         #    win.lines.append(evaluated_word)
@@ -258,14 +275,14 @@ def main(args, words, datafile, logger=None, profiler=None):
         #elif c in [ord(keys[NOISE])]:
             # classification: KEYWORD, RELEVANT, NOTRELEVANT or NOISE
             profiler.info("WORD '{}' AS '{}'".format(evaluated_word, key2class[chr(c)]))
-            words = mark_word(words, evaluated_word, chr(c), order)
+            words.mark_word(evaluated_word, chr(c), words.get_last_inserted_order())
             order += 1
             win = windows[key2class[chr(c)]]
             win.lines.append(evaluated_word)
             win.display_lines()
             if related_items_count <= 0:
                 sort_word_key = evaluated_word
-            containing, not_containing = return_related_items(words, sort_word_key)
+            containing, not_containing = words.return_related_items(sort_word_key)
             if related_items_count <= 0:
                 related_items_count = len(containing) + 1
             #logger.debug("sort_word_key: {}".format(sort_word_key))
@@ -278,7 +295,7 @@ def main(args, words, datafile, logger=None, profiler=None):
             related_items_count -= 1
         elif c == ord('p'):
             # classification: POSTPONED
-            words = mark_word(words, evaluated_word, chr(c), order)
+            words.mark_word(evaluated_word, chr(c), words.get_last_inserted_order())
             order += 1
             words_window.lines = words_window.lines[1:]
             related_items_count -= 1
@@ -287,51 +304,38 @@ def main(args, words, datafile, logger=None, profiler=None):
             write_words(datafile)
         elif c == ord('u'):
             # undo last operation
-            orders = [w.order for w in words if w.order is not None]
-            if len(orders) == 0:
+            last = words.get_last_inserted_order()
+            last_word = None
+            for w in words.items:
+                if w.order == last:
+                    last_word = w
+            if last_word is None:
                 continue
-            else:
-                max_index, max_value = max(enumerate(orders), key=operator.itemgetter(1))
-            w = words[max_index].word
             logger.debug("{} {} {}".format(max_index, max_value, w))
-            words = mark_word(words, w, '', '')
-            order -= 1
+            words.mark_word(w, None, None)
             rwl = [w]
             rwl.extend(words_window.lines)
             words_window.lines = rwl
         elif c == ord('q'):
             # quit
             break
-        stats_window.lines = get_stats_strings(words)
+        stats_window.lines = get_stats_strings(words.items)
         stats_window.lines.append('Related:      {:7}'.format(related_items_count if related_items_count >= 0 else 0))
         stats_window.display_lines(rev=False)
 
 
-def setup_logger(name, log_file, formatter=logging.Formatter('%(asctime)s %(levelname)s %(message)s'), level=logging.INFO):
-    """Function to setup a generic loggers."""
-
-    handler = logging.FileHandler(log_file)
-    handler.setFormatter(formatter)
-
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
-    logger.addHandler(handler)
-
-    return logger
-
 if __name__ == "__main__":
     formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-    profiler_logger = setup_logger('profiler_logger', 'profiler.log')
-    debug_logger = setup_logger('debug_logger', 'slr-kit.log', level=logging.DEBUG)
     parser = init_argparser()
     args = parser.parse_args()
 
     profiler_logger.info("*** PROGRAM STARTED ***")
-    (header, words) = load_words(args.datafile)
+    words = WordList()
+    (header, items) = words.from_csv(args.datafile)
 
     curses.wrapper(main, words, args.datafile, logger=debug_logger, profiler=profiler_logger)
     profiler_logger.info("*** PROGRAM TERMINATED ***")
     curses.endwin()
 
     if args.dry_run:
-        write_words(args.datafile)
+        words.to_csv(args.datafile)
