@@ -255,7 +255,6 @@ def main(args, words, datafile, logger=None, profiler=None):
     related_items_count = 0
     words_window.lines = [w.word for w in words.items if not w.is_grouped()]
     sort_word_key = None
-    order = words.get_last_inserted_order()
     while True:
         if len(words_window.lines) <= 0:
             break
@@ -265,7 +264,6 @@ def main(args, words, datafile, logger=None, profiler=None):
         #if c in [ord(keys[KEYWORD]), ord(keys[NOTRELEVANT])]:
         #    # classification: KEYWORD or NOTRELEVANT
         #    words.mark_word(evaluated_word, chr(c), order)
-        #    order += 1
         #    win = windows[key2class[chr(c)]]
         #    win.lines.append(evaluated_word)
         #    words_window.lines = words_window.lines[1:]
@@ -276,7 +274,6 @@ def main(args, words, datafile, logger=None, profiler=None):
             # classification: KEYWORD, RELEVANT, NOTRELEVANT or NOISE
             profiler.info("WORD '{}' AS '{}'".format(evaluated_word, key2class[chr(c)]))
             words.mark_word(evaluated_word, chr(c), words.get_last_inserted_order())
-            order += 1
             win = windows[key2class[chr(c)]]
             win.lines.append(evaluated_word)
             win.display_lines()
@@ -296,7 +293,6 @@ def main(args, words, datafile, logger=None, profiler=None):
         elif c == ord('p'):
             # classification: POSTPONED
             words.mark_word(evaluated_word, chr(c), words.get_last_inserted_order())
-            order += 1
             words_window.lines = words_window.lines[1:]
             related_items_count -= 1
         elif c == ord('w'):
