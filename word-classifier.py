@@ -214,7 +214,7 @@ def get_last_inserted_order(words):
     return order
 
 
-def main(args, words, datafile, profiler=None):
+def main(args, words, datafile, logger=None, profiler=None):
     stdscr = init_curses()
     win_width = 40
 
@@ -268,12 +268,12 @@ def main(args, words, datafile, profiler=None):
             containing, not_containing = return_related_items(words, sort_word_key)
             if related_items_count <= 0:
                 related_items_count = len(containing) + 1
-            #logging.debug("sort_word_key: {}".format(sort_word_key))
-            #logging.debug("related_items_count: {}".format(related_items_count))
+            #logger.debug("sort_word_key: {}".format(sort_word_key))
+            #logger.debug("related_items_count: {}".format(related_items_count))
             words_window.lines = containing
             words_window.lines.extend(not_containing)
-            #logging.debug("containing: {}".format(containing))
-            #logging.debug("words_window.lines: {}".format(words_window.lines))
+            #logger.debug("containing: {}".format(containing))
+            #logger.debug("words_window.lines: {}".format(words_window.lines))
             words_window.display_lines(rev=False, highlight_word=sort_word_key)
             related_items_count -= 1
         elif c == ord('p'):
@@ -293,7 +293,7 @@ def main(args, words, datafile, profiler=None):
             else:
                 max_index, max_value = max(enumerate(orders), key=operator.itemgetter(1))
             w = words[max_index].word
-            logging.debug("{} {} {}".format(max_index, max_value, w))
+            logger.debug("{} {} {}".format(max_index, max_value, w))
             words = mark_word(words, w, '', '')
             order -= 1
             rwl = [w]
@@ -322,13 +322,14 @@ def setup_logger(name, log_file, formatter=logging.Formatter('%(asctime)s %(leve
 if __name__ == "__main__":
     formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
     profiler_logger = setup_logger('profiler_logger', 'profiler.log')
+    debug_logger = setup_logger('debug_logger', 'slr-kit.log', level=logging.DEBUG)
     parser = init_argparser()
     args = parser.parse_args()
 
     profiler_logger.info("*** PROGRAM STARTED ***")
     (header, words) = load_words(args.datafile)
 
-    curses.wrapper(main, words, args.datafile, profiler=profiler_logger)
+    curses.wrapper(main, words, args.datafile, logger=debug_logger, profiler=profiler_logger)
     profiler_logger.info("*** PROGRAM TERMINATED ***")
     curses.endwin()
 
