@@ -24,3 +24,4 @@ The workflow is based on the following stages:
 - Allow the user to configure the heys associated to the different actions/class; a simple JSON file may contain the association "key <-> action".
 - Find an acronym for the program.
 - Implement a graphical interface based on Tkinter.
+- Split the logging between debug and useful info that can be used to profile the efficiency of the classification.
