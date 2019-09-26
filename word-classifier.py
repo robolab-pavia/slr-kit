@@ -214,7 +214,7 @@ def get_last_inserted_order(words):
     return order
 
 
-def main(args, words, datafile):
+def main(args, words, datafile, profiler=None):
     stdscr = init_curses()
     win_width = 40
 
@@ -257,7 +257,7 @@ def main(args, words, datafile):
         if c in [ord(keys[KEYWORD]), ord(keys[NOTRELEVANT]), ord(keys[NOISE]), ord(keys[RELEVANT])]:
         #elif c in [ord(keys[NOISE])]:
             # classification: KEYWORD, RELEVANT, NOTRELEVANT or NOISE
-            logging.debug("KEYWORD {} AS {}".format(evaluated_word, key2class[chr(c)]))
+            profiler.info("WORD '{}' AS '{}'".format(evaluated_word, key2class[chr(c)]))
             words = mark_word(words, evaluated_word, chr(c), order)
             order += 1
             win = windows[key2class[chr(c)]]
@@ -307,19 +307,29 @@ def main(args, words, datafile):
         stats_window.display_lines(rev=False)
 
 
+def setup_logger(name, log_file, formatter=logging.Formatter('%(asctime)s %(levelname)s %(message)s'), level=logging.INFO):
+    """Function to setup a generic loggers."""
+
+    handler = logging.FileHandler(log_file)
+    handler.setFormatter(formatter)
+
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    logger.addHandler(handler)
+
+    return logger
+
 if __name__ == "__main__":
-    logging.basicConfig(filename='slr-kit.log',
-            filemode='a',
-            format='%(asctime)s [%(levelname)s] %(message)s',
-            level=logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+    profiler_logger = setup_logger('profiler_logger', 'profiler.log')
     parser = init_argparser()
     args = parser.parse_args()
 
-    logging.info("**************** PROGRAM STARTED ****************")
+    profiler_logger.info("*** PROGRAM STARTED ***")
     (header, words) = load_words(args.datafile)
 
-    curses.wrapper(main, words, args.datafile)
-    logging.info("**************** PROGRAM TERMINATED ****************")
+    curses.wrapper(main, words, args.datafile, profiler=profiler_logger)
+    profiler_logger.info("*** PROGRAM TERMINATED ***")
     curses.endwin()
 
     if args.dry_run:
