@@ -308,8 +308,8 @@ def main(args, words, datafile, logger=None, profiler=None):
             if last_word is None:
                 continue
             logger.debug("{} {}".format(last, last_word.word))
-            words.mark_word(w, None, None)
-            rwl = [w]
+            words.mark_word(last_word.word, None, None)
+            rwl = [last_word.word]
             rwl.extend(words_window.lines)
             words_window.lines = rwl
         elif c == ord('q'):
