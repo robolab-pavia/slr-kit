@@ -308,6 +308,15 @@ def main(args, words, datafile, logger=None, profiler=None):
             if last_word is None:
                 continue
             logger.debug("{} {}".format(last, last_word.word))
+            group = last_word.group
+            # remove last_word from the window that actually contains it
+            try:
+                win = windows[key2class[group]]
+                win.lines.remove(last_word.word)
+                win.display_lines(rev=False)
+            except KeyError:
+                pass  # if here the word is not in a window so nothing to do
+            # un-mark last_word
             words.mark_word(last_word.word, None, None)
             rwl = [last_word.word]
             rwl.extend(words_window.lines)
