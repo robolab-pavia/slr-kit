@@ -307,7 +307,7 @@ def main(args, words, datafile, logger=None, profiler=None):
                     last_word = w
             if last_word is None:
                 continue
-            logger.debug("{} {} {}".format(max_index, max_value, w))
+            logger.debug("{} {}".format(last, last_word.word))
             words.mark_word(w, None, None)
             rwl = [w]
             rwl.extend(words_window.lines)
