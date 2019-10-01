@@ -307,8 +307,9 @@ def main(args, words, datafile, logger=None, profiler=None):
                     last_word = w
             if last_word is None:
                 continue
-            logger.debug("{} {}".format(last, last_word.word))
             group = last_word.group
+            logger.debug("Undo: {} group {} order {}".format(last_word.word,
+                                                             group, last))
             # remove last_word from the window that actually contains it
             try:
                 win = windows[key2class[group]]
