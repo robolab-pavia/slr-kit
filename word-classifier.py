@@ -87,18 +87,29 @@ class WordList(object):
                         order = None
                     else:
                         order = int(order_value)
+
+                    if 'related' in header:
+                        related = row[header.index('related')]
+                    else:
+                        related = ''
+
                     item = Word(
-                        index=None,
+                        index=0,
                         word=row[header.index('keyword')],
                         count=row[header.index('count')],
                         group=row[header.index('group')],
-                        order=order
+                        order=order,
+                        related=related
                     )
                     items.append(item)
                     line_count += 1
+
+        if 'related' not in header:
+            header.append('related')
+
         self.csv_header = header
         self.items = items
-        return (header, items)
+        return header, items
 
     def to_csv(self, outfile):
         with open(outfile, mode='w') as out:
