@@ -287,12 +287,14 @@ def main(args, words, datafile, logger=None, profiler=None):
         #elif c in [ord(keys[NOISE])]:
             # classification: KEYWORD, RELEVANT, NOTRELEVANT or NOISE
             profiler.info("WORD '{}' AS '{}'".format(evaluated_word, key2class[chr(c)]))
-            words.mark_word(evaluated_word, chr(c), words.get_last_inserted_order() + 1)
             win = windows[key2class[chr(c)]]
             win.lines.append(evaluated_word)
             win.display_lines()
+            words.mark_word(evaluated_word, chr(c),
+                            words.get_last_inserted_order() + 1, sort_word_key)
             if related_items_count <= 0:
                 sort_word_key = evaluated_word
+
             containing, not_containing = words.return_related_items(sort_word_key)
             if related_items_count <= 0:
                 related_items_count = len(containing) + 1
@@ -306,7 +308,9 @@ def main(args, words, datafile, logger=None, profiler=None):
             related_items_count -= 1
         elif c == ord('p'):
             # classification: POSTPONED
-            words.mark_word(evaluated_word, chr(c), words.get_last_inserted_order() + 1)
+            words.mark_word(evaluated_word, chr(c),
+                            words.get_last_inserted_order() + 1,
+                            sort_word_key)
             words_window.lines = words_window.lines[1:]
             related_items_count -= 1
         elif c == ord('w'):
