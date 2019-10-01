@@ -50,6 +50,7 @@ class Word:
     count: int
     group: str
     order: int
+    related: str
 
     def is_grouped(self):
         return self.group != ''
@@ -116,13 +117,15 @@ class WordList(object):
             order = max(orders)
         return order
 
-    def mark_word(self, word, marker, order):
+    def mark_word(self, word, marker, order, related=''):
         for w in self.items:
             if w.word == word:
                 w.group = marker
                 w.order = order
+                w.related = related
                 break
-        return words
+
+        return self
 
     def return_related_items(self, key):
         containing = []
