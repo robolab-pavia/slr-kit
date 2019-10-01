@@ -326,9 +326,12 @@ def main(args, words, datafile, logger=None, profiler=None):
             for w in words.items:
                 if w.order == last:
                     last_word = w
+
             if last_word is None:
                 continue
+
             group = last_word.group
+            related = last_word.related
             logger.debug("Undo: {} group {} order {}".format(last_word.word,
                                                              group, last))
             # remove last_word from the window that actually contains it
@@ -338,11 +341,23 @@ def main(args, words, datafile, logger=None, profiler=None):
                 win.display_lines(rev=False)
             except KeyError:
                 pass  # if here the word is not in a window so nothing to do
+
             # un-mark last_word
             words.mark_word(last_word.word, None, None)
-            rwl = [last_word.word]
-            rwl.extend(words_window.lines)
-            words_window.lines = rwl
+            if related == sort_word_key:
+                related_items_count += 1
+                rwl = [last_word.word]
+                rwl.extend(words_window.lines)
+                words_window.lines = rwl
+            else:
+                sort_word_key = related
+                containing, not_containing = words.return_related_items(sort_word_key)
+                words_window.lines = [last_word.word]
+                words_window.lines.extend(containing)
+                words_window.lines.extend(not_containing)
+                words_window.display_lines(rev=False, highlight_word=sort_word_key)
+                related_items_count = len(containing) + 1
+
         elif c == ord('q'):
             # quit
             break
