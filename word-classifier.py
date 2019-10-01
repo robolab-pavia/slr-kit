@@ -273,6 +273,9 @@ def main(args, words, datafile, logger=None, profiler=None):
         if len(words_window.lines) <= 0:
             break
         evaluated_word = words_window.lines[0]
+        if related_items_count <= 0:
+            sort_word_key = ''
+
         words_window.display_lines(rev=False, highlight_word=sort_word_key)
         c = stdscr.getch()
         #if c in [ord(keys[KEYWORD]), ord(keys[NOTRELEVANT])]:
