@@ -117,7 +117,7 @@ class WordList(object):
             writer.writerow(self.csv_header)
             for w in self.items:
                 # FIXME: this ordering should depend from the header
-                item = [w.word, w.count, w.group, w.order]
+                item = [w.word, w.count, w.group, w.order, w.related]
                 writer.writerow(item)
 
     def get_last_inserted_order(self):
