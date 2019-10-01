@@ -165,7 +165,7 @@ class Win(object):
         self.win_handler.refresh()
         self.lines = []
 
-    def display_lines(self, rev=True, highlight_word=None):
+    def display_lines(self, rev=True, highlight_word=''):
         if rev:
             word_list = reversed(self.lines)
         else:
@@ -173,7 +173,7 @@ class Win(object):
         i = 0
         for w in word_list:
             trunc_w = w[:self.cols - 2]
-            if highlight_word is None:
+            if highlight_word == '':
                 self.win_handler.addstr(i + 1, 1, trunc_w + ' '*(self.cols - 2 - len(trunc_w)))
             else:
                 tok = w.split(highlight_word)
@@ -268,7 +268,7 @@ def main(args, words, datafile, logger=None, profiler=None):
 
     related_items_count = 0
     words_window.lines = [w.word for w in words.items if not w.is_grouped()]
-    sort_word_key = None
+    sort_word_key = ''
     while True:
         if len(words_window.lines) <= 0:
             break
