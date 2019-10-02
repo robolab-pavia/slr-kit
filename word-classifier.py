@@ -214,7 +214,7 @@ def avg_or_zero(num, den):
     return avg
 
 
-def get_stats_strings(words):
+def get_stats_strings(words, related_items_count=0):
     stats_strings = []
     n_completed = len([w for w in words if w.is_grouped()])
     n_keywords = len([w for w in words if w.group == 'k'])
@@ -232,6 +232,7 @@ def get_stats_strings(words):
     stats_strings.append('Not relevant: {:7} ({:6.2f}%)'.format(n_not_relevant, avg))
     avg = avg_or_zero(n_later, n_completed)
     stats_strings.append('Postponed:    {:7} ({:6.2f}%)'.format(n_later, avg))
+    stats_strings.append('Related:      {:7}'.format(related_items_count if related_items_count >= 0 else 0))
     return stats_strings
 
 
@@ -372,8 +373,7 @@ def main(args, words, datafile, logger=None, profiler=None):
         elif c == ord('q'):
             # quit
             break
-        stats_window.lines = get_stats_strings(words.items)
-        stats_window.lines.append('Related:      {:7}'.format(related_items_count if related_items_count >= 0 else 0))
+        stats_window.lines = get_stats_strings(words.items, related_items_count)
         stats_window.display_lines(rev=False)
 
 
