@@ -123,10 +123,19 @@ class WordList(object):
     def get_last_inserted_order(self):
         orders = [w.order for w in self.items if w.order is not None]
         if len(orders) == 0:
-            order = 0
+            order = -1
         else:
             order = max(orders)
         return order
+
+    def get_last_inserted_word(self):
+        last = self.get_last_inserted_order()
+        last_word = None
+        for w in self.items:
+            if w.order == last:
+                return w
+        else:
+            return None
 
     def mark_word(self, word, marker, order, related=''):
         for w in self.items:
@@ -205,7 +214,7 @@ def avg_or_zero(num, den):
     return avg
 
 
-def get_stats_strings(words):
+def get_stats_strings(words, related_items_count=0):
     stats_strings = []
     n_completed = len([w for w in words if w.is_grouped()])
     n_keywords = len([w for w in words if w.group == 'k'])
@@ -223,6 +232,7 @@ def get_stats_strings(words):
     stats_strings.append('Not relevant: {:7} ({:6.2f}%)'.format(n_not_relevant, avg))
     avg = avg_or_zero(n_later, n_completed)
     stats_strings.append('Postponed:    {:7} ({:6.2f}%)'.format(n_later, avg))
+    stats_strings.append('Related:      {:7}'.format(related_items_count if related_items_count >= 0 else 0))
     return stats_strings
 
 
@@ -262,13 +272,23 @@ def main(args, words, datafile, logger=None, profiler=None):
         windows[win].assign_lines(words.items)
         windows[win].display_lines()
     words_window = Win(None, rows=27, cols=win_width, y=9, x=win_width)
-    stats_window = Win(None, rows=9, cols=win_width, y=0, x=win_width)
-    stats_window.lines = get_stats_strings(words.items)
-    stats_window.display_lines(rev=False)
 
-    related_items_count = 0
-    words_window.lines = [w.word for w in words.items if not w.is_grouped()]
-    sort_word_key = ''
+    last_word = words.get_last_inserted_word()
+    if last_word is None:
+        related_items_count = 0
+        sort_word_key = ''
+        lines = [w.word for w in words.items if not w.is_grouped()]
+    else:
+        sort_word_key = last_word.related
+        containing, not_containing = words.return_related_items(sort_word_key)
+        related_items_count = len(containing)
+        lines = containing
+        lines.extend(not_containing)
+
+    words_window.lines = lines
+    stats_window = Win(None, rows=9, cols=win_width, y=0, x=win_width)
+    stats_window.lines = get_stats_strings(words.items, related_items_count)
+    stats_window.display_lines(rev=False)
     while True:
         if len(words_window.lines) <= 0:
             break
@@ -321,11 +341,7 @@ def main(args, words, datafile, logger=None, profiler=None):
             words.to_csv(datafile)
         elif c == ord('u'):
             # undo last operation
-            last = words.get_last_inserted_order()
-            last_word = None
-            for w in words.items:
-                if w.order == last:
-                    last_word = w
+            last_word = words.get_last_inserted_word()
 
             if last_word is None:
                 continue
@@ -333,7 +349,8 @@ def main(args, words, datafile, logger=None, profiler=None):
             group = last_word.group
             related = last_word.related
             logger.debug("Undo: {} group {} order {}".format(last_word.word,
-                                                             group, last))
+                                                             group,
+                                                             last_word.order))
             # remove last_word from the window that actually contains it
             try:
                 win = windows[key2class[group]]
@@ -343,7 +360,7 @@ def main(args, words, datafile, logger=None, profiler=None):
                 pass  # if here the word is not in a window so nothing to do
 
             # un-mark last_word
-            words.mark_word(last_word.word, None, None)
+            words.mark_word(last_word.word, '', None)
             if related == sort_word_key:
                 related_items_count += 1
                 rwl = [last_word.word]
@@ -366,8 +383,7 @@ def main(args, words, datafile, logger=None, profiler=None):
         elif c == ord('q'):
             # quit
             break
-        stats_window.lines = get_stats_strings(words.items)
-        stats_window.lines.append('Related:      {:7}'.format(related_items_count if related_items_count >= 0 else 0))
+        stats_window.lines = get_stats_strings(words.items, related_items_count)
         stats_window.display_lines(rev=False)
 
 
