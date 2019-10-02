@@ -358,6 +358,11 @@ def main(args, words, datafile, logger=None, profiler=None):
                 words_window.display_lines(rev=False, highlight_word=sort_word_key)
                 related_items_count = len(containing) + 1
 
+            if sort_word_key == '':
+                # if sort_word_key is empty there's no related item: fix the
+                # related_items_count to the correct value of 0
+                related_items_count = 0
+
         elif c == ord('q'):
             # quit
             break
