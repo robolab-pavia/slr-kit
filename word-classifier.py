@@ -128,6 +128,15 @@ class WordList(object):
             order = max(orders)
         return order
 
+    def get_last_inserted_word(self):
+        last = self.get_last_inserted_order()
+        last_word = None
+        for w in self.items:
+            if w.order == last:
+                return w
+        else:
+            return None
+
     def mark_word(self, word, marker, order, related=''):
         for w in self.items:
             if w.word == word:
@@ -321,11 +330,7 @@ def main(args, words, datafile, logger=None, profiler=None):
             words.to_csv(datafile)
         elif c == ord('u'):
             # undo last operation
-            last = words.get_last_inserted_order()
-            last_word = None
-            for w in words.items:
-                if w.order == last:
-                    last_word = w
+            last_word = words.get_last_inserted_word()
 
             if last_word is None:
                 continue
@@ -333,7 +338,8 @@ def main(args, words, datafile, logger=None, profiler=None):
             group = last_word.group
             related = last_word.related
             logger.debug("Undo: {} group {} order {}".format(last_word.word,
-                                                             group, last))
+                                                             group,
+                                                             last_word.order))
             # remove last_word from the window that actually contains it
             try:
                 win = windows[key2class[group]]
