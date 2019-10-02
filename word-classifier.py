@@ -123,7 +123,7 @@ class WordList(object):
     def get_last_inserted_order(self):
         orders = [w.order for w in self.items if w.order is not None]
         if len(orders) == 0:
-            order = 0
+            order = -1
         else:
             order = max(orders)
         return order
