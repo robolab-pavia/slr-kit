@@ -343,7 +343,7 @@ def main(args, words, datafile, logger=None, profiler=None):
                 pass  # if here the word is not in a window so nothing to do
 
             # un-mark last_word
-            words.mark_word(last_word.word, None, None)
+            words.mark_word(last_word.word, '', None)
             if related == sort_word_key:
                 related_items_count += 1
                 rwl = [last_word.word]
