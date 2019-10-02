@@ -272,13 +272,23 @@ def main(args, words, datafile, logger=None, profiler=None):
         windows[win].assign_lines(words.items)
         windows[win].display_lines()
     words_window = Win(None, rows=27, cols=win_width, y=9, x=win_width)
-    stats_window = Win(None, rows=9, cols=win_width, y=0, x=win_width)
-    stats_window.lines = get_stats_strings(words.items)
-    stats_window.display_lines(rev=False)
 
-    related_items_count = 0
-    words_window.lines = [w.word for w in words.items if not w.is_grouped()]
-    sort_word_key = ''
+    last_word = words.get_last_inserted_word()
+    if last_word is None:
+        related_items_count = 0
+        sort_word_key = ''
+        lines = [w.word for w in words.items if not w.is_grouped()]
+    else:
+        sort_word_key = last_word.related
+        containing, not_containing = words.return_related_items(sort_word_key)
+        related_items_count = len(containing)
+        lines = containing
+        lines.extend(not_containing)
+
+    words_window.lines = lines
+    stats_window = Win(None, rows=9, cols=win_width, y=0, x=win_width)
+    stats_window.lines = get_stats_strings(words.items, related_items_count)
+    stats_window.display_lines(rev=False)
     while True:
         if len(words_window.lines) <= 0:
             break
