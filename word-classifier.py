@@ -298,17 +298,7 @@ def main(args, words, datafile, logger=None, profiler=None):
 
         words_window.display_lines(rev=False, highlight_word=sort_word_key)
         c = stdscr.getch()
-        #if c in [ord(keys[KEYWORD]), ord(keys[NOTRELEVANT])]:
-        #    # classification: KEYWORD or NOTRELEVANT
-        #    words.mark_word(evaluated_word, chr(c), order)
-        #    win = windows[key2class[chr(c)]]
-        #    win.lines.append(evaluated_word)
-        #    words_window.lines = words_window.lines[1:]
-        #    win.display_lines()
-        #    related_items_count -= 1
         if c in [ord(keys[KEYWORD]), ord(keys[NOTRELEVANT]), ord(keys[NOISE]), ord(keys[RELEVANT])]:
-        #elif c in [ord(keys[NOISE])]:
-            # classification: KEYWORD, RELEVANT, NOTRELEVANT or NOISE
             profiler.info("WORD '{}' AS '{}'".format(evaluated_word, key2class[chr(c)]))
             win = windows[key2class[chr(c)]]
             win.lines.append(evaluated_word)
@@ -321,12 +311,8 @@ def main(args, words, datafile, logger=None, profiler=None):
             containing, not_containing = words.return_related_items(sort_word_key)
             if related_items_count <= 0:
                 related_items_count = len(containing) + 1
-            #logger.debug("sort_word_key: {}".format(sort_word_key))
-            #logger.debug("related_items_count: {}".format(related_items_count))
             words_window.lines = containing
             words_window.lines.extend(not_containing)
-            #logger.debug("containing: {}".format(containing))
-            #logger.debug("words_window.lines: {}".format(words_window.lines))
             words_window.display_lines(rev=False, highlight_word=sort_word_key)
             related_items_count -= 1
         elif c == ord('p'):
