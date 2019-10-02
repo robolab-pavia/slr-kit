@@ -7,7 +7,8 @@ import operator
 from dataclasses import dataclass
 
 
-def setup_logger(name, log_file, formatter=logging.Formatter('%(asctime)s %(levelname)s %(message)s'), level=logging.INFO):
+def setup_logger(name, log_file, formatter=logging.Formatter('%(asctime)s %(levelname)s %(message)s'),
+                 level=logging.INFO):
     """Function to setup a generic loggers."""
     handler = logging.FileHandler(log_file)
     handler.setFormatter(formatter)
@@ -16,9 +17,9 @@ def setup_logger(name, log_file, formatter=logging.Formatter('%(asctime)s %(leve
     logger.addHandler(handler)
     return logger
 
+
 profiler_logger = setup_logger('profiler_logger', 'profiler.log')
 debug_logger = setup_logger('debug_logger', 'slr-kit.log', level=logging.DEBUG)
-
 
 # List of class names
 KEYWORD = 'keyword'
@@ -29,10 +30,9 @@ NOTRELEVANT = 'not-relevant'
 keys = {
     KEYWORD: 'k',
     NOISE: 'n',
-    RELEVANT:'r',
+    RELEVANT: 'r',
     NOTRELEVANT: 'x'
 }
-
 
 # FIXME: the key2class dict shall be obtained by "reversing" the keys dict
 key2class = {
@@ -60,9 +60,9 @@ def init_argparser():
     """Initialize the command line parser."""
     parser = argparse.ArgumentParser()
     parser.add_argument('datafile', action="store", type=str,
-        help="input CSV data file")
+                        help="input CSV data file")
     parser.add_argument('--dry-run', action='store_false', dest='dry_run',
-        help='do not write the results on exit')
+                        help='do not write the results on exit')
     return parser
 
 
@@ -162,6 +162,7 @@ class WordList(object):
 
 class Win(object):
     """Contains the list of lines to display."""
+
     def __init__(self, key, title='', rows=3, cols=30, y=0, x=0):
         self.key = key
         self.title = title
@@ -183,26 +184,26 @@ class Win(object):
         for w in word_list:
             trunc_w = w[:self.cols - 2]
             if highlight_word == '':
-                self.win_handler.addstr(i + 1, 1, trunc_w + ' '*(self.cols - 2 - len(trunc_w)))
+                self.win_handler.addstr(i + 1, 1, trunc_w + ' ' * (self.cols - 2 - len(trunc_w)))
             else:
                 tok = w.split(highlight_word)
                 self.win_handler.addstr(i + 1, 1, '')
                 for t in tok:
                     self.win_handler.addstr(t)
                     self.win_handler.addstr(highlight_word, curses.color_pair(1))
-                self.win_handler.addstr(i + 1, len(trunc_w) + 1, ' '*(self.cols - 2 - len(trunc_w)))
+                self.win_handler.addstr(i + 1, len(trunc_w) + 1, ' ' * (self.cols - 2 - len(trunc_w)))
             i += 1
             if i >= self.rows - 2:
                 break
         while i < self.rows - 2:
-            self.win_handler.addstr(i + 1, 1, ' '*(self.cols - 2))
+            self.win_handler.addstr(i + 1, 1, ' ' * (self.cols - 2))
             i += 1
         self.win_handler.border()
         self.win_handler.refresh()
 
     def assign_lines(self, lines):
         self.lines = [w.word for w in lines if w.group == self.key]
-        #print(self.lines)
+        # print(self.lines)
 
 
 def avg_or_zero(num, den):
