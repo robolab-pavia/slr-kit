@@ -50,6 +50,7 @@ class Word:
     count: int
     group: str
     order: int
+    related: str
 
     def is_grouped(self):
         return self.group != ''
@@ -86,18 +87,29 @@ class WordList(object):
                         order = None
                     else:
                         order = int(order_value)
+
+                    if 'related' in header:
+                        related = row[header.index('related')]
+                    else:
+                        related = ''
+
                     item = Word(
-                        index=None,
+                        index=0,
                         word=row[header.index('keyword')],
                         count=row[header.index('count')],
                         group=row[header.index('group')],
-                        order=order
+                        order=order,
+                        related=related
                     )
                     items.append(item)
                     line_count += 1
+
+        if 'related' not in header:
+            header.append('related')
+
         self.csv_header = header
         self.items = items
-        return (header, items)
+        return header, items
 
     def to_csv(self, outfile):
         with open(outfile, mode='w') as out:
@@ -105,7 +117,7 @@ class WordList(object):
             writer.writerow(self.csv_header)
             for w in self.items:
                 # FIXME: this ordering should depend from the header
-                item = [w.word, w.count, w.group, w.order]
+                item = [w.word, w.count, w.group, w.order, w.related]
                 writer.writerow(item)
 
     def get_last_inserted_order(self):
@@ -116,13 +128,15 @@ class WordList(object):
             order = max(orders)
         return order
 
-    def mark_word(self, word, marker, order):
+    def mark_word(self, word, marker, order, related=''):
         for w in self.items:
             if w.word == word:
                 w.group = marker
                 w.order = order
+                w.related = related
                 break
-        return words
+
+        return self
 
     def return_related_items(self, key):
         containing = []
@@ -151,7 +165,7 @@ class Win(object):
         self.win_handler.refresh()
         self.lines = []
 
-    def display_lines(self, rev=True, highlight_word=None):
+    def display_lines(self, rev=True, highlight_word=''):
         if rev:
             word_list = reversed(self.lines)
         else:
@@ -159,7 +173,7 @@ class Win(object):
         i = 0
         for w in word_list:
             trunc_w = w[:self.cols - 2]
-            if highlight_word is None:
+            if highlight_word == '':
                 self.win_handler.addstr(i + 1, 1, trunc_w + ' '*(self.cols - 2 - len(trunc_w)))
             else:
                 tok = w.split(highlight_word)
@@ -254,11 +268,14 @@ def main(args, words, datafile, logger=None, profiler=None):
 
     related_items_count = 0
     words_window.lines = [w.word for w in words.items if not w.is_grouped()]
-    sort_word_key = None
+    sort_word_key = ''
     while True:
         if len(words_window.lines) <= 0:
             break
         evaluated_word = words_window.lines[0]
+        if related_items_count <= 0:
+            sort_word_key = ''
+
         words_window.display_lines(rev=False, highlight_word=sort_word_key)
         c = stdscr.getch()
         #if c in [ord(keys[KEYWORD]), ord(keys[NOTRELEVANT])]:
@@ -273,12 +290,14 @@ def main(args, words, datafile, logger=None, profiler=None):
         #elif c in [ord(keys[NOISE])]:
             # classification: KEYWORD, RELEVANT, NOTRELEVANT or NOISE
             profiler.info("WORD '{}' AS '{}'".format(evaluated_word, key2class[chr(c)]))
-            words.mark_word(evaluated_word, chr(c), words.get_last_inserted_order())
             win = windows[key2class[chr(c)]]
             win.lines.append(evaluated_word)
             win.display_lines()
+            words.mark_word(evaluated_word, chr(c),
+                            words.get_last_inserted_order() + 1, sort_word_key)
             if related_items_count <= 0:
                 sort_word_key = evaluated_word
+
             containing, not_containing = words.return_related_items(sort_word_key)
             if related_items_count <= 0:
                 related_items_count = len(containing) + 1
@@ -292,7 +311,9 @@ def main(args, words, datafile, logger=None, profiler=None):
             related_items_count -= 1
         elif c == ord('p'):
             # classification: POSTPONED
-            words.mark_word(evaluated_word, chr(c), words.get_last_inserted_order())
+            words.mark_word(evaluated_word, chr(c),
+                            words.get_last_inserted_order() + 1,
+                            sort_word_key)
             words_window.lines = words_window.lines[1:]
             related_items_count -= 1
         elif c == ord('w'):
@@ -305,13 +326,43 @@ def main(args, words, datafile, logger=None, profiler=None):
             for w in words.items:
                 if w.order == last:
                     last_word = w
+
             if last_word is None:
                 continue
-            logger.debug("{} {} {}".format(max_index, max_value, w))
-            words.mark_word(w, None, None)
-            rwl = [w]
-            rwl.extend(words_window.lines)
-            words_window.lines = rwl
+
+            group = last_word.group
+            related = last_word.related
+            logger.debug("Undo: {} group {} order {}".format(last_word.word,
+                                                             group, last))
+            # remove last_word from the window that actually contains it
+            try:
+                win = windows[key2class[group]]
+                win.lines.remove(last_word.word)
+                win.display_lines(rev=False)
+            except KeyError:
+                pass  # if here the word is not in a window so nothing to do
+
+            # un-mark last_word
+            words.mark_word(last_word.word, None, None)
+            if related == sort_word_key:
+                related_items_count += 1
+                rwl = [last_word.word]
+                rwl.extend(words_window.lines)
+                words_window.lines = rwl
+            else:
+                sort_word_key = related
+                containing, not_containing = words.return_related_items(sort_word_key)
+                words_window.lines = [last_word.word]
+                words_window.lines.extend(containing)
+                words_window.lines.extend(not_containing)
+                words_window.display_lines(rev=False, highlight_word=sort_word_key)
+                related_items_count = len(containing) + 1
+
+            if sort_word_key == '':
+                # if sort_word_key is empty there's no related item: fix the
+                # related_items_count to the correct value of 0
+                related_items_count = 0
+
         elif c == ord('q'):
             # quit
             break
