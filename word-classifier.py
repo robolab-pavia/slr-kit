@@ -256,7 +256,7 @@ def init_curses():
     return stdscr
 
 
-def main(args, words, datafile, logger=None, profiler=None):
+def curses_main(scr, words, datafile, logger=None, profiler=None):
     stdscr = init_curses()
     win_width = 40
 
@@ -382,7 +382,8 @@ if __name__ == "__main__":
     words = WordList()
     (header, items) = words.from_csv(args.datafile)
 
-    curses.wrapper(main, words, args.datafile, logger=debug_logger, profiler=profiler_logger)
+    curses.wrapper(curses_main, words, args.datafile, logger=debug_logger,
+                   profiler=profiler_logger)
     profiler_logger.info("*** PROGRAM TERMINATED ***")
     curses.endwin()
 
