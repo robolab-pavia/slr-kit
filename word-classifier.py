@@ -239,7 +239,7 @@ def get_stats_strings(words, related_items_count=0):
 
 def find_word(string, substring):
     return any([substring == word for word in string.split()])
-    return substring in string
+    # return substring in string
 
 
 def init_curses():
