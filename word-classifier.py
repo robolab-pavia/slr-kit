@@ -369,8 +369,7 @@ def main(args, words, datafile, logger=None, profiler=None):
             else:
                 sort_word_key = related
                 containing, not_containing = words.return_related_items(sort_word_key)
-                words_window.lines = [last_word.word]
-                words_window.lines.extend(containing)
+                words_window.lines = containing
                 words_window.lines.extend(not_containing)
                 words_window.display_lines(rev=False, highlight_word=sort_word_key)
                 related_items_count = len(containing) + 1
