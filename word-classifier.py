@@ -130,7 +130,6 @@ class WordList(object):
 
     def get_last_inserted_word(self):
         last = self.get_last_inserted_order()
-        last_word = None
         for w in self.items:
             if w.order == last:
                 return w
@@ -268,7 +267,7 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
         NOTRELEVANT: Win(keys[NOTRELEVANT], title='Not-relevant', rows=8, cols=win_width, y=24, x=0)
     }
     curses.ungetch(' ')
-    c = stdscr.getch()
+    _ = stdscr.getch()
     for win in windows:
         windows[win].assign_lines(words.items)
         windows[win].display_lines()
