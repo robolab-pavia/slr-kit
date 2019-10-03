@@ -54,16 +54,6 @@ class Word:
         return self.group != ''
 
 
-def init_argparser():
-    """Initialize the command line parser."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument('datafile', action="store", type=str,
-                        help="input CSV data file")
-    parser.add_argument('--dry-run', action='store_false', dest='dry_run',
-                        help='do not write the results on exit')
-    return parser
-
-
 class WordList(object):
     def __init__(self, items=None):
         self.items = items
@@ -204,6 +194,16 @@ class Win(object):
     def assign_lines(self, lines):
         self.lines = [w.word for w in lines if w.group == self.key]
         # print(self.lines)
+
+
+def init_argparser():
+    """Initialize the command line parser."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument('datafile', action="store", type=str,
+                        help="input CSV data file")
+    parser.add_argument('--dry-run', action='store_false', dest='dry_run',
+                        help='do not write the results on exit')
+    return parser
 
 
 def avg_or_zero(num, den):
