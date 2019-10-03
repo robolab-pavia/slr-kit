@@ -275,6 +275,47 @@ def do_classify(key, words, evaluated_word, sort_word_key, related_items_count,
     return related_items_count, sort_word_key
 
 
+def undo(words, sort_word_key, related_items_count, windows, logger):
+    last_word = words.get_last_inserted_word()
+    if last_word is None:
+        return related_items_count, sort_word_key
+
+    group = last_word.group
+    related = last_word.related
+    logger.debug("Undo: {} group {} order {}".format(last_word.word,
+                                                     group,
+                                                     last_word.order))
+    # remove last_word from the window that actually contains it
+    try:
+        win = windows[key2class[group]]
+        win.lines.remove(last_word.word)
+        win.display_lines(rev=False)
+    except KeyError:
+        pass  # if here the word is not in a window so nothing to do
+
+    # un-mark last_word
+    words.mark_word(last_word.word, '', None)
+    if related == sort_word_key:
+        related_items_count += 1
+        rwl = [last_word.word]
+        rwl.extend(windows['__WORDS'].lines)
+        windows['__WORDS'].lines = rwl
+    else:
+        sort_word_key = related
+        containing, not_containing = words.return_related_items(sort_word_key)
+        windows['__WORDS'].lines = containing
+        windows['__WORDS'].lines.extend(not_containing)
+        windows['__WORDS'].display_lines(rev=False, highlight_word=sort_word_key)
+        related_items_count = len(containing) + 1
+
+    if sort_word_key == '':
+        # if sort_word_key is empty there's no related item: fix the
+        # related_items_count to the correct value of 0
+        related_items_count = 0
+
+    return related_items_count, sort_word_key
+
+
 def curses_main(scr, words, datafile, logger=None, profiler=None):
     stdscr = init_curses()
     win_width = 40
@@ -346,43 +387,9 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
             words.to_csv(datafile)
         elif c == ord('u'):
             # undo last operation
-            last_word = words.get_last_inserted_word()
-
-            if last_word is None:
-                continue
-
-            group = last_word.group
-            related = last_word.related
-            logger.debug("Undo: {} group {} order {}".format(last_word.word,
-                                                             group,
-                                                             last_word.order))
-            # remove last_word from the window that actually contains it
-            try:
-                win = windows[key2class[group]]
-                win.lines.remove(last_word.word)
-                win.display_lines(rev=False)
-            except KeyError:
-                pass  # if here the word is not in a window so nothing to do
-
-            # un-mark last_word
-            words.mark_word(last_word.word, '', None)
-            if related == sort_word_key:
-                related_items_count += 1
-                rwl = [last_word.word]
-                rwl.extend(windows['__WORDS'].lines)
-                windows['__WORDS'].lines = rwl
-            else:
-                sort_word_key = related
-                containing, not_containing = words.return_related_items(sort_word_key)
-                windows['__WORDS'].lines = containing
-                windows['__WORDS'].lines.extend(not_containing)
-                windows['__WORDS'].display_lines(rev=False, highlight_word=sort_word_key)
-                related_items_count = len(containing) + 1
-
-            if sort_word_key == '':
-                # if sort_word_key is empty there's no related item: fix the
-                # related_items_count to the correct value of 0
-                related_items_count = 0
+            related_items_count, sort_word_key = undo(words, sort_word_key,
+                                                      related_items_count,
+                                                      windows, logger)
 
         elif c == ord('q'):
             # quit
