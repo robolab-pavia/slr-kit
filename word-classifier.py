@@ -1,6 +1,7 @@
 import argparse
 import csv
 import curses
+import enum
 import logging
 from dataclasses import dataclass
 
@@ -19,25 +20,40 @@ def setup_logger(name, log_file, formatter=logging.Formatter('%(asctime)s %(leve
 profiler_logger = setup_logger('profiler_logger', 'profiler.log')
 debug_logger = setup_logger('debug_logger', 'slr-kit.log', level=logging.DEBUG)
 
+
 # List of class names
-KEYWORD = 'keyword'
-NOISE = 'noise'
-RELEVANT = 'relevant'
-NOTRELEVANT = 'not-relevant'
+class ClassNames(enum.Enum):
+    KEYWORD = 'keyword'
+    NOISE = 'noise'
+    RELEVANT = 'relevant'
+    NOTRELEVANT = 'not-relevant'
+
+    def __init__(self, classname):
+        self.classname = classname
+        self._key = None
+
+    @property
+    def key(self):
+        return chr(self._key)
+
+    @key.setter
+    def key(self, key):
+        self._key = ord(key)
+
 
 keys = {
-    KEYWORD: 'k',
-    NOISE: 'n',
-    RELEVANT: 'r',
-    NOTRELEVANT: 'x'
+    ClassNames.KEYWORD: 'k',
+    ClassNames.NOISE: 'n',
+    ClassNames.RELEVANT: 'r',
+    ClassNames.NOTRELEVANT: 'x'
 }
 
 # FIXME: the key2class dict shall be obtained by "reversing" the keys dict
 key2class = {
-    'k': KEYWORD,
-    'n': NOISE,
-    'r': RELEVANT,
-    'x': NOTRELEVANT
+    'k': ClassNames.KEYWORD,
+    'n': ClassNames.NOISE,
+    'r': ClassNames.RELEVANT,
+    'x': ClassNames.NOTRELEVANT
 }
 
 
@@ -264,7 +280,7 @@ def init_curses():
 
 def do_classify(key, words, evaluated_word, sort_word_key, related_items_count,
                 windows):
-    win = windows[key2class[chr(key)]]
+    win = windows[key2class[chr(key)].classname]
     win.lines.append(evaluated_word)
     win.display_lines()
     words.mark_word(evaluated_word, chr(key),
@@ -296,7 +312,7 @@ def undo(words, sort_word_key, related_items_count, windows, logger):
                                                      last_word.order))
     # remove last_word from the window that actually contains it
     try:
-        win = windows[key2class[group]]
+        win = windows[key2class[group].classname]
         win.lines.remove(last_word.word)
         win.display_lines(rev=False)
     except KeyError:
@@ -331,14 +347,17 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
 
     # define windows
     windows = {
-        KEYWORD: Win(keys[KEYWORD], title='Keywords', rows=8, cols=win_width,
-                     y=0, x=0),
-        RELEVANT: Win(keys[RELEVANT], title='Relevant', rows=8, cols=win_width,
-                      y=8, x=0),
-        NOISE: Win(keys[NOISE], title='Noise', rows=8, cols=win_width, y=16,
-                   x=0),
-        NOTRELEVANT: Win(keys[NOTRELEVANT], title='Not-relevant', rows=8,
-                         cols=win_width, y=24, x=0),
+        ClassNames.KEYWORD.classname: Win(keys[ClassNames.KEYWORD],
+                                          title='Keywords', rows=8,
+                                          cols=win_width, y=0, x=0),
+        ClassNames.RELEVANT.classname: Win(keys[ClassNames.RELEVANT],
+                                           title='Relevant', rows=8,
+                                           cols=win_width, y=8, x=0),
+        ClassNames.NOISE.classname: Win(keys[ClassNames.NOISE], title='Noise',
+                                        rows=8, cols=win_width, y=16, x=0),
+        ClassNames.NOTRELEVANT.classname: Win(keys[ClassNames.NOTRELEVANT],
+                                              title='Not-relevant', rows=8,
+                                              cols=win_width, y=24, x=0),
         '__WORDS': Win(None, rows=27, cols=win_width, y=9, x=win_width),
         '__STATS': Win(None, rows=9, cols=win_width, y=0, x=win_width)
     }
@@ -376,7 +395,11 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
 
         windows['__WORDS'].display_lines(rev=False, highlight_word=sort_word_key)
         c = stdscr.getch()
-        if c in [ord(keys[KEYWORD]), ord(keys[NOTRELEVANT]), ord(keys[NOISE]), ord(keys[RELEVANT])]:
+        classifing_keys = [ord(keys[ClassNames.KEYWORD]),
+                           ord(keys[ClassNames.NOTRELEVANT]),
+                           ord(keys[ClassNames.NOISE]),
+                           ord(keys[ClassNames.RELEVANT])]
+        if c in classifing_keys:
             profiler.info("WORD '{}' AS '{}'".format(evaluated_word,
                                                      key2class[chr(c)]))
             related_items_count, sort_word_key = do_classify(c, words,
