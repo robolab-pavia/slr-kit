@@ -221,16 +221,26 @@ def get_stats_strings(words, related_items_count=0):
     n_later = len([w for w in words if w.group == 'p'])
     stats_strings.append('Total words:  {:7}'.format(len(words)))
     avg = avg_or_zero(n_completed, len(words))
-    stats_strings.append('Completed:    {:7} ({:6.2f}%)'.format(n_completed, avg))
+    stats_strings.append('Completed:    {:7} ({:6.2f}%)'.format(n_completed,
+                                                                avg))
     avg = avg_or_zero(n_keywords, n_completed)
-    stats_strings.append('Keywords:     {:7} ({:6.2f}%)'.format(n_keywords, avg))
+    stats_strings.append('Keywords:     {:7} ({:6.2f}%)'.format(n_keywords,
+                                                                avg))
     avg = avg_or_zero(n_noise, n_completed)
     stats_strings.append('Noise:        {:7} ({:6.2f}%)'.format(n_noise, avg))
     avg = avg_or_zero(n_not_relevant, n_completed)
-    stats_strings.append('Not relevant: {:7} ({:6.2f}%)'.format(n_not_relevant, avg))
+    stats_strings.append('Not relevant: {:7} ({:6.2f}%)'.format(n_not_relevant,
+                                                                avg))
     avg = avg_or_zero(n_later, n_completed)
-    stats_strings.append('Postponed:    {:7} ({:6.2f}%)'.format(n_later, avg))
-    stats_strings.append('Related:      {:7}'.format(related_items_count if related_items_count >= 0 else 0))
+    stats_strings.append('Postponed:    {:7} ({:6.2f}%)'.format(n_later,
+                                                                avg))
+    s = 'Related:      {:7}'
+    if related_items_count >= 0:
+        s = s.format(related_items_count)
+    else:
+        s = s.format(0)
+
+    stats_strings.append(s)
     return stats_strings
 
 
