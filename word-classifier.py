@@ -253,6 +253,28 @@ def init_curses():
     return stdscr
 
 
+def do_classify(key, words, evaluated_word, sort_word_key, related_items_count,
+                windows):
+    win = windows[key2class[chr(key)]]
+    win.lines.append(evaluated_word)
+    win.display_lines()
+    words.mark_word(evaluated_word, chr(key),
+                    words.get_last_inserted_order() + 1, sort_word_key)
+
+    if related_items_count <= 0:
+        sort_word_key = evaluated_word
+
+    containing, not_containing = words.return_related_items(sort_word_key)
+    if related_items_count <= 0:
+        related_items_count = len(containing) + 1
+
+    windows['__WORDS'].lines = containing
+    windows['__WORDS'].lines.extend(not_containing)
+    windows['__WORDS'].display_lines(rev=False, highlight_word=sort_word_key)
+    related_items_count -= 1
+    return related_items_count, sort_word_key
+
+
 def curses_main(scr, words, datafile, logger=None, profiler=None):
     stdscr = init_curses()
     win_width = 40
@@ -305,22 +327,13 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
         windows['__WORDS'].display_lines(rev=False, highlight_word=sort_word_key)
         c = stdscr.getch()
         if c in [ord(keys[KEYWORD]), ord(keys[NOTRELEVANT]), ord(keys[NOISE]), ord(keys[RELEVANT])]:
-            profiler.info("WORD '{}' AS '{}'".format(evaluated_word, key2class[chr(c)]))
-            win = windows[key2class[chr(c)]]
-            win.lines.append(evaluated_word)
-            win.display_lines()
-            words.mark_word(evaluated_word, chr(c),
-                            words.get_last_inserted_order() + 1, sort_word_key)
-            if related_items_count <= 0:
-                sort_word_key = evaluated_word
-
-            containing, not_containing = words.return_related_items(sort_word_key)
-            if related_items_count <= 0:
-                related_items_count = len(containing) + 1
-            windows['__WORDS'].lines = containing
-            windows['__WORDS'].lines.extend(not_containing)
-            windows['__WORDS'].display_lines(rev=False, highlight_word=sort_word_key)
-            related_items_count -= 1
+            profiler.info("WORD '{}' AS '{}'".format(evaluated_word,
+                                                     key2class[chr(c)]))
+            related_items_count, sort_word_key = do_classify(c, words,
+                                                             evaluated_word,
+                                                             sort_word_key,
+                                                             related_items_count,
+                                                             windows)
         elif c == ord('p'):
             # classification: POSTPONED
             words.mark_word(evaluated_word, chr(c),
