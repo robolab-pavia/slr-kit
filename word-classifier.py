@@ -1,9 +1,7 @@
-import sys
+import argparse
 import csv
 import curses
 import logging
-import argparse
-import operator
 from dataclasses import dataclass
 
 
