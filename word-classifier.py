@@ -259,17 +259,26 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
 
     # define windows
     windows = {
-        KEYWORD: Win(keys[KEYWORD], title='Keywords', rows=8, cols=win_width, y=0, x=0),
-        RELEVANT: Win(keys[RELEVANT], title='Relevant', rows=8, cols=win_width, y=8, x=0),
-        NOISE: Win(keys[NOISE], title='Noise', rows=8, cols=win_width, y=16, x=0),
-        NOTRELEVANT: Win(keys[NOTRELEVANT], title='Not-relevant', rows=8, cols=win_width, y=24, x=0)
+        KEYWORD: Win(keys[KEYWORD], title='Keywords', rows=8, cols=win_width,
+                     y=0, x=0),
+        RELEVANT: Win(keys[RELEVANT], title='Relevant', rows=8, cols=win_width,
+                      y=8, x=0),
+        NOISE: Win(keys[NOISE], title='Noise', rows=8, cols=win_width, y=16,
+                   x=0),
+        NOTRELEVANT: Win(keys[NOTRELEVANT], title='Not-relevant', rows=8,
+                         cols=win_width, y=24, x=0),
+        '__WORDS': Win(None, rows=27, cols=win_width, y=9, x=win_width),
+        '__STATS': Win(None, rows=9, cols=win_width, y=0, x=win_width)
     }
+
     curses.ungetch(' ')
     _ = stdscr.getch()
     for win in windows:
+        if win in ['__WORDS', '__STATS']:
+            continue
+
         windows[win].assign_lines(words.items)
         windows[win].display_lines()
-    words_window = Win(None, rows=27, cols=win_width, y=9, x=win_width)
 
     last_word = words.get_last_inserted_word()
     if last_word is None:
@@ -283,18 +292,17 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
         lines = containing
         lines.extend(not_containing)
 
-    words_window.lines = lines
-    stats_window = Win(None, rows=9, cols=win_width, y=0, x=win_width)
-    stats_window.lines = get_stats_strings(words.items, related_items_count)
-    stats_window.display_lines(rev=False)
+    windows['__WORDS'].lines = lines
+    windows['__STATS'].lines = get_stats_strings(words.items, related_items_count)
+    windows['__STATS'].display_lines(rev=False)
     while True:
-        if len(words_window.lines) <= 0:
+        if len(windows['__WORDS'].lines) <= 0:
             break
-        evaluated_word = words_window.lines[0]
+        evaluated_word = windows['__WORDS'].lines[0]
         if related_items_count <= 0:
             sort_word_key = ''
 
-        words_window.display_lines(rev=False, highlight_word=sort_word_key)
+        windows['__WORDS'].display_lines(rev=False, highlight_word=sort_word_key)
         c = stdscr.getch()
         if c in [ord(keys[KEYWORD]), ord(keys[NOTRELEVANT]), ord(keys[NOISE]), ord(keys[RELEVANT])]:
             profiler.info("WORD '{}' AS '{}'".format(evaluated_word, key2class[chr(c)]))
@@ -309,16 +317,16 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
             containing, not_containing = words.return_related_items(sort_word_key)
             if related_items_count <= 0:
                 related_items_count = len(containing) + 1
-            words_window.lines = containing
-            words_window.lines.extend(not_containing)
-            words_window.display_lines(rev=False, highlight_word=sort_word_key)
+            windows['__WORDS'].lines = containing
+            windows['__WORDS'].lines.extend(not_containing)
+            windows['__WORDS'].display_lines(rev=False, highlight_word=sort_word_key)
             related_items_count -= 1
         elif c == ord('p'):
             # classification: POSTPONED
             words.mark_word(evaluated_word, chr(c),
                             words.get_last_inserted_order() + 1,
                             sort_word_key)
-            words_window.lines = words_window.lines[1:]
+            windows['__WORDS'].lines = windows['__WORDS'].lines[1:]
             related_items_count -= 1
         elif c == ord('w'):
             # write to file
@@ -348,14 +356,14 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
             if related == sort_word_key:
                 related_items_count += 1
                 rwl = [last_word.word]
-                rwl.extend(words_window.lines)
-                words_window.lines = rwl
+                rwl.extend(windows['__WORDS'].lines)
+                windows['__WORDS'].lines = rwl
             else:
                 sort_word_key = related
                 containing, not_containing = words.return_related_items(sort_word_key)
-                words_window.lines = containing
-                words_window.lines.extend(not_containing)
-                words_window.display_lines(rev=False, highlight_word=sort_word_key)
+                windows['__WORDS'].lines = containing
+                windows['__WORDS'].lines.extend(not_containing)
+                windows['__WORDS'].display_lines(rev=False, highlight_word=sort_word_key)
                 related_items_count = len(containing) + 1
 
             if sort_word_key == '':
@@ -366,8 +374,8 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
         elif c == ord('q'):
             # quit
             break
-        stats_window.lines = get_stats_strings(words.items, related_items_count)
-        stats_window.display_lines(rev=False)
+        windows['__STATS'].lines = get_stats_strings(words.items, related_items_count)
+        windows['__STATS'].display_lines(rev=False)
 
 
 def main():
