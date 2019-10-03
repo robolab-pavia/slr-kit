@@ -124,6 +124,7 @@ class WordList(object):
             order = -1
         else:
             order = max(orders)
+
         return order
 
     def get_last_inserted_word(self):
@@ -150,10 +151,12 @@ class WordList(object):
         for w in self.items:
             if w.group != '':
                 continue
+
             if find_word(w.word, key):
                 containing.append(w.word)
             else:
                 not_containing.append(w.word)
+
         return containing, not_containing
 
 
@@ -209,6 +212,7 @@ def avg_or_zero(num, den):
         avg = 100 * num / den
     else:
         avg = 0
+
     return avg
 
 
