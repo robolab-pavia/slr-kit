@@ -151,9 +151,9 @@ class WordList(object):
         containing = []
         not_containing = []
         for w in self.items:
-            if (w.group != ''):
+            if w.group != '':
                 continue
-            if (find_word(w.word, key)):
+            if find_word(w.word, key):
                 containing.append(w.word)
             else:
                 not_containing.append(w.word)
