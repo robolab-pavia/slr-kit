@@ -373,15 +373,13 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
         stats_window.display_lines(rev=False)
 
 
-if __name__ == "__main__":
-    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+def main():
     parser = init_argparser()
     args = parser.parse_args()
 
     profiler_logger.info("*** PROGRAM STARTED ***")
     words = WordList()
-    (header, items) = words.from_csv(args.datafile)
-
+    _, _ = words.from_csv(args.datafile)
     curses.wrapper(curses_main, words, args.datafile, logger=debug_logger,
                    profiler=profiler_logger)
     profiler_logger.info("*** PROGRAM TERMINATED ***")
@@ -389,3 +387,7 @@ if __name__ == "__main__":
 
     if args.dry_run:
         words.to_csv(args.datafile)
+
+
+if __name__ == "__main__":
+    main()
