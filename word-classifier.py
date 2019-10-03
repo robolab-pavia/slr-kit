@@ -60,37 +60,27 @@ class WordList(object):
         self.csv_header = None
 
     def from_csv(self, infile):
-        with open(infile) as csv_file:
-            csv_reader = csv.reader(csv_file, delimiter=',')
-            header = None
-            line_count = 0
+        with open(infile, newline='') as csv_file:
+            csv_reader = csv.DictReader(csv_file, delimiter=',')
+            header = csv_reader.fieldnames
             items = []
             for row in csv_reader:
-                if line_count == 0:
-                    header = row
-                    line_count += 1
+                order_value = row['order']
+                if order_value == '':
+                    order = None
                 else:
-                    order_value = row[header.index('order')]
-                    if order_value == '':
-                        order = None
-                    else:
-                        order = int(order_value)
+                    order = int(order_value)
 
-                    if 'related' in header:
-                        related = row[header.index('related')]
-                    else:
-                        related = ''
-
-                    item = Word(
-                        index=0,
-                        word=row[header.index('keyword')],
-                        count=row[header.index('count')],
-                        group=row[header.index('group')],
-                        order=order,
-                        related=related
-                    )
-                    items.append(item)
-                    line_count += 1
+                related = row.get('related', '')
+                item = Word(
+                    index=0,
+                    word=row['keyword'],
+                    count=row['count'],
+                    group=row['group'],
+                    order=order,
+                    related=related
+                )
+                items.append(item)
 
         if 'related' not in header:
             header.append('related')
@@ -101,11 +91,16 @@ class WordList(object):
 
     def to_csv(self, outfile):
         with open(outfile, mode='w') as out:
-            writer = csv.writer(out, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            writer.writerow(self.csv_header)
+            writer = csv.DictWriter(out, fieldnames=self.csv_header,
+                                    delimiter=',', quotechar='"',
+                                    quoting=csv.QUOTE_MINIMAL)
+            writer.writeheader()
             for w in self.items:
-                # FIXME: this ordering should depend from the header
-                item = [w.word, w.count, w.group, w.order, w.related]
+                item = {'keyword': w.word,
+                        'count': w.count,
+                        'group': w.group,
+                        'order': w.order,
+                        'related': w.related}
                 writer.writerow(item)
 
     def get_last_inserted_order(self):
