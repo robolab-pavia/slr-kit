@@ -23,22 +23,14 @@ debug_logger = setup_logger('debug_logger', 'slr-kit.log', level=logging.DEBUG)
 
 # List of class names
 class ClassNames(enum.Enum):
-    KEYWORD = 'keyword'
-    NOISE = 'noise'
-    RELEVANT = 'relevant'
-    NOTRELEVANT = 'not-relevant'
+    KEYWORD = ('keyword', 'k')
+    NOISE = ('noise', 'n')
+    RELEVANT = ('relevant', 'r')
+    NOTRELEVANT = ('not-relevant', 'x')
 
-    def __init__(self, classname):
+    def __init__(self, classname, key):
         self.classname = classname
-        self._key = None
-
-    @property
-    def key(self):
-        return chr(self._key)
-
-    @key.setter
-    def key(self, key):
-        self._key = ord(key)
+        self.key = key
 
 
 keys = {
@@ -280,10 +272,10 @@ def init_curses():
 
 def do_classify(key, words, evaluated_word, sort_word_key, related_items_count,
                 windows):
-    win = windows[key2class[chr(key)].classname]
+    win = windows[key2class[key].classname]
     win.lines.append(evaluated_word)
     win.display_lines(rev=True)
-    words.mark_word(evaluated_word, chr(key),
+    words.mark_word(evaluated_word, key,
                     words.get_last_inserted_order() + 1, sort_word_key)
 
     if related_items_count <= 0:
@@ -347,15 +339,15 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
 
     # define windows
     windows = {
-        ClassNames.KEYWORD.classname: Win(keys[ClassNames.KEYWORD],
+        ClassNames.KEYWORD.classname: Win(ClassNames.KEYWORD.key,
                                           title='Keywords', rows=8,
                                           cols=win_width, y=0, x=0),
-        ClassNames.RELEVANT.classname: Win(keys[ClassNames.RELEVANT],
+        ClassNames.RELEVANT.classname: Win(ClassNames.RELEVANT.key,
                                            title='Relevant', rows=8,
                                            cols=win_width, y=8, x=0),
-        ClassNames.NOISE.classname: Win(keys[ClassNames.NOISE], title='Noise',
+        ClassNames.NOISE.classname: Win(ClassNames.NOISE.key, title='Noise',
                                         rows=8, cols=win_width, y=16, x=0),
-        ClassNames.NOTRELEVANT.classname: Win(keys[ClassNames.NOTRELEVANT],
+        ClassNames.NOTRELEVANT.classname: Win(ClassNames.NOTRELEVANT.key,
                                               title='Not-relevant', rows=8,
                                               cols=win_width, y=24, x=0),
         '__WORDS': Win(None, rows=27, cols=win_width, y=9, x=win_width),
@@ -394,36 +386,36 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
             sort_word_key = ''
 
         windows['__WORDS'].display_lines(rev=False, highlight_word=sort_word_key)
-        c = stdscr.getch()
-        classifing_keys = [ord(keys[ClassNames.KEYWORD]),
-                           ord(keys[ClassNames.NOTRELEVANT]),
-                           ord(keys[ClassNames.NOISE]),
-                           ord(keys[ClassNames.RELEVANT])]
+        c = chr(stdscr.getch())
+        classifing_keys = [ClassNames.KEYWORD.key,
+                           ClassNames.NOTRELEVANT.key,
+                           ClassNames.NOISE.key,
+                           ClassNames.RELEVANT.key]
         if c in classifing_keys:
             profiler.info("WORD '{}' AS '{}'".format(evaluated_word,
-                                                     key2class[chr(c)]))
+                                                     key2class[c]))
             related_items_count, sort_word_key = do_classify(c, words,
                                                              evaluated_word,
                                                              sort_word_key,
                                                              related_items_count,
                                                              windows)
-        elif c == ord('p'):
+        elif c == 'p':
             # classification: POSTPONED
-            words.mark_word(evaluated_word, chr(c),
+            words.mark_word(evaluated_word, c,
                             words.get_last_inserted_order() + 1,
                             sort_word_key)
             windows['__WORDS'].lines = windows['__WORDS'].lines[1:]
             related_items_count -= 1
-        elif c == ord('w'):
+        elif c == 'w':
             # write to file
             words.to_csv(datafile)
-        elif c == ord('u'):
+        elif c == 'u':
             # undo last operation
             related_items_count, sort_word_key = undo(words, sort_word_key,
                                                       related_items_count,
                                                       windows, logger)
 
-        elif c == ord('q'):
+        elif c == 'q':
             # quit
             break
         windows['__STATS'].lines = get_stats_strings(words.items, related_items_count)
