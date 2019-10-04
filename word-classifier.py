@@ -282,7 +282,7 @@ def do_classify(key, words, evaluated_word, sort_word_key, related_items_count,
                 windows):
     win = windows[key2class[chr(key)].classname]
     win.lines.append(evaluated_word)
-    win.display_lines()
+    win.display_lines(rev=True)
     words.mark_word(evaluated_word, chr(key),
                     words.get_last_inserted_order() + 1, sort_word_key)
 
@@ -314,7 +314,7 @@ def undo(words, sort_word_key, related_items_count, windows, logger):
     try:
         win = windows[key2class[group].classname]
         win.lines.remove(last_word.word)
-        win.display_lines(rev=False)
+        win.display_lines(rev=True)
     except KeyError:
         pass  # if here the word is not in a window so nothing to do
 
