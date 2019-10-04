@@ -312,7 +312,7 @@ def main(args, words, datafile, logger=None, profiler=None):
             profiler.info("WORD '{}' AS '{}'".format(evaluated_word, key2class[chr(c)]))
             win = windows[key2class[chr(c)]]
             win.lines.append(evaluated_word)
-            win.display_lines()
+            win.display_lines(rev=True)
             words.mark_word(evaluated_word, chr(c),
                             words.get_last_inserted_order() + 1, sort_word_key)
             if related_items_count <= 0:
@@ -355,7 +355,7 @@ def main(args, words, datafile, logger=None, profiler=None):
             try:
                 win = windows[key2class[group]]
                 win.lines.remove(last_word.word)
-                win.display_lines(rev=False)
+                win.display_lines(rev=True)
             except KeyError:
                 pass  # if here the word is not in a window so nothing to do
 
