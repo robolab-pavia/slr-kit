@@ -41,13 +41,6 @@ class ClassNames(enum.Enum):
         self.key = key
 
 
-keys = {
-    ClassNames.KEYWORD: 'k',
-    ClassNames.NOISE: 'n',
-    ClassNames.RELEVANT: 'r',
-    ClassNames.NOTRELEVANT: 'x'
-}
-
 @dataclass
 class Word:
     index: int
