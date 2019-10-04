@@ -48,15 +48,6 @@ keys = {
     ClassNames.NOTRELEVANT: 'x'
 }
 
-# FIXME: the key2class dict shall be obtained by "reversing" the keys dict
-key2class = {
-    'k': ClassNames.KEYWORD,
-    'n': ClassNames.NOISE,
-    'r': ClassNames.RELEVANT,
-    'x': ClassNames.NOTRELEVANT
-}
-
-
 @dataclass
 class Word:
     index: int
@@ -280,7 +271,8 @@ def init_curses():
 
 def do_classify(key, words, evaluated_word, sort_word_key, related_items_count,
                 windows):
-    win = windows[key2class[key].classname]
+    klass = ClassNames.key2class(key)
+    win = windows[klass.classname]
     win.lines.append(evaluated_word)
     win.display_lines(rev=True)
     words.mark_word(evaluated_word, key,
@@ -312,7 +304,7 @@ def undo(words, sort_word_key, related_items_count, windows, logger):
                                                      last_word.order))
     # remove last_word from the window that actually contains it
     try:
-        win = windows[key2class[group].classname]
+        win = windows[ClassNames.key2class(group).classname]
         win.lines.remove(last_word.word)
         win.display_lines(rev=True)
     except KeyError:
@@ -401,7 +393,7 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
                            ClassNames.RELEVANT.key]
         if c in classifing_keys:
             profiler.info("WORD '{}' AS '{}'".format(evaluated_word,
-                                                     key2class[c]))
+                                                     ClassNames.key2class(c)))
             related_items_count, sort_word_key = do_classify(c, words,
                                                              evaluated_word,
                                                              sort_word_key,
