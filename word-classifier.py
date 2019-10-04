@@ -28,6 +28,14 @@ class ClassNames(enum.Enum):
     RELEVANT = ('relevant', 'r')
     NOTRELEVANT = ('not-relevant', 'x')
 
+    @classmethod
+    def key2class(cls, key):
+        for clname in cls:
+            if clname.key == key:
+                return clname
+
+        raise ValueError('"{}" is not a valid key'.format(key))
+
     def __init__(self, classname, key):
         self.classname = classname
         self.key = key
