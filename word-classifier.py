@@ -159,6 +159,11 @@ class WordList(object):
                 not_containing.append(w.word)
         return containing, not_containing
 
+    def count_classified(self):
+        return len([item for item in self.items if item.is_grouped()])
+
+    def count_by_class(self, cls):
+        return len([w for w in self.items if w.group == cls])
 
 class Win(object):
     """Contains the list of lines to display."""
@@ -216,13 +221,13 @@ def avg_or_zero(num, den):
 
 def get_stats_strings(words, related_items_count=0):
     stats_strings = []
-    n_completed = len([w for w in words if w.is_grouped()])
-    n_keywords = len([w for w in words if w.group == 'k'])
-    n_noise = len([w for w in words if w.group == 'n'])
-    n_not_relevant = len([w for w in words if w.group == 'x'])
-    n_later = len([w for w in words if w.group == 'p'])
-    stats_strings.append('Total words:  {:7}'.format(len(words)))
-    avg = avg_or_zero(n_completed, len(words))
+    n_completed = words.count_classified()
+    n_keywords = words.count_by_class('k')#len([w for w in words if w.group == 'k'])
+    n_noise = words.count_by_class('n')#len([w for w in words if w.group == 'n'])
+    n_not_relevant = words.count_by_class('x')#len([w for w in words if w.group == 'x'])
+    n_later = words.count_by_class('p')#len([w for w in words if w.group == 'p'])
+    stats_strings.append('Total words:  {:7}'.format(len(words.items)))
+    avg = avg_or_zero(n_completed, len(words.items))
     stats_strings.append('Completed:    {:7} ({:6.2f}%)'.format(n_completed, avg))
     avg = avg_or_zero(n_keywords, n_completed)
     stats_strings.append('Keywords:     {:7} ({:6.2f}%)'.format(n_keywords, avg))
@@ -287,7 +292,7 @@ def main(args, words, datafile, logger=None, profiler=None):
 
     words_window.lines = lines
     stats_window = Win(None, rows=9, cols=win_width, y=0, x=win_width)
-    stats_window.lines = get_stats_strings(words.items, related_items_count)
+    stats_window.lines = get_stats_strings(words, related_items_count)
     stats_window.display_lines(rev=False)
     while True:
         if len(words_window.lines) <= 0:
@@ -330,6 +335,7 @@ def main(args, words, datafile, logger=None, profiler=None):
             words_window.display_lines(rev=False, highlight_word=sort_word_key)
             related_items_count -= 1
         elif c == ord('p'):
+            profiler.info("WORD '{}' POSTPONED".format(evaluated_word.word))
             # classification: POSTPONED
             words.mark_word(evaluated_word, chr(c),
                             words.get_last_inserted_order() + 1,
@@ -351,6 +357,7 @@ def main(args, words, datafile, logger=None, profiler=None):
             logger.debug("Undo: {} group {} order {}".format(last_word.word,
                                                              group,
                                                              last_word.order))
+            profiler.info("WORD '{}' UNDONE".format(last_word.word))
             # remove last_word from the window that actually contains it
             try:
                 win = windows[key2class[group]]
@@ -382,7 +389,7 @@ def main(args, words, datafile, logger=None, profiler=None):
         elif c == ord('q'):
             # quit
             break
-        stats_window.lines = get_stats_strings(words.items, related_items_count)
+        stats_window.lines = get_stats_strings(words, related_items_count)
         stats_window.display_lines(rev=False)
 
 
@@ -391,12 +398,16 @@ if __name__ == "__main__":
     parser = init_argparser()
     args = parser.parse_args()
 
-    profiler_logger.info("*** PROGRAM STARTED ***")
+    profiler_logger.info("*** PROGRAM STARTED ***".format(args.datafile))
+    profiler_logger.info("DATAFILE: '{}'".format(args.datafile))
     words = WordList()
     (header, items) = words.from_csv(args.datafile)
+    profiler_logger.info("CLASSIFIED: {}".format(words.count_classified()))
 
     curses.wrapper(main, words, args.datafile, logger=debug_logger, profiler=profiler_logger)
-    profiler_logger.info("*** PROGRAM TERMINATED ***")
+    profiler_logger.info("CLASSIFIED: {}".format(words.count_classified()))
+    profiler_logger.info("DATAFILE '{}'".format(args.datafile))
+    profiler_logger.info("*** PROGRAM TERMINATED ***".format(args.datafile))
     curses.endwin()
 
     if args.dry_run:
