@@ -27,7 +27,7 @@ class ClassNames(enum.Enum):
     KEYWORD = ('keyword', 'k')
     NOISE = ('noise', 'n')
     RELEVANT = ('relevant', 'r')
-    NOTRELEVANT = ('not-relevant', 'x')
+    NOT_RELEVANT = ('not-relevant', 'x')
     POSTPONED = ('postponed', 'p')
 
     @classmethod
@@ -350,9 +350,9 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
                                            cols=win_width, y=8, x=0),
         ClassNames.NOISE.classname: Win(ClassNames.NOISE.key, title='Noise',
                                         rows=8, cols=win_width, y=16, x=0),
-        ClassNames.NOTRELEVANT.classname: Win(ClassNames.NOTRELEVANT.key,
-                                              title='Not-relevant', rows=8,
-                                              cols=win_width, y=24, x=0),
+        ClassNames.NOT_RELEVANT.classname: Win(ClassNames.NOT_RELEVANT.key,
+                                               title='Not-relevant', rows=8,
+                                               cols=win_width, y=24, x=0),
         '__WORDS': Win(None, rows=27, cols=win_width, y=9, x=win_width),
         '__STATS': Win(None, rows=9, cols=win_width, y=0, x=win_width)
     }
@@ -391,7 +391,7 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
         windows['__WORDS'].display_lines(rev=False, highlight_word=sort_word_key)
         c = chr(stdscr.getch())
         classifing_keys = [ClassNames.KEYWORD.key,
-                           ClassNames.NOTRELEVANT.key,
+                           ClassNames.NOT_RELEVANT.key,
                            ClassNames.NOISE.key,
                            ClassNames.RELEVANT.key]
         if c in classifing_keys:
