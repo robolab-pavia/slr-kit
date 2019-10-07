@@ -349,21 +349,15 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
     win_width = 40
 
     # define windows
-    windows = {
-        ClassNames.KEYWORD.classname: Win(ClassNames.KEYWORD,
-                                          title='Keywords', rows=8,
-                                          cols=win_width, y=0, x=0),
-        ClassNames.RELEVANT.classname: Win(ClassNames.RELEVANT,
-                                           title='Relevant', rows=8,
-                                           cols=win_width, y=8, x=0),
-        ClassNames.NOISE.classname: Win(ClassNames.NOISE.key, title='Noise',
-                                        rows=8, cols=win_width, y=16, x=0),
-        ClassNames.NOT_RELEVANT.classname: Win(ClassNames.NOT_RELEVANT,
-                                               title='Not-relevant', rows=8,
-                                               cols=win_width, y=24, x=0),
-        '__WORDS': Win(None, rows=27, cols=win_width, y=9, x=win_width),
-        '__STATS': Win(None, rows=9, cols=win_width, y=0, x=win_width)
-    }
+    windows = dict()
+    win_classes = [ClassNames.KEYWORD, ClassNames.RELEVANT, ClassNames.NOISE,
+                   ClassNames.NOT_RELEVANT]
+    for i, cls in enumerate(win_classes):
+        windows[cls.classname] = Win(cls, title=cls.classname.capitalize(),
+                                     rows=8, cols=win_width, y=8*i, x=0)
+
+    windows['__WORDS'] = Win(None, rows=27, cols=win_width, y=9, x=win_width)
+    windows['__STATS'] = Win(None, rows=9, cols=win_width, y=0, x=win_width)
 
     curses.ungetch(' ')
     _ = stdscr.getch()
