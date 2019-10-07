@@ -166,19 +166,27 @@ class WordList(object):
 class Win(object):
     """Contains the list of lines to display."""
 
-    def __init__(self, group, title='', rows=3, cols=30, y=0, x=0):
+    def __init__(self, group, title='', rows=3, cols=30, y=0, x=0,
+                 show_title=False):
         self.group = group
         self.title = title
         self.rows = rows
         self.cols = cols
-        self.y = y
         self.x = x
+        if show_title:
+            self.y = y + 1
+            self.win_title = curses.newwin(1, self.cols, y, self.x)
+            self.win_title.addstr(self.title)
+        else:
+            self.y = y
+            self.win_title = None
+
         self.win_handler = curses.newwin(self.rows, self.cols, self.y, self.x)
         self.win_handler.border()
         self.win_handler.refresh()
         self.lines = []
 
-    def display_lines(self, rev=True, highlight_word=''):
+    def display_lines(self, rev=True, highlight_word='', color_pair=1):
         if rev:
             word_list = reversed(self.lines)
         else:
@@ -193,7 +201,8 @@ class Win(object):
                 self.win_handler.addstr(i + 1, 1, '')
                 for t in tok:
                     self.win_handler.addstr(t)
-                    self.win_handler.addstr(highlight_word, curses.color_pair(1))
+                    self.win_handler.addstr(highlight_word,
+                                            curses.color_pair(color_pair))
                 self.win_handler.addstr(i + 1, len(trunc_w) + 1, ' ' * (self.cols - 2 - len(trunc_w)))
             i += 1
             if i >= self.rows - 2:
@@ -203,6 +212,8 @@ class Win(object):
             i += 1
         self.win_handler.border()
         self.win_handler.refresh()
+        if self.win_title is not None:
+            self.win_title.refresh()
 
     def assign_lines(self, lines):
         self.lines = [w.word for w in lines if w.group == self.group]
@@ -287,15 +298,16 @@ def init_curses():
     curses.start_color()
     curses.use_default_colors()
     curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
+    curses.init_pair(2, curses.COLOR_YELLOW, curses.COLOR_BLACK)
 
     return stdscr
 
 
 def do_classify(klass, words, evaluated_word, sort_word_key,
                 related_items_count, windows):
-    win = windows[klass.classname]
-    win.lines.append(evaluated_word)
-    win.display_lines(rev=True)
+    windows[klass.classname].lines.append(evaluated_word)
+    refresh_class_windows(evaluated_word, klass, windows)
+
     words.mark_word(evaluated_word, klass,
                     words.get_last_inserted_order() + 1, sort_word_key)
 
@@ -313,6 +325,17 @@ def do_classify(klass, words, evaluated_word, sort_word_key,
     return related_items_count, sort_word_key
 
 
+def refresh_class_windows(evaluated_word, klass, windows):
+    for win in windows:
+        if win in ['__WORDS', '__STATS']:
+            continue
+        if win == klass.classname:
+            windows[win].display_lines(rev=True, highlight_word=evaluated_word,
+                                       color_pair=2)
+        else:
+            windows[win].display_lines(rev=True)
+
+
 def undo(words, sort_word_key, related_items_count, windows, logger, profiler):
     last_word = words.get_last_inserted_word()
     if last_word is None:
@@ -323,16 +346,22 @@ def undo(words, sort_word_key, related_items_count, windows, logger, profiler):
     logger.debug("Undo: {} group {} order {}".format(last_word.word,
                                                      group,
                                                      last_word.order))
+    # un-mark last_word
+    words.mark_word(last_word.word, WordClass.NONE, None)
     # remove last_word from the window that actually contains it
     try:
         win = windows[group.classname]
         win.lines.remove(last_word.word)
-        win.display_lines(rev=True)
+        prev_last_word = words.get_last_inserted_word()
+        if prev_last_word is not None:
+            refresh_class_windows(prev_last_word.word, prev_last_word.group,
+                                  windows)
+        else:
+            refresh_class_windows('', WordClass.NONE, windows)
     except KeyError:
         pass  # if here the word is not in a window so nothing to do
 
-    # un-mark last_word
-    words.mark_word(last_word.word, WordClass.NONE, None)
+    # handle related word
     if related == sort_word_key:
         related_items_count += 1
         rwl = [last_word.word]
@@ -343,7 +372,8 @@ def undo(words, sort_word_key, related_items_count, windows, logger, profiler):
         containing, not_containing = words.return_related_items(sort_word_key)
         windows['__WORDS'].lines = containing
         windows['__WORDS'].lines.extend(not_containing)
-        windows['__WORDS'].display_lines(rev=False, highlight_word=sort_word_key)
+        windows['__WORDS'].display_lines(rev=False,
+                                         highlight_word=sort_word_key)
         related_items_count = len(containing) + 1
 
     if sort_word_key == '':
@@ -356,20 +386,27 @@ def undo(words, sort_word_key, related_items_count, windows, logger, profiler):
     return related_items_count, sort_word_key
 
 
-def curses_main(scr, words, datafile, logger=None, profiler=None):
-    stdscr = init_curses()
-    win_width = 40
-
-    # define windows
+def create_windows(win_width, rows):
     windows = dict()
     win_classes = [WordClass.KEYWORD, WordClass.RELEVANT, WordClass.NOISE,
-                   WordClass.NOT_RELEVANT]
+                   WordClass.NOT_RELEVANT, WordClass.POSTPONED]
     for i, cls in enumerate(win_classes):
         windows[cls.classname] = Win(cls, title=cls.classname.capitalize(),
-                                     rows=8, cols=win_width, y=8*i, x=0)
+                                     rows=rows, cols=win_width, y=(rows + 1) * i,
+                                     x=0, show_title=True)
 
     windows['__WORDS'] = Win(None, rows=27, cols=win_width, y=9, x=win_width)
     windows['__STATS'] = Win(None, rows=9, cols=win_width, y=0, x=win_width)
+    return windows
+
+
+def curses_main(scr, words, datafile, logger=None, profiler=None):
+    stdscr = init_curses()
+    win_width = 40
+    rows = 8
+
+    # define windows
+    windows = create_windows(win_width, rows)
 
     curses.ungetch(' ')
     _ = stdscr.getch()
@@ -378,14 +415,15 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
             continue
 
         windows[win].assign_lines(words.items)
-        windows[win].display_lines()
 
     last_word = words.get_last_inserted_word()
     if last_word is None:
+        refresh_class_windows('', WordClass.NONE, windows)
         related_items_count = 0
         sort_word_key = ''
         lines = [w.word for w in words.items if not w.is_grouped()]
     else:
+        refresh_class_windows(last_word.word, last_word.group, windows)
         sort_word_key = last_word.related
         containing, not_containing = words.return_related_items(sort_word_key)
         related_items_count = len(containing)
@@ -424,6 +462,8 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
                             words.get_last_inserted_order() + 1,
                             sort_word_key)
             windows['__WORDS'].lines = windows['__WORDS'].lines[1:]
+            windows[WordClass.POSTPONED.classname].lines.append(evaluated_word)
+            refresh_class_windows(evaluated_word, WordClass.POSTPONED, windows)
             related_items_count -= 1
         elif c == 'w':
             # write to file
