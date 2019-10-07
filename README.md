@@ -25,3 +25,18 @@ The workflow is based on the following stages:
 - Find an acronym for the program.
 - Implement a graphical interface based on Tkinter.
 - Split the logging between debug and useful info that can be used to profile the efficiency of the classification.
+
+# Possible efficient workflow to use FA.WO.C.
+
+## Manual workflow
+
+- stage 1: mark words either being NOISE or postponed (look for trivial noise words, such as "however, thus, require, ...")
+- stage 2: classify the postponed words as either NOISE or RELEVANT
+- stage 3: classify the relevant words as keywords or not
+
+In all the stages, mark NOT-RELEVANT words if needed.
+
+## Possible automatic stages
+
+- probably stage 1 could be made automatic
+
