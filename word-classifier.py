@@ -325,6 +325,17 @@ def do_classify(klass, words, evaluated_word, sort_word_key,
     return related_items_count, sort_word_key
 
 
+def refresh_class_windows(evaluated_word, klass, windows):
+    for win in windows:
+        if win in ['__WORDS', '__STATS']:
+            continue
+        if win == klass.classname:
+            windows[win].display_lines(rev=True, highlight_word=evaluated_word,
+                                       color_pair=2)
+        else:
+            windows[win].display_lines(rev=True)
+
+
 def undo(words, sort_word_key, related_items_count, windows, logger, profiler):
     last_word = words.get_last_inserted_word()
     if last_word is None:
@@ -374,7 +385,7 @@ def create_windows(win_width, rows):
                    WordClass.NOT_RELEVANT, WordClass.POSTPONED]
     for i, cls in enumerate(win_classes):
         windows[cls.classname] = Win(cls, title=cls.classname.capitalize(),
-                                     rows=rows, cols=win_width, y=(rows + 1)*i,
+                                     rows=rows, cols=win_width, y=(rows + 1) * i,
                                      x=0, show_title=True)
 
     windows['__WORDS'] = Win(None, rows=27, cols=win_width, y=9, x=win_width)
