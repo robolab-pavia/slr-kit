@@ -346,16 +346,22 @@ def undo(words, sort_word_key, related_items_count, windows, logger, profiler):
     logger.debug("Undo: {} group {} order {}".format(last_word.word,
                                                      group,
                                                      last_word.order))
+    # un-mark last_word
+    words.mark_word(last_word.word, WordClass.NONE, None)
     # remove last_word from the window that actually contains it
     try:
         win = windows[group.classname]
         win.lines.remove(last_word.word)
-        win.display_lines(rev=True)
+        prev_last_word = words.get_last_inserted_word()
+        if prev_last_word is not None:
+            refresh_class_windows(prev_last_word.word, prev_last_word.group,
+                                  windows)
+        else:
+            refresh_class_windows('', WordClass.NONE, windows)
     except KeyError:
         pass  # if here the word is not in a window so nothing to do
 
-    # un-mark last_word
-    words.mark_word(last_word.word, WordClass.NONE, None)
+    # handle related word
     if related == sort_word_key:
         related_items_count += 1
         rwl = [last_word.word]
