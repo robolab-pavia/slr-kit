@@ -23,6 +23,7 @@ debug_logger = setup_logger('debug_logger', 'slr-kit.log', level=logging.DEBUG)
 
 # List of class names
 class ClassNames(enum.Enum):
+    NONE = ('', '')
     KEYWORD = ('keyword', 'k')
     NOISE = ('noise', 'n')
     RELEVANT = ('relevant', 'r')
