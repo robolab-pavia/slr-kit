@@ -1,46 +1,51 @@
-import sys
+import argparse
 import csv
 import curses
+import enum
 import logging
-import argparse
-import operator
 from dataclasses import dataclass
 
 
-def setup_logger(name, log_file, formatter=logging.Formatter('%(asctime)s %(levelname)s %(message)s'), level=logging.INFO):
-    """Function to setup a generic loggers."""
-    handler = logging.FileHandler(log_file)
-    handler.setFormatter(formatter)
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
-    logger.addHandler(handler)
-    return logger
-
-profiler_logger = setup_logger('profiler_logger', 'profiler.log')
-debug_logger = setup_logger('debug_logger', 'slr-kit.log', level=logging.DEBUG)
-
-
 # List of class names
-KEYWORD = 'keyword'
-NOISE = 'noise'
-RELEVANT = 'relevant'
-NOTRELEVANT = 'not-relevant'
+class WordClass(enum.Enum):
+    """
+    Class for a classified word.
 
-keys = {
-    KEYWORD: 'k',
-    NOISE: 'n',
-    RELEVANT:'r',
-    NOTRELEVANT: 'x'
-}
+    Each member contains a classname and a key.
+    classname is a str. It should be a meaningful word describing the class.
+    It goes in the csv as the word classification
+    key is a str. It is the key used by the program to classify a word.
 
+    In WordClass memeber creation the tuple is (classname, default_key)
+    In the definition below the NONE WordClass is provided to 'classify' an
+    un-marked word.
+    """
+    NONE = ('', '')
+    KEYWORD = ('keyword', 'k')
+    NOISE = ('noise', 'n')
+    RELEVANT = ('relevant', 'r')
+    NOT_RELEVANT = ('not-relevant', 'x')
+    POSTPONED = ('postponed', 'p')
 
-# FIXME: the key2class dict shall be obtained by "reversing" the keys dict
-key2class = {
-    'k': KEYWORD,
-    'n': NOISE,
-    'r': RELEVANT,
-    'x': NOTRELEVANT
-}
+    @staticmethod
+    def get_from_key(key: str):
+        for clname in ClassNames:
+            if clname.key == key:
+                return clname
+
+        raise ValueError('"{}" is not a valid key'.format(key))
+
+    @staticmethod
+    def get_from_classname(classname):
+        for clname in ClassNames:
+            if clname.classname == classname:
+                return clname
+
+        raise ValueError('"{}" is not a valid class name'.format(classname))
+
+    def __init__(self, classname, key):
+        self.classname = classname
+        self.key = key
 
 
 @dataclass
@@ -48,22 +53,12 @@ class Word:
     index: int
     word: str
     count: int
-    group: str
+    group: WordClass
     order: int
     related: str
 
     def is_grouped(self):
-        return self.group != ''
-
-
-def init_argparser():
-    """Initialize the command line parser."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument('datafile', action="store", type=str,
-        help="input CSV data file")
-    parser.add_argument('--dry-run', action='store_false', dest='dry_run',
-        help='do not write the results on exit')
-    return parser
+        return self.group != WordClass.NONE
 
 
 class WordList(object):
@@ -72,37 +67,32 @@ class WordList(object):
         self.csv_header = None
 
     def from_csv(self, infile):
-        with open(infile) as csv_file:
-            csv_reader = csv.reader(csv_file, delimiter=',')
-            header = None
-            line_count = 0
+        with open(infile, newline='') as csv_file:
+            csv_reader = csv.DictReader(csv_file, delimiter=',')
+            header = csv_reader.fieldnames
             items = []
             for row in csv_reader:
-                if line_count == 0:
-                    header = row
-                    line_count += 1
+                order_value = row['order']
+                if order_value == '':
+                    order = None
                 else:
-                    order_value = row[header.index('order')]
-                    if order_value == '':
-                        order = None
-                    else:
-                        order = int(order_value)
+                    order = int(order_value)
 
-                    if 'related' in header:
-                        related = row[header.index('related')]
-                    else:
-                        related = ''
+                related = row.get('related', '')
+                try:
+                    group = WordClass.get_from_classname(row['group'])
+                except ValueError:
+                    group = WordClass.get_from_key(row['group'])
 
-                    item = Word(
-                        index=0,
-                        word=row[header.index('keyword')],
-                        count=row[header.index('count')],
-                        group=row[header.index('group')],
-                        order=order,
-                        related=related
-                    )
-                    items.append(item)
-                    line_count += 1
+                item = Word(
+                    index=0,
+                    word=row['keyword'],
+                    count=row['count'],
+                    group=group,
+                    order=order,
+                    related=related
+                )
+                items.append(item)
 
         if 'related' not in header:
             header.append('related')
@@ -113,11 +103,16 @@ class WordList(object):
 
     def to_csv(self, outfile):
         with open(outfile, mode='w') as out:
-            writer = csv.writer(out, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            writer.writerow(self.csv_header)
+            writer = csv.DictWriter(out, fieldnames=self.csv_header,
+                                    delimiter=',', quotechar='"',
+                                    quoting=csv.QUOTE_MINIMAL)
+            writer.writeheader()
             for w in self.items:
-                # FIXME: this ordering should depend from the header
-                item = [w.word, w.count, w.group, w.order, w.related]
+                item = {'keyword': w.word,
+                        'count': w.count,
+                        'group': w.group.classname,
+                        'order': w.order,
+                        'related': w.related}
                 writer.writerow(item)
 
     def get_last_inserted_order(self):
@@ -126,11 +121,11 @@ class WordList(object):
             order = -1
         else:
             order = max(orders)
+
         return order
 
     def get_last_inserted_word(self):
         last = self.get_last_inserted_order()
-        last_word = None
         for w in self.items:
             if w.order == last:
                 return w
@@ -151,12 +146,14 @@ class WordList(object):
         containing = []
         not_containing = []
         for w in self.items:
-            if (w.group != ''):
+            if w.is_grouped():
                 continue
-            if (find_word(w.word, key)):
+
+            if find_word(w.word, key):
                 containing.append(w.word)
             else:
                 not_containing.append(w.word)
+
         return containing, not_containing
 
     def count_classified(self):
@@ -165,10 +162,12 @@ class WordList(object):
     def count_by_class(self, cls):
         return len([w for w in self.items if w.group == cls])
 
+
 class Win(object):
     """Contains the list of lines to display."""
-    def __init__(self, key, title='', rows=3, cols=30, y=0, x=0):
-        self.key = key
+
+    def __init__(self, group, title='', rows=3, cols=30, y=0, x=0):
+        self.group = group
         self.title = title
         self.rows = rows
         self.cols = cols
@@ -188,62 +187,94 @@ class Win(object):
         for w in word_list:
             trunc_w = w[:self.cols - 2]
             if highlight_word == '':
-                self.win_handler.addstr(i + 1, 1, trunc_w + ' '*(self.cols - 2 - len(trunc_w)))
+                self.win_handler.addstr(i + 1, 1, trunc_w + ' ' * (self.cols - 2 - len(trunc_w)))
             else:
                 tok = w.split(highlight_word)
                 self.win_handler.addstr(i + 1, 1, '')
                 for t in tok:
                     self.win_handler.addstr(t)
                     self.win_handler.addstr(highlight_word, curses.color_pair(1))
-                self.win_handler.addstr(i + 1, len(trunc_w) + 1, ' '*(self.cols - 2 - len(trunc_w)))
+                self.win_handler.addstr(i + 1, len(trunc_w) + 1, ' ' * (self.cols - 2 - len(trunc_w)))
             i += 1
             if i >= self.rows - 2:
                 break
         while i < self.rows - 2:
-            self.win_handler.addstr(i + 1, 1, ' '*(self.cols - 2))
+            self.win_handler.addstr(i + 1, 1, ' ' * (self.cols - 2))
             i += 1
         self.win_handler.border()
         self.win_handler.refresh()
 
     def assign_lines(self, lines):
-        self.lines = [w.word for w in lines if w.group == self.key]
-        #print(self.lines)
+        self.lines = [w.word for w in lines if w.group == self.group]
+        # print(self.lines)
+
+
+def setup_logger(name, log_file, formatter=logging.Formatter('%(asctime)s %(levelname)s %(message)s'),
+                 level=logging.INFO):
+    """Function to setup a generic loggers."""
+    handler = logging.FileHandler(log_file)
+    handler.setFormatter(formatter)
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    logger.addHandler(handler)
+    return logger
+
+
+def init_argparser():
+    """Initialize the command line parser."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument('datafile', action="store", type=str,
+                        help="input CSV data file")
+    parser.add_argument('--dry-run', action='store_false', dest='dry_run',
+                        help='do not write the results on exit')
+    return parser
 
 
 def avg_or_zero(num, den):
-    """Safely calculatess an average, returning 0 if no elements are present."""
+    """Safely calculates an average, returning 0 if no elements are present."""
     if den > 0:
         avg = 100 * num / den
     else:
         avg = 0
+
     return avg
 
 
 def get_stats_strings(words, related_items_count=0):
     stats_strings = []
     n_completed = words.count_classified()
-    n_keywords = words.count_by_class('k')#len([w for w in words if w.group == 'k'])
-    n_noise = words.count_by_class('n')#len([w for w in words if w.group == 'n'])
-    n_not_relevant = words.count_by_class('x')#len([w for w in words if w.group == 'x'])
-    n_later = words.count_by_class('p')#len([w for w in words if w.group == 'p'])
+    n_keywords = words.count_by_class(WordClass.KEYWORD)
+    n_noise = words.count_by_class(WordClass.NOISE)
+    n_not_relevant = words.count_by_class(WordClass.NOT_RELEVANT)
+    n_later = words.count_by_class(WordClass.POSTPONED)
     stats_strings.append('Total words:  {:7}'.format(len(words.items)))
     avg = avg_or_zero(n_completed, len(words.items))
-    stats_strings.append('Completed:    {:7} ({:6.2f}%)'.format(n_completed, avg))
+    stats_strings.append('Completed:    {:7} ({:6.2f}%)'.format(n_completed,
+                                                                avg))
     avg = avg_or_zero(n_keywords, n_completed)
-    stats_strings.append('Keywords:     {:7} ({:6.2f}%)'.format(n_keywords, avg))
+    stats_strings.append('Keywords:     {:7} ({:6.2f}%)'.format(n_keywords,
+                                                                avg))
     avg = avg_or_zero(n_noise, n_completed)
     stats_strings.append('Noise:        {:7} ({:6.2f}%)'.format(n_noise, avg))
     avg = avg_or_zero(n_not_relevant, n_completed)
-    stats_strings.append('Not relevant: {:7} ({:6.2f}%)'.format(n_not_relevant, avg))
+    stats_strings.append('Not relevant: {:7} ({:6.2f}%)'.format(n_not_relevant,
+                                                                avg))
     avg = avg_or_zero(n_later, n_completed)
-    stats_strings.append('Postponed:    {:7} ({:6.2f}%)'.format(n_later, avg))
-    stats_strings.append('Related:      {:7}'.format(related_items_count if related_items_count >= 0 else 0))
+    stats_strings.append('Postponed:    {:7} ({:6.2f}%)'.format(n_later,
+                                                                avg))
+    s = 'Related:      {:7}'
+    if related_items_count >= 0:
+        s = s.format(related_items_count)
+    else:
+        s = s.format(0)
+
+    stats_strings.append(s)
     return stats_strings
 
 
 def find_word(string, substring):
     return any([substring == word for word in string.split()])
-    return substring in string
+    # return substring in string
 
 
 def init_curses():
@@ -260,23 +291,94 @@ def init_curses():
     return stdscr
 
 
-def main(args, words, datafile, logger=None, profiler=None):
+def do_classify(klass, words, evaluated_word, sort_word_key,
+                related_items_count, windows):
+    win = windows[klass.classname]
+    win.lines.append(evaluated_word)
+    win.display_lines(rev=True)
+    words.mark_word(evaluated_word, klass,
+                    words.get_last_inserted_order() + 1, sort_word_key)
+
+    if related_items_count <= 0:
+        sort_word_key = evaluated_word
+
+    containing, not_containing = words.return_related_items(sort_word_key)
+    if related_items_count <= 0:
+        related_items_count = len(containing) + 1
+
+    windows['__WORDS'].lines = containing
+    windows['__WORDS'].lines.extend(not_containing)
+    windows['__WORDS'].display_lines(rev=False, highlight_word=sort_word_key)
+    related_items_count -= 1
+    return related_items_count, sort_word_key
+
+
+def undo(words, sort_word_key, related_items_count, windows, logger, profiler):
+    last_word = words.get_last_inserted_word()
+    if last_word is None:
+        return related_items_count, sort_word_key
+
+    group = last_word.group
+    related = last_word.related
+    logger.debug("Undo: {} group {} order {}".format(last_word.word,
+                                                     group,
+                                                     last_word.order))
+    # remove last_word from the window that actually contains it
+    try:
+        win = windows[group.classname]
+        win.lines.remove(last_word.word)
+        win.display_lines(rev=True)
+    except KeyError:
+        pass  # if here the word is not in a window so nothing to do
+
+    # un-mark last_word
+    words.mark_word(last_word.word, WordClass.NONE, None)
+    if related == sort_word_key:
+        related_items_count += 1
+        rwl = [last_word.word]
+        rwl.extend(windows['__WORDS'].lines)
+        windows['__WORDS'].lines = rwl
+    else:
+        sort_word_key = related
+        containing, not_containing = words.return_related_items(sort_word_key)
+        windows['__WORDS'].lines = containing
+        windows['__WORDS'].lines.extend(not_containing)
+        windows['__WORDS'].display_lines(rev=False, highlight_word=sort_word_key)
+        related_items_count = len(containing) + 1
+
+    if sort_word_key == '':
+        # if sort_word_key is empty there's no related item: fix the
+        # related_items_count to the correct value of 0
+        related_items_count = 0
+
+    profiler.info("WORD '{}' UNDONE".format(last_word.word))
+
+    return related_items_count, sort_word_key
+
+
+def curses_main(scr, words, datafile, logger=None, profiler=None):
     stdscr = init_curses()
     win_width = 40
 
     # define windows
-    windows = {
-        KEYWORD: Win(keys[KEYWORD], title='Keywords', rows=8, cols=win_width, y=0, x=0),
-        RELEVANT: Win(keys[RELEVANT], title='Relevant', rows=8, cols=win_width, y=8, x=0),
-        NOISE: Win(keys[NOISE], title='Noise', rows=8, cols=win_width, y=16, x=0),
-        NOTRELEVANT: Win(keys[NOTRELEVANT], title='Not-relevant', rows=8, cols=win_width, y=24, x=0)
-    }
+    windows = dict()
+    win_classes = [WordClass.KEYWORD, WordClass.RELEVANT, WordClass.NOISE,
+                   WordClass.NOT_RELEVANT]
+    for i, cls in enumerate(win_classes):
+        windows[cls.classname] = Win(cls, title=cls.classname.capitalize(),
+                                     rows=8, cols=win_width, y=8*i, x=0)
+
+    windows['__WORDS'] = Win(None, rows=27, cols=win_width, y=9, x=win_width)
+    windows['__STATS'] = Win(None, rows=9, cols=win_width, y=0, x=win_width)
+
     curses.ungetch(' ')
-    c = stdscr.getch()
+    _ = stdscr.getch()
     for win in windows:
+        if win in ['__WORDS', '__STATS']:
+            continue
+
         windows[win].assign_lines(words.items)
         windows[win].display_lines()
-    words_window = Win(None, rows=27, cols=win_width, y=9, x=win_width)
 
     last_word = words.get_last_inserted_word()
     if last_word is None:
@@ -290,125 +392,78 @@ def main(args, words, datafile, logger=None, profiler=None):
         lines = containing
         lines.extend(not_containing)
 
-    words_window.lines = lines
-    stats_window = Win(None, rows=9, cols=win_width, y=0, x=win_width)
-    stats_window.lines = get_stats_strings(words, related_items_count)
-    stats_window.display_lines(rev=False)
+    windows['__WORDS'].lines = lines
+    windows['__STATS'].lines = get_stats_strings(words, related_items_count)
+    windows['__STATS'].display_lines(rev=False)
     while True:
-        if len(words_window.lines) <= 0:
+        if len(windows['__WORDS'].lines) <= 0:
             break
-        evaluated_word = words_window.lines[0]
+        evaluated_word = windows['__WORDS'].lines[0]
         if related_items_count <= 0:
             sort_word_key = ''
 
-        words_window.display_lines(rev=False, highlight_word=sort_word_key)
-        c = stdscr.getch()
-        #if c in [ord(keys[KEYWORD]), ord(keys[NOTRELEVANT])]:
-        #    # classification: KEYWORD or NOTRELEVANT
-        #    words.mark_word(evaluated_word, chr(c), order)
-        #    win = windows[key2class[chr(c)]]
-        #    win.lines.append(evaluated_word)
-        #    words_window.lines = words_window.lines[1:]
-        #    win.display_lines()
-        #    related_items_count -= 1
-        if c in [ord(keys[KEYWORD]), ord(keys[NOTRELEVANT]), ord(keys[NOISE]), ord(keys[RELEVANT])]:
-        #elif c in [ord(keys[NOISE])]:
-            # classification: KEYWORD, RELEVANT, NOTRELEVANT or NOISE
-            profiler.info("WORD '{}' AS '{}'".format(evaluated_word, key2class[chr(c)]))
-            win = windows[key2class[chr(c)]]
-            win.lines.append(evaluated_word)
-            win.display_lines(rev=True)
-            words.mark_word(evaluated_word, chr(c),
-                            words.get_last_inserted_order() + 1, sort_word_key)
-            if related_items_count <= 0:
-                sort_word_key = evaluated_word
-
-            containing, not_containing = words.return_related_items(sort_word_key)
-            if related_items_count <= 0:
-                related_items_count = len(containing) + 1
-            #logger.debug("sort_word_key: {}".format(sort_word_key))
-            #logger.debug("related_items_count: {}".format(related_items_count))
-            words_window.lines = containing
-            words_window.lines.extend(not_containing)
-            #logger.debug("containing: {}".format(containing))
-            #logger.debug("words_window.lines: {}".format(words_window.lines))
-            words_window.display_lines(rev=False, highlight_word=sort_word_key)
-            related_items_count -= 1
-        elif c == ord('p'):
-            profiler.info("WORD '{}' POSTPONED".format(evaluated_word.word))
+        windows['__WORDS'].display_lines(rev=False, highlight_word=sort_word_key)
+        c = chr(stdscr.getch())
+        classifing_keys = [WordClass.KEYWORD.key,
+                           WordClass.NOT_RELEVANT.key,
+                           WordClass.NOISE.key,
+                           WordClass.RELEVANT.key]
+        if c in classifing_keys:
+            klass = WordClass.get_from_key(c)
+            profiler.info("WORD '{}' AS '{}'".format(evaluated_word,
+                                                     klass.classname))
+            related_items_count, sort_word_key = do_classify(klass, words,
+                                                             evaluated_word,
+                                                             sort_word_key,
+                                                             related_items_count,
+                                                             windows)
+        elif c == 'p':
+            profiler.info("WORD '{}' POSTPONED".format(evaluated_word))
             # classification: POSTPONED
-            words.mark_word(evaluated_word, chr(c),
+            words.mark_word(evaluated_word, WordClass.POSTPONED,
                             words.get_last_inserted_order() + 1,
                             sort_word_key)
-            words_window.lines = words_window.lines[1:]
+            windows['__WORDS'].lines = windows['__WORDS'].lines[1:]
             related_items_count -= 1
-        elif c == ord('w'):
+        elif c == 'w':
             # write to file
             words.to_csv(datafile)
-        elif c == ord('u'):
+        elif c == 'u':
             # undo last operation
-            last_word = words.get_last_inserted_word()
+            related_items_count, sort_word_key = undo(words, sort_word_key,
+                                                      related_items_count,
+                                                      windows, logger, profiler)
 
-            if last_word is None:
-                continue
-
-            group = last_word.group
-            related = last_word.related
-            logger.debug("Undo: {} group {} order {}".format(last_word.word,
-                                                             group,
-                                                             last_word.order))
-            profiler.info("WORD '{}' UNDONE".format(last_word.word))
-            # remove last_word from the window that actually contains it
-            try:
-                win = windows[key2class[group]]
-                win.lines.remove(last_word.word)
-                win.display_lines(rev=True)
-            except KeyError:
-                pass  # if here the word is not in a window so nothing to do
-
-            # un-mark last_word
-            words.mark_word(last_word.word, '', None)
-            if related == sort_word_key:
-                related_items_count += 1
-                rwl = [last_word.word]
-                rwl.extend(words_window.lines)
-                words_window.lines = rwl
-            else:
-                sort_word_key = related
-                containing, not_containing = words.return_related_items(sort_word_key)
-                words_window.lines = containing
-                words_window.lines.extend(not_containing)
-                words_window.display_lines(rev=False, highlight_word=sort_word_key)
-                related_items_count = len(containing) + 1
-
-            if sort_word_key == '':
-                # if sort_word_key is empty there's no related item: fix the
-                # related_items_count to the correct value of 0
-                related_items_count = 0
-
-        elif c == ord('q'):
+        elif c == 'q':
             # quit
             break
-        stats_window.lines = get_stats_strings(words, related_items_count)
-        stats_window.display_lines(rev=False)
+        windows['__STATS'].lines = get_stats_strings(words, related_items_count)
+        windows['__STATS'].display_lines(rev=False)
 
 
-if __name__ == "__main__":
-    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+def main():
     parser = init_argparser()
     args = parser.parse_args()
+
+    profiler_logger = setup_logger('profiler_logger', 'profiler.log')
+    debug_logger = setup_logger('debug_logger', 'slr-kit.log',
+                                level=logging.DEBUG)
 
     profiler_logger.info("*** PROGRAM STARTED ***".format(args.datafile))
     profiler_logger.info("DATAFILE: '{}'".format(args.datafile))
     words = WordList()
-    (header, items) = words.from_csv(args.datafile)
+    _, _ = words.from_csv(args.datafile)
     profiler_logger.info("CLASSIFIED: {}".format(words.count_classified()))
-
-    curses.wrapper(main, words, args.datafile, logger=debug_logger, profiler=profiler_logger)
+    curses.wrapper(curses_main, words, args.datafile, logger=debug_logger,
+                   profiler=profiler_logger)
     profiler_logger.info("CLASSIFIED: {}".format(words.count_classified()))
     profiler_logger.info("DATAFILE '{}'".format(args.datafile))
-    profiler_logger.info("*** PROGRAM TERMINATED ***".format(args.datafile))
+    profiler_logger.info("*** PROGRAM TERMINATED ***")
     curses.endwin()
 
     if args.dry_run:
         words.to_csv(args.datafile)
+
+
+if __name__ == "__main__":
+    main()
