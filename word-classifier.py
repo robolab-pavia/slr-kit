@@ -17,10 +17,6 @@ def setup_logger(name, log_file, formatter=logging.Formatter('%(asctime)s %(leve
     return logger
 
 
-profiler_logger = setup_logger('profiler_logger', 'profiler.log')
-debug_logger = setup_logger('debug_logger', 'slr-kit.log', level=logging.DEBUG)
-
-
 # List of class names
 class ClassNames(enum.Enum):
     NONE = ('', '')
@@ -429,6 +425,10 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
 def main():
     parser = init_argparser()
     args = parser.parse_args()
+
+    profiler_logger = setup_logger('profiler_logger', 'profiler.log')
+    debug_logger = setup_logger('debug_logger', 'slr-kit.log',
+                                level=logging.DEBUG)
 
     profiler_logger.info("*** PROGRAM STARTED ***".format(args.datafile))
     profiler_logger.info("DATAFILE: '{}'".format(args.datafile))
