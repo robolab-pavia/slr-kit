@@ -415,14 +415,15 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
             continue
 
         windows[win].assign_lines(words.items)
-        windows[win].display_lines()
 
     last_word = words.get_last_inserted_word()
     if last_word is None:
+        refresh_class_windows('', WordClass.NONE, windows)
         related_items_count = 0
         sort_word_key = ''
         lines = [w.word for w in words.items if not w.is_grouped()]
     else:
+        refresh_class_windows(last_word.word, last_word.group, windows)
         sort_word_key = last_word.related
         containing, not_containing = words.return_related_items(sort_word_key)
         related_items_count = len(containing)
