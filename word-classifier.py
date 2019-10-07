@@ -305,9 +305,9 @@ def init_curses():
 
 def do_classify(klass, words, evaluated_word, sort_word_key,
                 related_items_count, windows):
-    win = windows[klass.classname]
-    win.lines.append(evaluated_word)
-    win.display_lines(rev=True)
+    windows[klass.classname].lines.append(evaluated_word)
+    refresh_class_windows(evaluated_word, klass, windows)
+
     words.mark_word(evaluated_word, klass,
                     words.get_last_inserted_order() + 1, sort_word_key)
 
@@ -366,7 +366,8 @@ def undo(words, sort_word_key, related_items_count, windows, logger, profiler):
         containing, not_containing = words.return_related_items(sort_word_key)
         windows['__WORDS'].lines = containing
         windows['__WORDS'].lines.extend(not_containing)
-        windows['__WORDS'].display_lines(rev=False, highlight_word=sort_word_key)
+        windows['__WORDS'].display_lines(rev=False,
+                                         highlight_word=sort_word_key)
         related_items_count = len(containing) + 1
 
     if sort_word_key == '':
@@ -454,9 +455,8 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
                             words.get_last_inserted_order() + 1,
                             sort_word_key)
             windows['__WORDS'].lines = windows['__WORDS'].lines[1:]
-            win = windows[WordClass.POSTPONED.classname]
-            win.lines.append(evaluated_word)
-            win.display_lines(rev=True)
+            windows[WordClass.POSTPONED.classname].lines.append(evaluated_word)
+            refresh_class_windows(evaluated_word, WordClass.POSTPONED, windows)
             related_items_count -= 1
         elif c == 'w':
             # write to file
