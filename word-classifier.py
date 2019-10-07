@@ -27,6 +27,7 @@ class ClassNames(enum.Enum):
     NOISE = ('noise', 'n')
     RELEVANT = ('relevant', 'r')
     NOTRELEVANT = ('not-relevant', 'x')
+    POSTPONED = ('postponed', 'p')
 
     @classmethod
     def key2class(cls, key):
@@ -144,6 +145,12 @@ class WordList(object):
 
         return containing, not_containing
 
+    def count_classified(self):
+        return len([item for item in self.items if item.is_grouped()])
+
+    def count_by_class(self, cls):
+        return len([w for w in self.items if w.group == cls])
+
 
 class Win(object):
     """Contains the list of lines to display."""
@@ -213,13 +220,13 @@ def avg_or_zero(num, den):
 
 def get_stats_strings(words, related_items_count=0):
     stats_strings = []
-    n_completed = len([w for w in words if w.is_grouped()])
-    n_keywords = len([w for w in words if w.group == 'k'])
-    n_noise = len([w for w in words if w.group == 'n'])
-    n_not_relevant = len([w for w in words if w.group == 'x'])
-    n_later = len([w for w in words if w.group == 'p'])
-    stats_strings.append('Total words:  {:7}'.format(len(words)))
-    avg = avg_or_zero(n_completed, len(words))
+    n_completed = words.count_classified()
+    n_keywords = words.count_by_class('k')
+    n_noise = words.count_by_class('n')
+    n_not_relevant = words.count_by_class('x')
+    n_later = words.count_by_class('p')
+    stats_strings.append('Total words:  {:7}'.format(len(words.items)))
+    avg = avg_or_zero(n_completed, len(words.items))
     stats_strings.append('Completed:    {:7} ({:6.2f}%)'.format(n_completed,
                                                                 avg))
     avg = avg_or_zero(n_keywords, n_completed)
@@ -285,7 +292,7 @@ def do_classify(key, words, evaluated_word, sort_word_key, related_items_count,
     return related_items_count, sort_word_key
 
 
-def undo(words, sort_word_key, related_items_count, windows, logger):
+def undo(words, sort_word_key, related_items_count, windows, logger, profiler):
     last_word = words.get_last_inserted_word()
     if last_word is None:
         return related_items_count, sort_word_key
@@ -322,6 +329,8 @@ def undo(words, sort_word_key, related_items_count, windows, logger):
         # if sort_word_key is empty there's no related item: fix the
         # related_items_count to the correct value of 0
         related_items_count = 0
+
+    profiler.info("WORD '{}' UNDONE".format(last_word.word))
 
     return related_items_count, sort_word_key
 
@@ -369,7 +378,7 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
         lines.extend(not_containing)
 
     windows['__WORDS'].lines = lines
-    windows['__STATS'].lines = get_stats_strings(words.items, related_items_count)
+    windows['__STATS'].lines = get_stats_strings(words, related_items_count)
     windows['__STATS'].display_lines(rev=False)
     while True:
         if len(windows['__WORDS'].lines) <= 0:
@@ -393,6 +402,7 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
                                                              related_items_count,
                                                              windows)
         elif c == 'p':
+            profiler.info("WORD '{}' POSTPONED".format(evaluated_word))
             # classification: POSTPONED
             words.mark_word(evaluated_word, c,
                             words.get_last_inserted_order() + 1,
@@ -406,12 +416,12 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
             # undo last operation
             related_items_count, sort_word_key = undo(words, sort_word_key,
                                                       related_items_count,
-                                                      windows, logger)
+                                                      windows, logger, profiler)
 
         elif c == 'q':
             # quit
             break
-        windows['__STATS'].lines = get_stats_strings(words.items, related_items_count)
+        windows['__STATS'].lines = get_stats_strings(words, related_items_count)
         windows['__STATS'].display_lines(rev=False)
 
 
@@ -419,11 +429,15 @@ def main():
     parser = init_argparser()
     args = parser.parse_args()
 
-    profiler_logger.info("*** PROGRAM STARTED ***")
+    profiler_logger.info("*** PROGRAM STARTED ***".format(args.datafile))
+    profiler_logger.info("DATAFILE: '{}'".format(args.datafile))
     words = WordList()
     _, _ = words.from_csv(args.datafile)
+    profiler_logger.info("CLASSIFIED: {}".format(words.count_classified()))
     curses.wrapper(curses_main, words, args.datafile, logger=debug_logger,
                    profiler=profiler_logger)
+    profiler_logger.info("CLASSIFIED: {}".format(words.count_classified()))
+    profiler_logger.info("DATAFILE '{}'".format(args.datafile))
     profiler_logger.info("*** PROGRAM TERMINATED ***")
     curses.endwin()
 
