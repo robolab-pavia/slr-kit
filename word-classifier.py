@@ -154,8 +154,8 @@ class WordList(object):
 class Win(object):
     """Contains the list of lines to display."""
 
-    def __init__(self, key, title='', rows=3, cols=30, y=0, x=0):
-        self.key = key
+    def __init__(self, group, title='', rows=3, cols=30, y=0, x=0):
+        self.group = group
         self.title = title
         self.rows = rows
         self.cols = cols
@@ -193,7 +193,7 @@ class Win(object):
         self.win_handler.refresh()
 
     def assign_lines(self, lines):
-        self.lines = [w.word for w in lines if w.group.key == self.key]
+        self.lines = [w.word for w in lines if w.group == self.group]
         # print(self.lines)
 
 
@@ -313,14 +313,14 @@ def undo(words, sort_word_key, related_items_count, windows, logger, profiler):
                                                      last_word.order))
     # remove last_word from the window that actually contains it
     try:
-        win = windows[ClassNames.get_from_key(group).classname]
+        win = windows[group.classname]
         win.lines.remove(last_word.word)
         win.display_lines(rev=True)
     except KeyError:
         pass  # if here the word is not in a window so nothing to do
 
     # un-mark last_word
-    words.mark_word(last_word.word, '', None)
+    words.mark_word(last_word.word, ClassNames.NONE, None)
     if related == sort_word_key:
         related_items_count += 1
         rwl = [last_word.word]
@@ -350,15 +350,15 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
 
     # define windows
     windows = {
-        ClassNames.KEYWORD.classname: Win(ClassNames.KEYWORD.key,
+        ClassNames.KEYWORD.classname: Win(ClassNames.KEYWORD,
                                           title='Keywords', rows=8,
                                           cols=win_width, y=0, x=0),
-        ClassNames.RELEVANT.classname: Win(ClassNames.RELEVANT.key,
+        ClassNames.RELEVANT.classname: Win(ClassNames.RELEVANT,
                                            title='Relevant', rows=8,
                                            cols=win_width, y=8, x=0),
         ClassNames.NOISE.classname: Win(ClassNames.NOISE.key, title='Noise',
                                         rows=8, cols=win_width, y=16, x=0),
-        ClassNames.NOT_RELEVANT.classname: Win(ClassNames.NOT_RELEVANT.key,
+        ClassNames.NOT_RELEVANT.classname: Win(ClassNames.NOT_RELEVANT,
                                                title='Not-relevant', rows=8,
                                                cols=win_width, y=24, x=0),
         '__WORDS': Win(None, rows=27, cols=win_width, y=9, x=win_width),
