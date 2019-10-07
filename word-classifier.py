@@ -359,7 +359,7 @@ def undo(words, sort_word_key, related_items_count, windows, logger, profiler):
 def create_windows(win_width):
     windows = dict()
     win_classes = [WordClass.KEYWORD, WordClass.RELEVANT, WordClass.NOISE,
-                   WordClass.NOT_RELEVANT]
+                   WordClass.NOT_RELEVANT, WordClass.POSTPONED]
     for i, cls in enumerate(win_classes):
         windows[cls.classname] = Win(cls, title=cls.classname.capitalize(),
                                      rows=8, cols=win_width, y=8 * i, x=0)
@@ -428,6 +428,9 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
                             words.get_last_inserted_order() + 1,
                             sort_word_key)
             windows['__WORDS'].lines = windows['__WORDS'].lines[1:]
+            win = windows[WordClass.POSTPONED.classname]
+            win.lines.append(evaluated_word)
+            win.display_lines(rev=True)
             related_items_count -= 1
         elif c == 'w':
             # write to file
