@@ -6,17 +6,6 @@ import logging
 from dataclasses import dataclass
 
 
-def setup_logger(name, log_file, formatter=logging.Formatter('%(asctime)s %(levelname)s %(message)s'),
-                 level=logging.INFO):
-    """Function to setup a generic loggers."""
-    handler = logging.FileHandler(log_file)
-    handler.setFormatter(formatter)
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
-    logger.addHandler(handler)
-    return logger
-
-
 # List of class names
 class ClassNames(enum.Enum):
     NONE = ('', '')
@@ -193,6 +182,17 @@ class Win(object):
     def assign_lines(self, lines):
         self.lines = [w.word for w in lines if w.group.key == self.key]
         # print(self.lines)
+
+
+def setup_logger(name, log_file, formatter=logging.Formatter('%(asctime)s %(levelname)s %(message)s'),
+                 level=logging.INFO):
+    """Function to setup a generic loggers."""
+    handler = logging.FileHandler(log_file)
+    handler.setFormatter(formatter)
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    logger.addHandler(handler)
+    return logger
 
 
 def init_argparser():
