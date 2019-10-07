@@ -356,20 +356,24 @@ def undo(words, sort_word_key, related_items_count, windows, logger, profiler):
     return related_items_count, sort_word_key
 
 
-def curses_main(scr, words, datafile, logger=None, profiler=None):
-    stdscr = init_curses()
-    win_width = 40
-
-    # define windows
+def create_windows(win_width):
     windows = dict()
     win_classes = [WordClass.KEYWORD, WordClass.RELEVANT, WordClass.NOISE,
                    WordClass.NOT_RELEVANT]
     for i, cls in enumerate(win_classes):
         windows[cls.classname] = Win(cls, title=cls.classname.capitalize(),
-                                     rows=8, cols=win_width, y=8*i, x=0)
-
+                                     rows=8, cols=win_width, y=8 * i, x=0)
     windows['__WORDS'] = Win(None, rows=27, cols=win_width, y=9, x=win_width)
     windows['__STATS'] = Win(None, rows=9, cols=win_width, y=0, x=win_width)
+    return windows
+
+
+def curses_main(scr, words, datafile, logger=None, profiler=None):
+    stdscr = init_curses()
+    win_width = 40
+
+    # define windows
+    windows = create_windows(win_width)
 
     curses.ungetch(' ')
     _ = stdscr.getch()
