@@ -7,7 +7,19 @@ from dataclasses import dataclass
 
 
 # List of class names
-class ClassNames(enum.Enum):
+class WordClass(enum.Enum):
+    """
+    Class for a classified word.
+
+    Each member contains a classname and a key.
+    classname is a str. It should be a meaningful word describing the class.
+    It goes in the csv as the word classification
+    key is a str. It is the key used by the program to classify a word.
+
+    In WordClass memeber creation the tuple is (classname, default_key)
+    In the definition below the NONE WordClass is provided to 'classify' an
+    un-marked word.
+    """
     NONE = ('', '')
     KEYWORD = ('keyword', 'k')
     NOISE = ('noise', 'n')
@@ -41,12 +53,12 @@ class Word:
     index: int
     word: str
     count: int
-    group: ClassNames
+    group: WordClass
     order: int
     related: str
 
     def is_grouped(self):
-        return self.group != ClassNames.NONE
+        return self.group != WordClass.NONE
 
 
 class WordList(object):
@@ -68,9 +80,9 @@ class WordList(object):
 
                 related = row.get('related', '')
                 try:
-                    group = ClassNames.get_from_classname(row['group'])
+                    group = WordClass.get_from_classname(row['group'])
                 except ValueError:
-                    group = ClassNames.get_from_key(row['group'])
+                    group = WordClass.get_from_key(row['group'])
 
                 item = Word(
                     index=0,
@@ -231,10 +243,10 @@ def avg_or_zero(num, den):
 def get_stats_strings(words, related_items_count=0):
     stats_strings = []
     n_completed = words.count_classified()
-    n_keywords = words.count_by_class(ClassNames.KEYWORD)
-    n_noise = words.count_by_class(ClassNames.NOISE)
-    n_not_relevant = words.count_by_class(ClassNames.NOT_RELEVANT)
-    n_later = words.count_by_class(ClassNames.POSTPONED)
+    n_keywords = words.count_by_class(WordClass.KEYWORD)
+    n_noise = words.count_by_class(WordClass.NOISE)
+    n_not_relevant = words.count_by_class(WordClass.NOT_RELEVANT)
+    n_later = words.count_by_class(WordClass.POSTPONED)
     stats_strings.append('Total words:  {:7}'.format(len(words.items)))
     avg = avg_or_zero(n_completed, len(words.items))
     stats_strings.append('Completed:    {:7} ({:6.2f}%)'.format(n_completed,
@@ -320,7 +332,7 @@ def undo(words, sort_word_key, related_items_count, windows, logger, profiler):
         pass  # if here the word is not in a window so nothing to do
 
     # un-mark last_word
-    words.mark_word(last_word.word, ClassNames.NONE, None)
+    words.mark_word(last_word.word, WordClass.NONE, None)
     if related == sort_word_key:
         related_items_count += 1
         rwl = [last_word.word]
@@ -350,8 +362,8 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
 
     # define windows
     windows = dict()
-    win_classes = [ClassNames.KEYWORD, ClassNames.RELEVANT, ClassNames.NOISE,
-                   ClassNames.NOT_RELEVANT]
+    win_classes = [WordClass.KEYWORD, WordClass.RELEVANT, WordClass.NOISE,
+                   WordClass.NOT_RELEVANT]
     for i, cls in enumerate(win_classes):
         windows[cls.classname] = Win(cls, title=cls.classname.capitalize(),
                                      rows=8, cols=win_width, y=8*i, x=0)
@@ -392,12 +404,12 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
 
         windows['__WORDS'].display_lines(rev=False, highlight_word=sort_word_key)
         c = chr(stdscr.getch())
-        classifing_keys = [ClassNames.KEYWORD.key,
-                           ClassNames.NOT_RELEVANT.key,
-                           ClassNames.NOISE.key,
-                           ClassNames.RELEVANT.key]
+        classifing_keys = [WordClass.KEYWORD.key,
+                           WordClass.NOT_RELEVANT.key,
+                           WordClass.NOISE.key,
+                           WordClass.RELEVANT.key]
         if c in classifing_keys:
-            klass = ClassNames.get_from_key(c)
+            klass = WordClass.get_from_key(c)
             profiler.info("WORD '{}' AS '{}'".format(evaluated_word,
                                                      klass.classname))
             related_items_count, sort_word_key = do_classify(klass, words,
@@ -408,7 +420,7 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
         elif c == 'p':
             profiler.info("WORD '{}' POSTPONED".format(evaluated_word))
             # classification: POSTPONED
-            words.mark_word(evaluated_word, ClassNames.POSTPONED,
+            words.mark_word(evaluated_word, WordClass.POSTPONED,
                             words.get_last_inserted_order() + 1,
                             sort_word_key)
             windows['__WORDS'].lines = windows['__WORDS'].lines[1:]
