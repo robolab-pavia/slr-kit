@@ -210,7 +210,7 @@ def init_argparser():
 
 
 def avg_or_zero(num, den):
-    """Safely calculatess an average, returning 0 if no elements are present."""
+    """Safely calculates an average, returning 0 if no elements are present."""
     if den > 0:
         avg = 100 * num / den
     else:
