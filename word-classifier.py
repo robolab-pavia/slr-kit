@@ -67,11 +67,16 @@ class WordList(object):
                     order = int(order_value)
 
                 related = row.get('related', '')
+                try:
+                    group = ClassNames.get_from_classname(row['group'])
+                except ValueError:
+                    group = ClassNames.key2class(row['group'])
+
                 item = Word(
                     index=0,
                     word=row['keyword'],
                     count=row['count'],
-                    group=ClassNames.key2class(row['group']),
+                    group=group,
                     order=order,
                     related=related
                 )
@@ -93,7 +98,7 @@ class WordList(object):
             for w in self.items:
                 item = {'keyword': w.word,
                         'count': w.count,
-                        'group': w.group.key,
+                        'group': w.group.classname,
                         'order': w.order,
                         'related': w.related}
                 writer.writerow(item)
