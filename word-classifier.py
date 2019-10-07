@@ -48,12 +48,12 @@ class Word:
     index: int
     word: str
     count: int
-    group: str
+    group: ClassNames
     order: int
     related: str
 
     def is_grouped(self):
-        return self.group != ''
+        return self.group != ClassNames.NONE
 
 
 class WordList(object):
@@ -78,7 +78,7 @@ class WordList(object):
                     index=0,
                     word=row['keyword'],
                     count=row['count'],
-                    group=row['group'],
+                    group=ClassNames.key2class(row['group']),
                     order=order,
                     related=related
                 )
@@ -100,7 +100,7 @@ class WordList(object):
             for w in self.items:
                 item = {'keyword': w.word,
                         'count': w.count,
-                        'group': w.group,
+                        'group': w.group.key,
                         'order': w.order,
                         'related': w.related}
                 writer.writerow(item)
@@ -136,7 +136,7 @@ class WordList(object):
         containing = []
         not_containing = []
         for w in self.items:
-            if w.group != '':
+            if w.is_grouped():
                 continue
 
             if find_word(w.word, key):
@@ -195,7 +195,7 @@ class Win(object):
         self.win_handler.refresh()
 
     def assign_lines(self, lines):
-        self.lines = [w.word for w in lines if w.group == self.key]
+        self.lines = [w.word for w in lines if w.group.key == self.key]
         # print(self.lines)
 
 
@@ -222,10 +222,10 @@ def avg_or_zero(num, den):
 def get_stats_strings(words, related_items_count=0):
     stats_strings = []
     n_completed = words.count_classified()
-    n_keywords = words.count_by_class('k')
-    n_noise = words.count_by_class('n')
-    n_not_relevant = words.count_by_class('x')
-    n_later = words.count_by_class('p')
+    n_keywords = words.count_by_class(ClassNames.KEYWORD)
+    n_noise = words.count_by_class(ClassNames.NOISE)
+    n_not_relevant = words.count_by_class(ClassNames.NOT_RELEVANT)
+    n_later = words.count_by_class(ClassNames.POSTPONED)
     stats_strings.append('Total words:  {:7}'.format(len(words.items)))
     avg = avg_or_zero(n_completed, len(words.items))
     stats_strings.append('Completed:    {:7} ({:6.2f}%)'.format(n_completed,
@@ -270,13 +270,12 @@ def init_curses():
     return stdscr
 
 
-def do_classify(key, words, evaluated_word, sort_word_key, related_items_count,
-                windows):
-    klass = ClassNames.key2class(key)
+def do_classify(klass, words, evaluated_word, sort_word_key,
+                related_items_count, windows):
     win = windows[klass.classname]
     win.lines.append(evaluated_word)
     win.display_lines(rev=True)
-    words.mark_word(evaluated_word, key,
+    words.mark_word(evaluated_word, klass,
                     words.get_last_inserted_order() + 1, sort_word_key)
 
     if related_items_count <= 0:
@@ -395,9 +394,10 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
                            ClassNames.NOISE.key,
                            ClassNames.RELEVANT.key]
         if c in classifing_keys:
+            klass = ClassNames.key2class(c)
             profiler.info("WORD '{}' AS '{}'".format(evaluated_word,
-                                                     ClassNames.key2class(c)))
-            related_items_count, sort_word_key = do_classify(c, words,
+                                                     klass.classname))
+            related_items_count, sort_word_key = do_classify(klass, words,
                                                              evaluated_word,
                                                              sort_word_key,
                                                              related_items_count,
@@ -405,7 +405,7 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
         elif c == 'p':
             profiler.info("WORD '{}' POSTPONED".format(evaluated_word))
             # classification: POSTPONED
-            words.mark_word(evaluated_word, c,
+            words.mark_word(evaluated_word, ClassNames.POSTPONED,
                             words.get_last_inserted_order() + 1,
                             sort_word_key)
             windows['__WORDS'].lines = windows['__WORDS'].lines[1:]
