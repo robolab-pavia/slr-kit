@@ -29,7 +29,7 @@ class WordClass(enum.Enum):
 
     @staticmethod
     def get_from_key(key: str):
-        for clname in ClassNames:
+        for clname in WordClass:
             if clname.key == key:
                 return clname
 
@@ -37,7 +37,7 @@ class WordClass(enum.Enum):
 
     @staticmethod
     def get_from_classname(classname):
-        for clname in ClassNames:
+        for clname in WordClass:
             if clname.classname == classname:
                 return clname
 
