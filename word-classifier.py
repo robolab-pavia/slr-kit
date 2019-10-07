@@ -186,7 +186,7 @@ class Win(object):
         self.win_handler.refresh()
         self.lines = []
 
-    def display_lines(self, rev=True, highlight_word=''):
+    def display_lines(self, rev=True, highlight_word='', color_pair=1):
         if rev:
             word_list = reversed(self.lines)
         else:
@@ -201,7 +201,8 @@ class Win(object):
                 self.win_handler.addstr(i + 1, 1, '')
                 for t in tok:
                     self.win_handler.addstr(t)
-                    self.win_handler.addstr(highlight_word, curses.color_pair(1))
+                    self.win_handler.addstr(highlight_word,
+                                            curses.color_pair(color_pair))
                 self.win_handler.addstr(i + 1, len(trunc_w) + 1, ' ' * (self.cols - 2 - len(trunc_w)))
             i += 1
             if i >= self.rows - 2:
