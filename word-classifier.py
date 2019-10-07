@@ -15,9 +15,9 @@ class ClassNames(enum.Enum):
     NOT_RELEVANT = ('not-relevant', 'x')
     POSTPONED = ('postponed', 'p')
 
-    @classmethod
-    def key2class(cls, key):
-        for clname in cls:
+    @staticmethod
+    def key2class(key: str):
+        for clname in ClassNames:
             if clname.key == key:
                 return clname
 
