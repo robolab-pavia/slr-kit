@@ -166,13 +166,21 @@ class WordList(object):
 class Win(object):
     """Contains the list of lines to display."""
 
-    def __init__(self, group, title='', rows=3, cols=30, y=0, x=0):
+    def __init__(self, group, title='', rows=3, cols=30, y=0, x=0,
+                 show_title=False):
         self.group = group
         self.title = title
         self.rows = rows
         self.cols = cols
-        self.y = y
         self.x = x
+        if show_title:
+            self.y = y + 1
+            self.win_title = curses.newwin(1, self.cols, y, self.x)
+            self.win_title.addstr(self.title)
+        else:
+            self.y = y
+            self.win_title = None
+
         self.win_handler = curses.newwin(self.rows, self.cols, self.y, self.x)
         self.win_handler.border()
         self.win_handler.refresh()
@@ -203,6 +211,8 @@ class Win(object):
             i += 1
         self.win_handler.border()
         self.win_handler.refresh()
+        if self.win_title is not None:
+            self.win_title.refresh()
 
     def assign_lines(self, lines):
         self.lines = [w.word for w in lines if w.group == self.group]
@@ -356,13 +366,15 @@ def undo(words, sort_word_key, related_items_count, windows, logger, profiler):
     return related_items_count, sort_word_key
 
 
-def create_windows(win_width):
+def create_windows(win_width, rows):
     windows = dict()
     win_classes = [WordClass.KEYWORD, WordClass.RELEVANT, WordClass.NOISE,
                    WordClass.NOT_RELEVANT, WordClass.POSTPONED]
     for i, cls in enumerate(win_classes):
         windows[cls.classname] = Win(cls, title=cls.classname.capitalize(),
-                                     rows=8, cols=win_width, y=8 * i, x=0)
+                                     rows=rows, cols=win_width, y=(rows + 1)*i,
+                                     x=0, show_title=True)
+
     windows['__WORDS'] = Win(None, rows=27, cols=win_width, y=9, x=win_width)
     windows['__STATS'] = Win(None, rows=9, cols=win_width, y=0, x=win_width)
     return windows
@@ -371,9 +383,10 @@ def create_windows(win_width):
 def curses_main(scr, words, datafile, logger=None, profiler=None):
     stdscr = init_curses()
     win_width = 40
+    rows = 8
 
     # define windows
-    windows = create_windows(win_width)
+    windows = create_windows(win_width, rows)
 
     curses.ungetch(' ')
     _ = stdscr.getch()
