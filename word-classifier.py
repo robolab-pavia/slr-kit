@@ -23,6 +23,14 @@ class ClassNames(enum.Enum):
 
         raise ValueError('"{}" is not a valid key'.format(key))
 
+    @staticmethod
+    def get_from_classname(classname):
+        for clname in ClassNames:
+            if clname.classname == classname:
+                return clname
+
+        raise ValueError('"{}" is not a valid class name'.format(classname))
+
     def __init__(self, classname, key):
         self.classname = classname
         self.key = key
