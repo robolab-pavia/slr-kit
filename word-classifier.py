@@ -16,7 +16,7 @@ class ClassNames(enum.Enum):
     POSTPONED = ('postponed', 'p')
 
     @staticmethod
-    def key2class(key: str):
+    def get_from_key(key: str):
         for clname in ClassNames:
             if clname.key == key:
                 return clname
@@ -70,7 +70,7 @@ class WordList(object):
                 try:
                     group = ClassNames.get_from_classname(row['group'])
                 except ValueError:
-                    group = ClassNames.key2class(row['group'])
+                    group = ClassNames.get_from_key(row['group'])
 
                 item = Word(
                     index=0,
@@ -313,7 +313,7 @@ def undo(words, sort_word_key, related_items_count, windows, logger, profiler):
                                                      last_word.order))
     # remove last_word from the window that actually contains it
     try:
-        win = windows[ClassNames.key2class(group).classname]
+        win = windows[ClassNames.get_from_key(group).classname]
         win.lines.remove(last_word.word)
         win.display_lines(rev=True)
     except KeyError:
@@ -403,7 +403,7 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
                            ClassNames.NOISE.key,
                            ClassNames.RELEVANT.key]
         if c in classifing_keys:
-            klass = ClassNames.key2class(c)
+            klass = ClassNames.get_from_key(c)
             profiler.info("WORD '{}' AS '{}'".format(evaluated_word,
                                                      klass.classname))
             related_items_count, sort_word_key = do_classify(klass, words,
