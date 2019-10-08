@@ -149,7 +149,7 @@ class WordList(object):
             if w.is_grouped():
                 continue
 
-            if find_word(w.word, key):
+            if self._word_contains(w.word, key):
                 containing.append(w.word)
             else:
                 not_containing.append(w.word)
@@ -161,6 +161,10 @@ class WordList(object):
 
     def count_by_class(self, cls):
         return len([w for w in self.items if w.group == cls])
+
+    @staticmethod
+    def _word_contains(string, substring):
+        return any([substring == word for word in string.split()])
 
 
 class Win(object):
@@ -296,11 +300,6 @@ def get_stats_strings(words, related_items_count=0):
 
     stats_strings.append(s)
     return stats_strings
-
-
-def find_word(string, substring):
-    return any([substring == word for word in string.split()])
-    # return substring in string
 
 
 def init_curses():
