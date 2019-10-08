@@ -197,13 +197,28 @@ class Win(object):
             if highlight_word == '':
                 self.win_handler.addstr(i + 1, 1, trunc_w + ' ' * (self.cols - 2 - len(trunc_w)))
             else:
-                tok = w.split(highlight_word)
-                self.win_handler.addstr(i + 1, 1, '')
-                for t in tok:
-                    self.win_handler.addstr(t)
-                    self.win_handler.addstr(highlight_word,
+                if w == highlight_word:
+                    self.win_handler.addstr(i + 1, 1,
+                                            trunc_w + ' ' * (self.cols - 2 - len(trunc_w)),
                                             curses.color_pair(color_pair))
-                self.win_handler.addstr(i + 1, len(trunc_w) + 1, ' ' * (self.cols - 2 - len(trunc_w)))
+                else:
+                    tok = w.split(highlight_word)
+                    if len(tok) == 1:
+                        # no highlight_word found
+                        self.win_handler.addstr(i + 1, 1,
+                                                trunc_w + ' ' * (self.cols - 2 - len(trunc_w)))
+                    else:
+                        self.win_handler.addstr(i + 1, 1, '')
+                        line = ''
+                        for t in tok:
+                            line += t
+                            line += highlight_word
+                            self.win_handler.addstr(t)
+                            self.win_handler.addstr(highlight_word,
+                                                    curses.color_pair(color_pair))
+
+                        self.win_handler.addstr(i + 1, len(trunc_w) + 1,
+                                                ' ' * (self.cols - 2 - len(trunc_w)))
             i += 1
             if i >= self.rows - 2:
                 break
