@@ -370,11 +370,11 @@ def undo(words, sort_word_key, related_items_count, windows, logger, profiler):
     else:
         sort_word_key = related
         containing, not_containing = words.return_related_items(sort_word_key)
+        related_items_count = len(containing)
         windows['__WORDS'].lines = containing
         windows['__WORDS'].lines.extend(not_containing)
         windows['__WORDS'].display_lines(rev=False,
                                          highlight_word=sort_word_key)
-        related_items_count = len(containing) + 1
 
     if sort_word_key == '':
         # if sort_word_key is empty there's no related item: fix the
