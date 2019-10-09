@@ -146,7 +146,9 @@ class WordList(object):
         containing = []
         not_containing = []
         for w in self.items:
-            if w.group != label:
+            # the condition on the order is for review mode to skip words
+            # confirmed in the same class
+            if w.group != label or w.order is not None:
                 continue
 
             if find_word(w.word, key):
@@ -333,6 +335,7 @@ def do_classify(klass, words, review, evaluated_word, sort_word_key,
 
     containing, not_containing = words.return_related_items(sort_word_key,
                                                             label=review)
+
     if related_items_count <= 0:
         related_items_count = len(containing) + 1
 
