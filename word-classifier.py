@@ -419,6 +419,16 @@ def create_windows(win_width, rows):
 
 def curses_main(scr, words, args, logger=None, profiler=None):
     datafile = args.datafile
+    if args.review is not None:
+        review = WordClass.get_from_classname(args.review)
+        # review mode: reset order and related
+        # FIXME: method in WordList
+        for w in words.items:
+            w.order = None
+            w.related = ''
+    else:
+        review = WordClass.NONE
+
     stdscr = init_curses()
     win_width = 40
     rows = 8
