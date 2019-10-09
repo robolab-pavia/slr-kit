@@ -320,7 +320,7 @@ def init_curses():
     return stdscr
 
 
-def do_classify(klass, words, evaluated_word, sort_word_key,
+def do_classify(klass, words, review, evaluated_word, sort_word_key,
                 related_items_count, windows):
     windows[klass.classname].lines.append(evaluated_word)
     refresh_class_windows(evaluated_word, klass, windows)
@@ -331,7 +331,8 @@ def do_classify(klass, words, evaluated_word, sort_word_key,
     if related_items_count <= 0:
         sort_word_key = evaluated_word
 
-    containing, not_containing = words.return_related_items(sort_word_key)
+    containing, not_containing = words.return_related_items(sort_word_key,
+                                                            label=review)
     if related_items_count <= 0:
         related_items_count = len(containing) + 1
 
