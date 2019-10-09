@@ -545,9 +545,12 @@ def main():
     words = WordList()
     _, _ = words.from_csv(args.datafile)
     profiler_logger.info("CLASSIFIED: {}".format(words.count_classified()))
-    # TODO: mark in profiler if we are reviewing a label
-    curses.wrapper(curses_main, words, args, logger=debug_logger,
-                   profiler=profiler_logger)
+    if review != WordClass.NONE:
+        profiler_logger.info("REVIEW: {}".format(review.classname))
+
+    curses.wrapper(curses_main, words, args.datafile, review,
+                   logger=debug_logger, profiler=profiler_logger)
+
     profiler_logger.info("CLASSIFIED: {}".format(words.count_classified()))
     profiler_logger.info("DATAFILE '{}'".format(args.datafile))
     profiler_logger.info("*** PROGRAM TERMINATED ***")
