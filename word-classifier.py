@@ -3,6 +3,7 @@ import csv
 import curses
 import enum
 import logging
+import sys
 from dataclasses import dataclass
 
 
@@ -423,17 +424,13 @@ def create_windows(win_width, rows):
     return windows
 
 
-def curses_main(scr, words, args, logger=None, profiler=None):
-    datafile = args.datafile
-    if args.review is not None:
-        review = WordClass.get_from_classname(args.review)
+def curses_main(scr, words, datafile, review, logger=None, profiler=None):
+    if review != WordClass.NONE:
         # review mode: reset order and related
         # FIXME: method in WordList
         for w in words.items:
             w.order = None
             w.related = ''
-    else:
-        review = WordClass.NONE
 
     stdscr = init_curses()
     win_width = 40
@@ -533,6 +530,15 @@ def main():
     profiler_logger = setup_logger('profiler_logger', 'profiler.log')
     debug_logger = setup_logger('debug_logger', 'slr-kit.log',
                                 level=logging.DEBUG)
+
+    if args.review is not None:
+        try:
+            review = WordClass.get_from_classname(args.review)
+        except ValueError:
+            debug_logger.error('{} is not a valid label'.format(args.review))
+            sys.exit('Error: {} is not a valid label'.format(args.review))
+    else:
+        review = WordClass.NONE
 
     profiler_logger.info("*** PROGRAM STARTED ***".format(args.datafile))
     profiler_logger.info("DATAFILE: '{}'".format(args.datafile))
