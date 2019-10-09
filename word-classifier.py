@@ -354,7 +354,8 @@ def refresh_class_windows(evaluated_word, klass, windows):
             windows[win].display_lines(rev=True)
 
 
-def undo(words, sort_word_key, related_items_count, windows, logger, profiler):
+def undo(words, review, sort_word_key, related_items_count, windows, logger,
+         profiler):
     last_word = words.get_last_inserted_word()
     if last_word is None:
         return related_items_count, sort_word_key
@@ -365,7 +366,7 @@ def undo(words, sort_word_key, related_items_count, windows, logger, profiler):
                                                      group,
                                                      last_word.order))
     # un-mark last_word
-    words.mark_word(last_word.word, WordClass.NONE, None)
+    words.mark_word(last_word.word, review, None)
     # remove last_word from the window that actually contains it
     try:
         win = windows[group.classname]
@@ -387,7 +388,8 @@ def undo(words, sort_word_key, related_items_count, windows, logger, profiler):
         windows['__WORDS'].lines = rwl
     else:
         sort_word_key = related
-        containing, not_containing = words.return_related_items(sort_word_key)
+        containing, not_containing = words.return_related_items(sort_word_key,
+                                                                label=review)
         related_items_count = len(containing)
         windows['__WORDS'].lines = containing
         windows['__WORDS'].lines.extend(not_containing)
@@ -489,6 +491,7 @@ def curses_main(scr, words, args, logger=None, profiler=None):
             profiler.info("WORD '{}' AS '{}'".format(evaluated_word,
                                                      klass.classname))
             related_items_count, sort_word_key = do_classify(klass, words,
+                                                             review,
                                                              evaluated_word,
                                                              sort_word_key,
                                                              related_items_count,
@@ -508,7 +511,8 @@ def curses_main(scr, words, args, logger=None, profiler=None):
             words.to_csv(datafile)
         elif c == 'u':
             # undo last operation
-            related_items_count, sort_word_key = undo(words, sort_word_key,
+            related_items_count, sort_word_key = undo(words, review,
+                                                      sort_word_key,
                                                       related_items_count,
                                                       windows, logger, profiler)
 
