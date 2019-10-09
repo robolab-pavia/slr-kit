@@ -3,17 +3,17 @@ import enum
 from dataclasses import dataclass
 
 
-class WordClass(enum.Enum):
+class Label(enum.Enum):
     """
-    Class for a classified word.
+    Label for a classified word.
 
-    Each member contains a classname and a key.
-    classname is a str. It should be a meaningful word describing the class.
+    Each member contains a name and a key.
+    name is a str. It should be a meaningful word describing the label.
     It goes in the csv as the word classification
     key is a str. It is the key used by the program to classify a word.
 
-    In WordClass memeber creation the tuple is (classname, default_key)
-    In the definition below the NONE WordClass is provided to 'classify' an
+    In Label member creation the tuple is (name, default_key)
+    In the definition below the NONE Label is provided to 'classify' an
     un-marked word.
     """
     NONE = ('', '')
@@ -24,23 +24,23 @@ class WordClass(enum.Enum):
     POSTPONED = ('postponed', 'p')
 
     @staticmethod
-    def get_from_key(key: str):
-        for clname in WordClass:
-            if clname.key == key:
-                return clname
+    def get_from_key(key):
+        for label in Label:
+            if label.key == key:
+                return label
 
         raise ValueError('"{}" is not a valid key'.format(key))
 
     @staticmethod
-    def get_from_classname(classname):
-        for clname in WordClass:
-            if clname.classname == classname:
-                return clname
+    def get_from_name(name):
+        for label in Label:
+            if label.name == name:
+                return label
 
-        raise ValueError('"{}" is not a valid class name'.format(classname))
+        raise ValueError('"{}" is not a valid label name'.format(name))
 
-    def __init__(self, classname, key):
-        self.classname = classname
+    def __init__(self, name, key):
+        self.name = name
         self.key = key
 
 
@@ -49,12 +49,12 @@ class Word:
     index: int
     word: str
     count: int
-    group: WordClass
+    group: Label
     order: int
     related: str
 
     def is_grouped(self):
-        return self.group != WordClass.NONE
+        return self.group != Label.NONE
 
 
 class WordList(object):
@@ -76,9 +76,9 @@ class WordList(object):
 
                 related = row.get('related', '')
                 try:
-                    group = WordClass.get_from_classname(row['group'])
+                    group = Label.get_from_name(row['group'])
                 except ValueError:
-                    group = WordClass.get_from_key(row['group'])
+                    group = Label.get_from_key(row['group'])
 
                 item = Word(
                     index=0,
@@ -106,7 +106,7 @@ class WordList(object):
             for w in self.items:
                 item = {'keyword': w.word,
                         'count': w.count,
-                        'group': w.group.classname,
+                        'group': w.group.name,
                         'order': w.order,
                         'related': w.related}
                 writer.writerow(item)

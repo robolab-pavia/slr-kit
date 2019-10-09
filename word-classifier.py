@@ -3,7 +3,7 @@ import curses
 import logging
 
 # List of class names
-from words import WordClass, WordList
+from words import Label, WordList
 
 
 class Win(object):
@@ -112,10 +112,10 @@ def avg_or_zero(num, den):
 def get_stats_strings(words, related_items_count=0):
     stats_strings = []
     n_completed = words.count_classified()
-    n_keywords = words.count_by_class(WordClass.KEYWORD)
-    n_noise = words.count_by_class(WordClass.NOISE)
-    n_not_relevant = words.count_by_class(WordClass.NOT_RELEVANT)
-    n_later = words.count_by_class(WordClass.POSTPONED)
+    n_keywords = words.count_by_class(Label.KEYWORD)
+    n_noise = words.count_by_class(Label.NOISE)
+    n_not_relevant = words.count_by_class(Label.NOT_RELEVANT)
+    n_later = words.count_by_class(Label.POSTPONED)
     stats_strings.append('Total words:  {:7}'.format(len(words.items)))
     avg = avg_or_zero(n_completed, len(words.items))
     stats_strings.append('Completed:    {:7} ({:6.2f}%)'.format(n_completed,
@@ -158,7 +158,7 @@ def init_curses():
 
 def do_classify(klass, words, evaluated_word, sort_word_key,
                 related_items_count, windows):
-    windows[klass.classname].lines.append(evaluated_word)
+    windows[klass.name].lines.append(evaluated_word)
     refresh_class_windows(evaluated_word, klass, windows)
 
     words.mark_word(evaluated_word, klass,
@@ -182,7 +182,7 @@ def refresh_class_windows(evaluated_word, klass, windows):
     for win in windows:
         if win in ['__WORDS', '__STATS']:
             continue
-        if win == klass.classname:
+        if win == klass.name:
             windows[win].display_lines(rev=True, highlight_word=evaluated_word,
                                        color_pair=2)
         else:
@@ -200,17 +200,17 @@ def undo(words, sort_word_key, related_items_count, windows, logger, profiler):
                                                      group,
                                                      last_word.order))
     # un-mark last_word
-    words.mark_word(last_word.word, WordClass.NONE, None)
+    words.mark_word(last_word.word, Label.NONE, None)
     # remove last_word from the window that actually contains it
     try:
-        win = windows[group.classname]
+        win = windows[group.name]
         win.lines.remove(last_word.word)
         prev_last_word = words.get_last_inserted_word()
         if prev_last_word is not None:
             refresh_class_windows(prev_last_word.word, prev_last_word.group,
                                   windows)
         else:
-            refresh_class_windows('', WordClass.NONE, windows)
+            refresh_class_windows('', Label.NONE, windows)
     except KeyError:
         pass  # if here the word is not in a window so nothing to do
 
@@ -241,12 +241,12 @@ def undo(words, sort_word_key, related_items_count, windows, logger, profiler):
 
 def create_windows(win_width, rows):
     windows = dict()
-    win_classes = [WordClass.KEYWORD, WordClass.RELEVANT, WordClass.NOISE,
-                   WordClass.NOT_RELEVANT, WordClass.POSTPONED]
+    win_classes = [Label.KEYWORD, Label.RELEVANT, Label.NOISE,
+                   Label.NOT_RELEVANT, Label.POSTPONED]
     for i, cls in enumerate(win_classes):
-        windows[cls.classname] = Win(cls, title=cls.classname.capitalize(),
-                                     rows=rows, cols=win_width, y=(rows + 1) * i,
-                                     x=0, show_title=True)
+        windows[cls.name] = Win(cls, title=cls.name.capitalize(),
+                                rows=rows, cols=win_width, y=(rows + 1) * i,
+                                x=0, show_title=True)
 
     windows['__WORDS'] = Win(None, rows=27, cols=win_width, y=9, x=win_width)
     windows['__STATS'] = Win(None, rows=9, cols=win_width, y=0, x=win_width)
@@ -271,7 +271,7 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
 
     last_word = words.get_last_inserted_word()
     if last_word is None:
-        refresh_class_windows('', WordClass.NONE, windows)
+        refresh_class_windows('', Label.NONE, windows)
         related_items_count = 0
         sort_word_key = ''
         lines = [w.word for w in words.items if not w.is_grouped()]
@@ -295,14 +295,14 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
 
         windows['__WORDS'].display_lines(rev=False, highlight_word=sort_word_key)
         c = chr(stdscr.getch())
-        classifing_keys = [WordClass.KEYWORD.key,
-                           WordClass.NOT_RELEVANT.key,
-                           WordClass.NOISE.key,
-                           WordClass.RELEVANT.key]
+        classifing_keys = [Label.KEYWORD.key,
+                           Label.NOT_RELEVANT.key,
+                           Label.NOISE.key,
+                           Label.RELEVANT.key]
         if c in classifing_keys:
-            klass = WordClass.get_from_key(c)
+            klass = Label.get_from_key(c)
             profiler.info("WORD '{}' AS '{}'".format(evaluated_word,
-                                                     klass.classname))
+                                                     klass.name))
             related_items_count, sort_word_key = do_classify(klass, words,
                                                              evaluated_word,
                                                              sort_word_key,
@@ -311,12 +311,12 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
         elif c == 'p':
             profiler.info("WORD '{}' POSTPONED".format(evaluated_word))
             # classification: POSTPONED
-            words.mark_word(evaluated_word, WordClass.POSTPONED,
+            words.mark_word(evaluated_word, Label.POSTPONED,
                             words.get_last_inserted_order() + 1,
                             sort_word_key)
             windows['__WORDS'].lines = windows['__WORDS'].lines[1:]
-            windows[WordClass.POSTPONED.classname].lines.append(evaluated_word)
-            refresh_class_windows(evaluated_word, WordClass.POSTPONED, windows)
+            windows[Label.POSTPONED.name].lines.append(evaluated_word)
+            refresh_class_windows(evaluated_word, Label.POSTPONED, windows)
             related_items_count -= 1
         elif c == 'w':
             # write to file
