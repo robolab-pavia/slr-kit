@@ -25,6 +25,14 @@ class Label(enum.Enum):
 
     @staticmethod
     def get_from_key(key):
+        """
+        Searches the Label associated with a specified key
+
+        :param key: the associated to the Label
+        :type key: str
+        :return: the Label associated with key
+        :rtype: Label
+        """
         for label in Label:
             if label.key == key:
                 return label
@@ -33,6 +41,14 @@ class Label(enum.Enum):
 
     @staticmethod
     def get_from_name(name):
+        """
+        Searches the Label associated with a specified name
+
+        :param name: the associated to the Label
+        :type name: str
+        :return: the Label associated with name
+        :rtype: Label
+        """
         for label in Label:
             if label.name == name:
                 return label
@@ -40,6 +56,16 @@ class Label(enum.Enum):
         raise ValueError('"{}" is not a valid label name'.format(name))
 
     def __init__(self, name, key):
+        """
+        Creates Label and sets its name and key
+
+        It is meant to be used by the internals of Enum. Using it directly will
+        probably result in an Exception
+        :param name: name of the label
+        :type name: str
+        :param key: key associated to the label
+        :type key: str
+        """
         self.name = name
         self.key = key
 
