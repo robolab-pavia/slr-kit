@@ -442,7 +442,10 @@ def curses_main(scr, words, args, logger=None, profiler=None):
         if win in ['__WORDS', '__STATS']:
             continue
 
-        windows[win].assign_lines(words.items)
+        if win != review.classname:
+            # in review mode we must skip the window associated with the label
+            # review
+            windows[win].assign_lines(words.items)
 
     last_word = words.get_last_inserted_word()
     if last_word is None:
