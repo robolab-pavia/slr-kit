@@ -253,6 +253,8 @@ def init_argparser():
                         help="input CSV data file")
     parser.add_argument('--dry-run', action='store_false', dest='dry_run',
                         help='do not write the results on exit')
+    parser.add_argument('--review', '-r',
+                        help='review the specified label')
     return parser
 
 
