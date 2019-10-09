@@ -162,7 +162,7 @@ def do_classify(klass, words, evaluated_word, sort_word_key,
     refresh_class_windows(evaluated_word, klass, windows)
 
     words.mark_word(evaluated_word, klass,
-                    words.get_last_inserted_order() + 1, sort_word_key)
+                    words.get_last_classified_order() + 1, sort_word_key)
 
     if related_items_count <= 0:
         sort_word_key = evaluated_word
@@ -190,7 +190,7 @@ def refresh_class_windows(evaluated_word, klass, windows):
 
 
 def undo(words, sort_word_key, related_items_count, windows, logger, profiler):
-    last_word = words.get_last_inserted_word()
+    last_word = words.get_last_classified_word()
     if last_word is None:
         return related_items_count, sort_word_key
 
@@ -200,12 +200,12 @@ def undo(words, sort_word_key, related_items_count, windows, logger, profiler):
                                                      group,
                                                      last_word.order))
     # un-mark last_word
-    words.mark_word(last_word.word, Label.NONE, None)
+    words.classify_term(last_word.word, Label.NONE, -1)
     # remove last_word from the window that actually contains it
     try:
         win = windows[group.name]
         win.lines.remove(last_word.word)
-        prev_last_word = words.get_last_inserted_word()
+        prev_last_word = words.get_last_classified_word()
         if prev_last_word is not None:
             refresh_class_windows(prev_last_word.word, prev_last_word.group,
                                   windows)
@@ -269,7 +269,7 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
 
         windows[win].assign_lines(words.items)
 
-    last_word = words.get_last_inserted_word()
+    last_word = words.get_last_classified_word()
     if last_word is None:
         refresh_class_windows('', Label.NONE, windows)
         related_items_count = 0
@@ -312,7 +312,7 @@ def curses_main(scr, words, datafile, logger=None, profiler=None):
             profiler.info("WORD '{}' POSTPONED".format(evaluated_word))
             # classification: POSTPONED
             words.mark_word(evaluated_word, Label.POSTPONED,
-                            words.get_last_inserted_order() + 1,
+                            words.get_last_classified_order() + 1,
                             sort_word_key)
             windows['__WORDS'].lines = windows['__WORDS'].lines[1:]
             windows[Label.POSTPONED.name].lines.append(evaluated_word)

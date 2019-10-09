@@ -96,7 +96,7 @@ class WordList(object):
             for row in csv_reader:
                 order_value = row['order']
                 if order_value == '':
-                    order = None
+                    order = -1
                 else:
                     order = int(order_value)
 
@@ -130,24 +130,33 @@ class WordList(object):
                                     quoting=csv.QUOTE_MINIMAL)
             writer.writeheader()
             for w in self.items:
+                if w.order >= 0:
+                    order = str(w.order)
+                else:
+                    order = ''
+
                 item = {'keyword': w.word,
                         'count': w.count,
                         'group': w.group.name,
-                        'order': w.order,
+                        'order': order,
                         'related': w.related}
                 writer.writerow(item)
 
-    def get_last_inserted_order(self):
-        orders = [w.order for w in self.items if w.order is not None]
-        if len(orders) == 0:
+    def get_last_classified_order(self):
+        """
+        Finds the classification order of the last classified term
+
+        :return: the classification order of the last classified term
+        :rtype: int
+        """
+        order = max(w.order for w in self.items)
+        if order < 0:
             order = -1
-        else:
-            order = max(orders)
 
         return order
 
-    def get_last_inserted_word(self):
-        last = self.get_last_inserted_order()
+    def get_last_classified_word(self):
+        last = self.get_last_classified_order()
         for w in self.items:
             if w.order == last:
                 return w
