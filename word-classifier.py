@@ -142,11 +142,11 @@ class WordList(object):
 
         return self
 
-    def return_related_items(self, key):
+    def return_related_items(self, key, label=WordClass.NONE):
         containing = []
         not_containing = []
         for w in self.items:
-            if w.is_grouped():
+            if w.group != label:
                 continue
 
             if find_word(w.word, key):
