@@ -459,7 +459,7 @@ def curses_main(scr, words, args, logger=None, profiler=None):
         if review != WordClass.NONE:
             # review mode
             # FIXME: better way?
-            lines = [w.word for w in words.items if not w.group == review]
+            lines = [w.word for w in words.items if w.group == review]
         else:
             lines = [w.word for w in words.items if not w.is_grouped()]
     else:
