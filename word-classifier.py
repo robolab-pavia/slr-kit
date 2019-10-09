@@ -447,12 +447,18 @@ def curses_main(scr, words, args, logger=None, profiler=None):
             # review
             windows[win].assign_lines(words.items)
 
+    # in review mode last_word will be None because we already reset the order
     last_word = words.get_last_inserted_word()
     if last_word is None:
         refresh_class_windows('', WordClass.NONE, windows)
         related_items_count = 0
         sort_word_key = ''
-        lines = [w.word for w in words.items if not w.is_grouped()]
+        if review != WordClass.NONE:
+            # review mode
+            # FIXME: better way?
+            lines = [w.word for w in words.items if not w.group == review]
+        else:
+            lines = [w.word for w in words.items if not w.is_grouped()]
     else:
         refresh_class_windows(last_word.word, last_word.group, windows)
         sort_word_key = last_word.related
