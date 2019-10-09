@@ -417,7 +417,8 @@ def create_windows(win_width, rows):
     return windows
 
 
-def curses_main(scr, words, datafile, logger=None, profiler=None):
+def curses_main(scr, words, args, logger=None, profiler=None):
+    datafile = args.datafile
     stdscr = init_curses()
     win_width = 40
     rows = 8
@@ -511,7 +512,8 @@ def main():
     words = WordList()
     _, _ = words.from_csv(args.datafile)
     profiler_logger.info("CLASSIFIED: {}".format(words.count_classified()))
-    curses.wrapper(curses_main, words, args.datafile, logger=debug_logger,
+    # TODO: mark in profiler if we are reviewing a label
+    curses.wrapper(curses_main, words, args, logger=debug_logger,
                    profiler=profiler_logger)
     profiler_logger.info("CLASSIFIED: {}".format(words.count_classified()))
     profiler_logger.info("DATAFILE '{}'".format(args.datafile))
