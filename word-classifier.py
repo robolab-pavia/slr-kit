@@ -258,8 +258,8 @@ def init_argparser():
                         help="input CSV data file")
     parser.add_argument('--dry-run', action='store_false', dest='dry_run',
                         help='do not write the results on exit')
-    parser.add_argument('--review', '-r', metavar='LABEL',
-                        help='review the specified label')
+    parser.add_argument('--input', '-i', metavar='LABEL',
+                        help='input only the terms classified with the specified label')
     return parser
 
 
@@ -565,12 +565,12 @@ def main():
     debug_logger = setup_logger('debug_logger', 'slr-kit.log',
                                 level=logging.DEBUG)
 
-    if args.review is not None:
+    if args.input is not None:
         try:
-            review = WordClass.get_from_classname(args.review)
+            review = WordClass.get_from_classname(args.input)
         except ValueError:
-            debug_logger.error('{} is not a valid label'.format(args.review))
-            sys.exit('Error: {} is not a valid label'.format(args.review))
+            debug_logger.error('{} is not a valid label'.format(args.input))
+            sys.exit('Error: {} is not a valid label'.format(args.input))
     else:
         review = WordClass.NONE
 
