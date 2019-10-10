@@ -463,13 +463,19 @@ def curses_main(scr, words, datafile, review, logger=None, profiler=None):
         if win in ['__WORDS', '__STATS']:
             continue
 
-        if win != review.classname:
-            # in review mode we must skip the window associated with the label
-            # review
+        if win == review.classname:
+            # in review mode we must add to the window associated with the label
+            # review only the items in confirmed (if any)
+            conf_word = [w for w in words.items if w.word in confirmed]
+            windows[win].assign_lines(conf_word)
+        else:
             windows[win].assign_lines(words.items)
 
-    # in review mode last_word will be None because we already reset the order
-    last_word = words.get_last_inserted_word()
+    if review == WordClass.NONE:
+        last_word = words.get_last_inserted_word()
+    else:
+        last_word = None
+
     if last_word is None:
         refresh_class_windows('', WordClass.NONE, windows)
         related_items_count = 0
@@ -477,7 +483,10 @@ def curses_main(scr, words, datafile, review, logger=None, profiler=None):
         if review != WordClass.NONE:
             # review mode
             # FIXME: better way?
-            lines = [w.word for w in words.items if w.group == review]
+            lines = []
+            for w in words.items:
+                if w.group == review and w.word not in confirmed:
+                    lines.append(w.word)
         else:
             lines = [w.word for w in words.items if not w.is_grouped()]
     else:
