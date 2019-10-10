@@ -2,7 +2,9 @@ import argparse
 import csv
 import curses
 import enum
+import json
 import logging
+import os
 import sys
 from dataclasses import dataclass
 
@@ -555,6 +557,24 @@ def main():
     profiler_logger.info("DATAFILE '{}'".format(args.datafile))
     profiler_logger.info("*** PROGRAM TERMINATED ***")
     curses.endwin()
+
+    if review != WordClass.NONE:
+        # ending review mode we must save some info
+        confirmed = []
+        for w in words.items:
+            if w.group == review and w.order is not None:
+                confirmed.append(w.word)
+
+        data = {'label': review.classname,
+                'confirmed': confirmed}
+
+        with open('last_review.json', 'w') as fout:
+            json.dump(data, fout)
+    else:
+        if os.path.exists('last_review.json'):
+            # if no review we must delete the previous last_review.json to avoid
+            # problems in future reviews
+            os.unlink('last_review.json')
 
     if args.dry_run:
         words.to_csv(args.datafile)
