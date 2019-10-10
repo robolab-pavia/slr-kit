@@ -427,11 +427,27 @@ def create_windows(win_width, rows):
 
 
 def curses_main(scr, words, datafile, review, logger=None, profiler=None):
+    confirmed = []
     if review != WordClass.NONE:
-        # review mode: reset order and related
+        # review mode: retrieve some info and reset order and related
+        try:
+            with open('last_review.json') as fin:
+                data = json.load(fin)
+                if review.classname == data['label']:
+                    confirmed = data['confirmed']
+                # else: last review was about another label so confirmed must be
+                # empty: nothing to do
+        except FileNotFoundError:
+            # no last review so confirmed must be empty: nothing to do
+            pass
+
         # FIXME: method in WordList
         for w in words.items:
-            w.order = None
+            if w.word in confirmed:
+                w.order = 0
+            else:
+                w.order = None
+
             w.related = ''
 
     stdscr = init_curses()
