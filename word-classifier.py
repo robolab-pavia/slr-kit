@@ -363,7 +363,7 @@ def refresh_class_windows(evaluated_word, klass, windows):
 def undo(words, review, sort_word_key, related_items_count, windows, logger,
          profiler):
     last_word = words.get_last_inserted_word()
-    if last_word is None:
+    if last_word is None or last_word.group == review:
         return related_items_count, sort_word_key
 
     group = last_word.group
