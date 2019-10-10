@@ -580,7 +580,11 @@ def main():
     _, _ = words.from_csv(args.datafile)
     profiler_logger.info("CLASSIFIED: {}".format(words.count_classified()))
     if review != WordClass.NONE:
-        profiler_logger.info("REVIEW: {}".format(review.classname))
+        label = review.classname
+    else:
+        label = 'NONE'
+
+    profiler_logger.info("INPUT LABEL: {}".format(label))
 
     curses.wrapper(curses_main, words, args.datafile, review,
                    logger=debug_logger, profiler=profiler_logger)
