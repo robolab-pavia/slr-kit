@@ -181,7 +181,7 @@ class Win(object):
         if show_title:
             self.y = y + 1
             self.win_title = curses.newwin(1, self.cols, y, self.x)
-            self.win_title.addstr(self.title)
+            self.win_title.addstr(' {}'.format(self.title))
         else:
             self.y = y
             self.win_title = None
