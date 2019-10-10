@@ -412,7 +412,7 @@ def undo(words, review, sort_word_key, related_items_count, windows, logger,
     return related_items_count, sort_word_key
 
 
-def create_windows(win_width, rows):
+def create_windows(win_width, rows, review):
     windows = dict()
     win_classes = [WordClass.KEYWORD, WordClass.RELEVANT, WordClass.NOISE,
                    WordClass.NOT_RELEVANT, WordClass.POSTPONED]
@@ -421,7 +421,14 @@ def create_windows(win_width, rows):
                                      rows=rows, cols=win_width, y=(rows + 1) * i,
                                      x=0, show_title=True)
 
-    windows['__WORDS'] = Win(None, rows=27, cols=win_width, y=9, x=win_width)
+    title = 'Input label: {}'
+    if review == WordClass.NONE:
+        title = title.format('None')
+    else:
+        title = title.format(review.classname.capitalize())
+
+    windows['__WORDS'] = Win(None, title=title, rows=27, cols=win_width, y=9,
+                             x=win_width, show_title=True)
     windows['__STATS'] = Win(None, rows=9, cols=win_width, y=0, x=win_width)
     return windows
 
@@ -455,7 +462,7 @@ def curses_main(scr, words, datafile, review, logger=None, profiler=None):
     rows = 8
 
     # define windows
-    windows = create_windows(win_width, rows)
+    windows = create_windows(win_width, rows, review)
 
     curses.ungetch(' ')
     _ = stdscr.getch()
