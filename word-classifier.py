@@ -499,6 +499,9 @@ def curses_main(scr, words, datafile, review, logger=None, profiler=None):
     else:
         refresh_class_windows(last_word.word, last_word.group, windows)
         sort_word_key = last_word.related
+        if sort_word_key == '':
+            sort_word_key = last_word.word
+
         containing, not_containing = words.return_related_items(sort_word_key)
         related_items_count = len(containing)
         lines = containing
