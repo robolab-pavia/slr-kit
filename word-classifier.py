@@ -119,10 +119,10 @@ def avg_or_zero(num, den):
 def get_stats_strings(words, related_items_count=0):
     stats_strings = []
     n_completed = words.count_classified()
-    n_keywords = words.count_by_class(Label.KEYWORD)
-    n_noise = words.count_by_class(Label.NOISE)
-    n_not_relevant = words.count_by_class(Label.NOT_RELEVANT)
-    n_later = words.count_by_class(Label.POSTPONED)
+    n_keywords = words.count_by_label(Label.KEYWORD)
+    n_noise = words.count_by_label(Label.NOISE)
+    n_not_relevant = words.count_by_label(Label.NOT_RELEVANT)
+    n_later = words.count_by_label(Label.POSTPONED)
     stats_strings.append('Total words:  {:7}'.format(len(words.items)))
     avg = avg_or_zero(n_completed, len(words.items))
     stats_strings.append('Completed:    {:7} ({:6.2f}%)'.format(n_completed,

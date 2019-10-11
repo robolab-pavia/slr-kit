@@ -269,8 +269,17 @@ class WordList(object):
     def count_classified(self):
 
         return len([item for item in self.items if item.is_classified()])
-    def count_by_class(self, cls):
-        return len([w for w in self.items if w.group == cls])
+
+    def count_by_label(self, label):
+        """
+        Counts the terms classified as label
+
+        :param label: the label to search
+        :type label: Label
+        :return: the number of terms classified as label
+        :rtype: int
+        """
+        return len([w for w in self.items if w.group == label])
 
     @staticmethod
     def _word_contains(string, substring):
