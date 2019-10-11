@@ -267,7 +267,12 @@ class WordList(object):
         return containing, not_containing
 
     def count_classified(self):
+        """
+        Counts the classified terms
 
+        :return: the number of classified terms
+        :rtype: int
+        """
         return len([item for item in self.items if item.is_classified()])
 
     def count_by_label(self, label):
