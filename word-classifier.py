@@ -292,7 +292,7 @@ def curses_main(scr, words, args, review, logger=None, profiler=None):
             if w.word in confirmed:
                 w.order = 0
             else:
-                w.order = None
+                w.order = -1
 
             w.related = ''
 
