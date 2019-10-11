@@ -87,11 +87,30 @@ class Word:
 
 
 class WordList(object):
+    """
+    :type items: list[Word] or None
+    :type csv_header: list[str] or None
+    """
+
     def __init__(self, items=None):
+        """
+        Creates a TermList
+
+        :param items: a list of Term to be included in self. Default: None
+        :type items: list[Word] or None
+        """
         self.items = items
         self.csv_header = None
 
     def from_csv(self, infile):
+        """
+        Gets the terms from a csv file
+
+        :param infile: path to the csv file to read
+        :type infile: str
+        :return: the csv header and the list of terms read by the file
+        :rtype: (list[str], list[Word])
+        """
         with open(infile, newline='') as csv_file:
             csv_reader = csv.DictReader(csv_file, delimiter=',')
             header = csv_reader.fieldnames
@@ -127,6 +146,12 @@ class WordList(object):
         return header, items
 
     def to_csv(self, outfile):
+        """
+        Saves the terms in a csv file
+
+        :param outfile: path to the csv file to write the terms
+        :type outfile: str
+        """
         with open(outfile, mode='w') as out:
             writer = csv.DictWriter(out, fieldnames=self.csv_header,
                                     delimiter=',', quotechar='"',
@@ -159,6 +184,12 @@ class WordList(object):
         return order
 
     def get_last_classified_word(self):
+        """
+        Finds the last classified term
+
+        :return: the last classified term
+        :rtype: Word
+        """
         last = self.get_last_classified_order()
         for w in self.items:
             if w.order == last:
@@ -176,11 +207,26 @@ class WordList(object):
 
         return self
 
-    def return_related_items(self, key):
+    def return_related_items(self, key, label=Label.NONE):
+        """
+        Searches related items in self and returns the resulting partition
+
+        This method splits self.items in two list: the first one with all the
+        strings that contains the substring key; the second one with all the
+        strings that not contain key.
+        Only the terms with the specified label are considered.
+        The method returns two lists of strings.
+        :param key: the substring to find in the terms in self.items
+        :type key: str
+        :param label: label to consider
+        :type label: Label
+        :return: the partition of the items in self based on key
+        :rtype: (list[str], list[str])
+        """
         containing = []
         not_containing = []
         for w in self.items:
-            if w.is_grouped():
+            if w.group != label or w.order is not None:
                 continue
 
             if self._word_contains(w.word, key):
