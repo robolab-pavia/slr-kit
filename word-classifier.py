@@ -28,7 +28,7 @@ class Win(object):
         Creates a window
 
         :param label: label associated to the windows
-        :type label: Label
+        :type label: Label or None
         :param title: title of window. Default: empty string
         :type title: str
         :param rows: number of rows
@@ -271,7 +271,7 @@ def do_classify(klass, words, review, evaluated_term, sort_word_key,
     :rtype: (str, int)
     """
     windows[klass.name].lines.append(evaluated_term)
-    refresh_class_windows(evaluated_term, klass, windows)
+    refresh_label_windows(evaluated_term, klass, windows)
 
     words.classify_term(evaluated_term, klass,
                         words.get_last_classified_order() + 1, sort_word_key)
