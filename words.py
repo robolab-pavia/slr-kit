@@ -82,7 +82,13 @@ class Word:
     order: int
     related: str
 
-    def is_grouped(self):
+    def is_classified(self):
+        """
+        Tells if a Term is classified or not
+
+        :return: True if the Term is classified, False otherwise
+        :rtype: bool
+        """
         return self.group != Label.NONE
 
 
