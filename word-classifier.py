@@ -334,7 +334,7 @@ def curses_main(scr, words, args, review, logger=None, profiler=None):
                 if w.group == review and w.word not in confirmed:
                     lines.append(w.word)
         else:
-            lines = [w.word for w in words.items if not w.is_grouped()]
+            lines = [w.word for w in words.items if not w.is_classified()]
     else:
         refresh_class_windows(last_word.word, last_word.group, windows)
         sort_word_key = last_word.related
@@ -395,6 +395,7 @@ def curses_main(scr, words, args, review, logger=None, profiler=None):
         elif c == 'q':
             # quit
             break
+
         windows['__STATS'].lines = get_stats_strings(words, related_items_count)
         windows['__STATS'].display_lines(rev=False)
 
