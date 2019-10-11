@@ -148,7 +148,12 @@ def setup_logger(name, log_file, formatter=logging.Formatter('%(asctime)s %(leve
 
 
 def init_argparser():
-    """Initialize the command line parser."""
+    """
+    Initialize the command line parser.
+
+    :return: the command line parser
+    :rtype: argparse.ArgumentParser
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('datafile', action="store", type=str,
                         help="input CSV data file")
@@ -164,7 +169,14 @@ def init_argparser():
 
 
 def avg_or_zero(num, den):
-    """Safely calculates an average, returning 0 if no elements are present."""
+    """
+    Safely calculates an average, returning 0 if no elements are present.
+
+    :param num: numerator
+    :type num: int
+    :param den: denominator
+    :type den: int
+    """
     if den > 0:
         avg = 100 * num / den
     else:
@@ -174,6 +186,16 @@ def avg_or_zero(num, den):
 
 
 def get_stats_strings(words, related_items_count=0):
+    """
+    Calculates the statistics and formats them into strings
+
+    :param words: the list of terms
+    :type words: WordList
+    :param related_items_count: the current number of related term
+    :type related_items_count: int
+    :return: the statistics about words formatted as strings
+    :rtype: list[str]
+    """
     stats_strings = []
     n_completed = words.count_classified()
     n_keywords = words.count_by_label(Label.KEYWORD)
@@ -206,6 +228,12 @@ def get_stats_strings(words, related_items_count=0):
 
 
 def init_curses():
+    """
+    Initialize curses
+
+    :return: the screen object
+    :rtype: _curses.window
+    """
     # create stdscr
     stdscr = curses.initscr()
     stdscr.clear()
@@ -222,6 +250,26 @@ def init_curses():
 
 def do_classify(klass, words, review, evaluated_term, sort_word_key,
                 related_items_count, windows):
+    """
+    Handle the term classification process of the evaluated_term
+
+    :param klass: label to be assigned to the evaluated_term
+    :type klass: Label
+    :param words: the list of terms
+    :type words: WordList
+    :param review: label under review
+    :type review: Label
+    :param evaluated_term: term to classify
+    :type evaluated_term: str
+    :param sort_word_key: actual term used for the related terms
+    :type sort_word_key: str
+    :param related_items_count: actual number of related terms
+    :type related_items_count: int
+    :param windows: dict of the windows
+    :type windows: dict[str, Win]
+    :return: the new sort_word_key and the new number of related terms
+    :rtype: (str, int)
+    """
     windows[klass.name].lines.append(evaluated_term)
     refresh_class_windows(evaluated_term, klass, windows)
 
@@ -257,7 +305,27 @@ def refresh_class_windows(evaluated_word, klass, windows):
 
 def undo(words, review, sort_word_key, related_items_count, windows, logger,
          profiler):
-    last_word = words.get_last_inserted_word()
+    """
+    Handle the undo of a term
+
+    :param words: the list of terms
+    :type words: WordList
+    :param review: label under review
+    :type review: Label
+    :param sort_word_key: actual term used for the related terms
+    :type sort_word_key: str
+    :param related_items_count: actual number of related terms
+    :type related_items_count: int
+    :param windows: dict of the windows
+    :type windows: dict[str, Win]
+    :param logger: debug logger
+    :type logger: logging.Logger
+    :param profiler: profiling logger
+    :type profiler: logging.Logger
+    :return: the new sort_word_key and the new number of related terms
+    :rtype: (str, int)
+    """
+    last_word = words.get_last_classified_word()
     if last_word is None or last_word.group == review:
         return related_items_count, sort_word_key
 
@@ -308,6 +376,18 @@ def undo(words, review, sort_word_key, related_items_count, windows, logger,
 
 
 def create_windows(win_width, rows, review):
+    """
+    Creates all the windows
+
+    :param win_width: number of columns of each windows
+    :type win_width: int
+    :param rows: number of row of each windows
+    :type rows: int
+    :param review: label to review
+    :type review: Label
+    :return: the dict of the windows
+    :rtype: dict[str, _curses.window]
+    """
     windows = dict()
     win_classes = [Label.KEYWORD, Label.RELEVANT, Label.NOISE,
                    Label.NOT_RELEVANT, Label.POSTPONED]
@@ -329,6 +409,22 @@ def create_windows(win_width, rows, review):
 
 
 def curses_main(scr, words, args, review, logger=None, profiler=None):
+    """
+    Main loop
+
+    :param scr: main window (the entire screen). It is passed by curses
+    :type scr: _curses.window
+    :param words: list of terms
+    :type words: WordList
+    :param args: command line arguments
+    :type args: argparse.Namespace
+    :param review: label to review if any
+    :type review: Label
+    :param logger: debug logger. Default: None
+    :type logger: logging.Logger or None
+    :param profiler: profiler logger. Default None
+    :type profiler: logging.Logger or None
+    """
     datafile = args.datafile
     confirmed = []
     if review != Label.NONE:
@@ -461,6 +557,9 @@ def curses_main(scr, words, args, review, logger=None, profiler=None):
 
 
 def main():
+    """
+    Main function
+    """
     parser = init_argparser()
     args = parser.parse_args()
 
