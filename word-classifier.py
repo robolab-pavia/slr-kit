@@ -292,12 +292,22 @@ def do_classify(klass, words, review, evaluated_term, sort_word_key,
     return related_items_count, sort_word_key
 
 
-def refresh_class_windows(evaluated_word, klass, windows):
+def refresh_label_windows(term_to_highlight, label, windows):
+    """
+    Refresh the windows associated with a label
+
+    :param term_to_highlight: the term to highlight
+    :type term_to_highlight: str
+    :param label: label of the window that has to highlight the term
+    :type label: Label
+    :param windows: dict of the wondows
+    :type windows: dict[str, Win]
+    """
     for win in windows:
         if win in ['__WORDS', '__STATS']:
             continue
-        if win == klass.name:
-            windows[win].display_lines(rev=True, highlight_word=evaluated_word,
+        if win == label.name:
+            windows[win].display_lines(rev=True, highlight_word=term_to_highlight,
                                        color_pair=2)
         else:
             windows[win].display_lines(rev=True)
@@ -342,10 +352,10 @@ def undo(words, review, sort_word_key, related_items_count, windows, logger,
         win.lines.remove(last_word.word)
         prev_last_word = words.get_last_classified_word()
         if prev_last_word is not None:
-            refresh_class_windows(prev_last_word.word, prev_last_word.group,
+            refresh_label_windows(prev_last_word.word, prev_last_word.group,
                                   windows)
         else:
-            refresh_class_windows('', Label.NONE, windows)
+            refresh_label_windows('', Label.NONE, windows)
     except KeyError:
         pass  # if here the word is not in a window so nothing to do
 
@@ -476,7 +486,7 @@ def curses_main(scr, words, args, review, logger=None, profiler=None):
         last_word = None
 
     if last_word is None:
-        refresh_class_windows('', Label.NONE, windows)
+        refresh_label_windows('', Label.NONE, windows)
         related_items_count = 0
         sort_word_key = ''
         if review != Label.NONE:
@@ -489,7 +499,7 @@ def curses_main(scr, words, args, review, logger=None, profiler=None):
         else:
             lines = [w.word for w in words.items if not w.is_classified()]
     else:
-        refresh_class_windows(last_word.word, last_word.group, windows)
+        refresh_label_windows(last_word.word, last_word.group, windows)
         sort_word_key = last_word.related
         if sort_word_key == '':
             sort_word_key = last_word.word
@@ -533,7 +543,7 @@ def curses_main(scr, words, args, review, logger=None, profiler=None):
                                 sort_word_key)
             windows['__WORDS'].lines = windows['__WORDS'].lines[1:]
             windows[Label.POSTPONED.name].lines.append(evaluated_word)
-            refresh_class_windows(evaluated_word, Label.POSTPONED, windows)
+            refresh_label_windows(evaluated_word, Label.POSTPONED, windows)
             related_items_count -= 1
         elif c == 'w':
             # write to file
