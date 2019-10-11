@@ -15,6 +15,9 @@ class Label(enum.Enum):
     In Label member creation the tuple is (name, default_key)
     In the definition below the NONE Label is provided to 'classify' an
     un-marked word.
+
+    :type name: str
+    :type key: str
     """
     NONE = ('', '')
     KEYWORD = ('keyword', 'k')
