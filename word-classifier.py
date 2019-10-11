@@ -8,11 +8,41 @@ from words import Label, WordList
 
 
 class Win(object):
-    """Contains the list of lines to display."""
+    """
+    Contains the list of lines to display.
 
-    def __init__(self, group, title='', rows=3, cols=30, y=0, x=0,
+    :type label: Label or None
+    :type title: str
+    :type rows: int
+    :type cols: int
+    :type y: int
+    :type x: int
+    :type win_title: _curses.window or None
+    :type win_handler: _curses.window
+    :type lines: list[str]
+    """
+
+    def __init__(self, label, title='', rows=3, cols=30, y=0, x=0,
                  show_title=False):
-        self.group = group
+        """
+        Creates a window
+
+        :param label: label associated to the windows
+        :type label: Label
+        :param title: title of window. Default: empty string
+        :type title: str
+        :param rows: number of rows
+        :type rows: int
+        :param cols: number of columns
+        :type cols: int
+        :param y: y coordinate
+        :type y: int
+        :param x: x coordinate
+        :type x: int
+        :param show_title: if True the window must show its title. Default: False
+        :type show_title: bool
+        """
+        self.group = label
         self.title = title
         self.rows = rows
         self.cols = cols
@@ -31,6 +61,16 @@ class Win(object):
         self.lines = []
 
     def display_lines(self, rev=True, highlight_word='', color_pair=1):
+        """
+        Display the lines associated to the window
+
+        :param rev: if True, display lines in reversed order. Default: True
+        :type rev: bool
+        :param highlight_word: the word to highlight. Default: empty string
+        :type highlight_word: str
+        :param color_pair: the curses color pair to use to hightlight. Default 1
+        :type color_pair: int
+        """
         if rev:
             word_list = reversed(self.lines)
         else:
@@ -74,14 +114,31 @@ class Win(object):
         if self.win_title is not None:
             self.win_title.refresh()
 
-    def assign_lines(self, lines):
-        self.lines = [w.word for w in lines if w.group == self.group]
-        # print(self.lines)
+    def assign_lines(self, terms):
+        """
+        Assign the terms in terms with the same label as the window
+        :param terms: the terms list
+        :type terms: list[Word]
+        """
+        self.lines = [w.word for w in terms if w.group == self.group]
 
 
 def setup_logger(name, log_file, formatter=logging.Formatter('%(asctime)s %(levelname)s %(message)s'),
                  level=logging.INFO):
-    """Function to setup a generic loggers."""
+    """
+    Function to setup a generic loggers.
+
+    :param name: name of the logger
+    :type name: str
+    :param log_file: file of the log
+    :type log_file: str
+    :param formatter: formatter to be used by the logger
+    :type formatter: logging.Formatter
+    :param level: level to display
+    :type level: int
+    :return: the logger
+    :rtype: logging.Logger
+    """
     handler = logging.FileHandler(log_file)
     handler.setFormatter(formatter)
     logger = logging.getLogger(name)
