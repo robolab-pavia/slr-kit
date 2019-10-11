@@ -259,7 +259,7 @@ class WordList(object):
             if w.group != label or w.order is not None:
                 continue
 
-            if self._word_contains(w.word, key):
+            if self._str_contains(w.word, key):
                 containing.append(w.word)
             else:
                 not_containing.append(w.word)
@@ -282,5 +282,15 @@ class WordList(object):
         return len([w for w in self.items if w.group == label])
 
     @staticmethod
-    def _word_contains(string, substring):
+    def _str_contains(string, substring):
+        """
+        Tells if string contains substring
+
+        :param string: the string to analize
+        :type string: str
+        :param substring: the substring to search
+        :type substring: str
+        :return: True if string contains substring
+        :rtype: bool
+        """
         return any([substring == word for word in string.split()])
