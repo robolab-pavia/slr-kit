@@ -256,10 +256,14 @@ def init_argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument('datafile', action="store", type=str,
                         help="input CSV data file")
-    parser.add_argument('--dry-run', action='store_false', dest='dry_run',
-                        help='do not write the results on exit')
     parser.add_argument('--input', '-i', metavar='LABEL',
                         help='input only the terms classified with the specified label')
+    parser.add_argument('--dry-run', action='store_true', dest='dry_run',
+                        help='do not write the results on exit')
+    parser.add_argument('--no-auto-save', action='store_true', dest='no_auto_save',
+                        help='disable auto-saving; save changes at the end of the session')
+    parser.add_argument('--no-profile', action='store_true', dest='no_profile',
+                        help='disable profiling logging')
     return parser
 
 
@@ -433,7 +437,8 @@ def create_windows(win_width, rows, review):
     return windows
 
 
-def curses_main(scr, words, datafile, review, logger=None, profiler=None):
+def curses_main(scr, words, args, review, logger=None, profiler=None):
+    datafile = args.datafile
     confirmed = []
     if review != WordClass.NONE:
         # review mode: retrieve some info and reset order and related
@@ -559,14 +564,23 @@ def curses_main(scr, words, datafile, review, logger=None, profiler=None):
         windows['__STATS'].lines = get_stats_strings(words, related_items_count)
         windows['__STATS'].display_lines(rev=False)
 
+        if not args.dry_run and not args.no_auto_save:
+            words.to_csv(datafile)
+
 
 def main():
     parser = init_argparser()
     args = parser.parse_args()
 
-    profiler_logger = setup_logger('profiler_logger', 'profiler.log')
+    if args.no_profile:
+        profile_log_level = logging.CRITICAL
+    else:
+        profile_log_level = logging.INFO
+
+    profiler_logger = setup_logger('profiler_logger', 'profiler.log',
+            level=profile_log_level)
     debug_logger = setup_logger('debug_logger', 'slr-kit.log',
-                                level=logging.DEBUG)
+            level=logging.DEBUG)
 
     if args.input is not None:
         try:
@@ -589,7 +603,7 @@ def main():
 
     profiler_logger.info("INPUT LABEL: {}".format(label))
 
-    curses.wrapper(curses_main, words, args.datafile, review,
+    curses.wrapper(curses_main, words, args, review,
                    logger=debug_logger, profiler=profiler_logger)
 
     profiler_logger.info("CLASSIFIED: {}".format(words.count_classified()))
@@ -615,7 +629,7 @@ def main():
             # problems in future reviews
             os.unlink('last_review.json')
 
-    if args.dry_run:
+    if not args.dry_run:
         words.to_csv(args.datafile)
 
 
