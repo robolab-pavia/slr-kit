@@ -203,10 +203,34 @@ class WordList(object):
         else:
             return None
 
-    def mark_word(self, word, marker, order, related=''):
+    def classify_term(self, term, label, order, related=''):
+        """
+        Classifies a term
+
+        This method adds label, classification order and related term to the
+        Term in self.items that represents the string term.
+        term is the string representation of the Term that will be classified.
+        The method searches a Term t in self.items such that t.term == term.
+        order must be an int. An int less than 0 indicates no classification
+        order.
+        related is a string indicating the active related term at the moment of
+        classification. It defaults to the empty string.
+        This method return self.
+
+        :param term: the term to classify
+        :type term: str
+        :param label: the Label to be assigned to the term
+        :type label: Label
+        :param order: the classification order
+        :type order: int
+        :param related: related term (if any). Default: ''
+        :type related: str
+        :return: self
+        :rtype: WordList
+        """
         for w in self.items:
-            if w.word == word:
-                w.group = marker
+            if w.word == term:
+                w.group = label
                 w.order = order
                 w.related = related
                 break

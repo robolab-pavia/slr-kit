@@ -163,16 +163,16 @@ def init_curses():
     return stdscr
 
 
-def do_classify(klass, words, review, evaluated_word, sort_word_key,
+def do_classify(klass, words, review, evaluated_term, sort_word_key,
                 related_items_count, windows):
-    windows[klass.name].lines.append(evaluated_word)
-    refresh_class_windows(evaluated_word, klass, windows)
+    windows[klass.name].lines.append(evaluated_term)
+    refresh_class_windows(evaluated_term)
 
-    words.mark_word(evaluated_word, klass,
-                    words.get_last_classified_order() + 1, sort_word_key)
+    words.classify_term(evaluated_term, klass,
+                        words.get_last_classified_order() + 1, sort_word_key)
 
     if related_items_count <= 0:
-        sort_word_key = evaluated_word
+        sort_word_key = evaluated_term
 
     containing, not_containing = words.return_related_items(sort_word_key,
                                                             label=review)
@@ -210,7 +210,7 @@ def undo(words, review, sort_word_key, related_items_count, windows, logger,
                                                      group,
                                                      last_word.order))
     # un-mark last_word
-    words.classify_term(last_word.word, Label.NONE, -1)
+    words.classify_term(last_word.word, review, -1)
     # remove last_word from the window that actually contains it
     try:
         win = windows[group.name]
@@ -375,9 +375,9 @@ def curses_main(scr, words, args, review, logger=None, profiler=None):
         elif c == 'p':
             profiler.info("WORD '{}' POSTPONED".format(evaluated_word))
             # classification: POSTPONED
-            words.mark_word(evaluated_word, Label.POSTPONED,
-                            words.get_last_classified_order() + 1,
-                            sort_word_key)
+            words.classify_term(evaluated_word, Label.POSTPONED,
+                                words.get_last_classified_order() + 1,
+                                sort_word_key)
             windows['__WORDS'].lines = windows['__WORDS'].lines[1:]
             windows[Label.POSTPONED.name].lines.append(evaluated_word)
             refresh_class_windows(evaluated_word, Label.POSTPONED, windows)
@@ -412,9 +412,9 @@ def main():
         profile_log_level = logging.INFO
 
     profiler_logger = setup_logger('profiler_logger', 'profiler.log',
-            level=profile_log_level)
+                                   level=profile_log_level)
     debug_logger = setup_logger('debug_logger', 'slr-kit.log',
-            level=logging.DEBUG)
+                                level=logging.DEBUG)
 
     if args.input is not None:
         try:
