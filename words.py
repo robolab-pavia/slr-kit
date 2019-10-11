@@ -267,8 +267,8 @@ class WordList(object):
         return containing, not_containing
 
     def count_classified(self):
-        return len([item for item in self.items if item.is_grouped()])
 
+        return len([item for item in self.items if item.is_classified()])
     def count_by_class(self, cls):
         return len([w for w in self.items if w.group == cls])
 
