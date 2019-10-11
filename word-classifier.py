@@ -166,7 +166,7 @@ def init_curses():
 def do_classify(klass, words, review, evaluated_term, sort_word_key,
                 related_items_count, windows):
     windows[klass.name].lines.append(evaluated_term)
-    refresh_class_windows(evaluated_term)
+    refresh_class_windows(evaluated_term, klass, windows)
 
     words.classify_term(evaluated_term, klass,
                         words.get_last_classified_order() + 1, sort_word_key)
