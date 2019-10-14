@@ -258,7 +258,7 @@ class WordList(object):
         containing = []
         not_containing = []
         for w in self.items:
-            if w.group != label or w.order is not None:
+            if w.group != label or w.order >= 0:
                 continue
 
             if self._str_contains(w.word, key):

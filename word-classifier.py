@@ -616,7 +616,7 @@ def main():
         # ending review mode we must save some info
         confirmed = []
         for w in words.items:
-            if w.group == review and w.order is not None:
+            if w.group == review and w.order >= 0:
                 confirmed.append(w.word)
 
         data = {'label': review.label_name,
