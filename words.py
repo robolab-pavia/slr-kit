@@ -194,9 +194,11 @@ class WordList(object):
         Finds the last classified term
 
         :return: the last classified term
-        :rtype: Word
+        :rtype: Word or None
         """
         last = self.get_last_classified_order()
+        if last < 0:
+            return None
         for w in self.items:
             if w.order == last:
                 return w
