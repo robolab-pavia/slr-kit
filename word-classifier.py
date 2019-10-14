@@ -75,44 +75,58 @@ class Win(object):
             word_list = reversed(self.lines)
         else:
             word_list = self.lines
+
         i = 0
         for w in word_list:
-            trunc_w = w[:self.cols - 2]
-            if highlight_word == '':
-                self.win_handler.addstr(i + 1, 1, trunc_w + ' ' * (self.cols - 2 - len(trunc_w)))
-            else:
-                if w == highlight_word:
-                    self.win_handler.addstr(i + 1, 1,
-                                            trunc_w + ' ' * (self.cols - 2 - len(trunc_w)),
-                                            curses.color_pair(color_pair))
-                else:
-                    tok = w.split(highlight_word)
-                    if len(tok) == 1:
-                        # no highlight_word found
-                        self.win_handler.addstr(i + 1, 1,
-                                                trunc_w + ' ' * (self.cols - 2 - len(trunc_w)))
-                    else:
-                        self.win_handler.addstr(i + 1, 1, '')
-                        line = ''
-                        for t in tok:
-                            line += t
-                            line += highlight_word
-                            self.win_handler.addstr(t)
-                            self.win_handler.addstr(highlight_word,
-                                                    curses.color_pair(color_pair))
-
-                        self.win_handler.addstr(i + 1, len(trunc_w) + 1,
-                                                ' ' * (self.cols - 2 - len(trunc_w)))
-            i += 1
             if i >= self.rows - 2:
                 break
+
+            self._display_line(w, highlight_word, i, color_pair)
+            i += 1
+
         while i < self.rows - 2:
             self.win_handler.addstr(i + 1, 1, ' ' * (self.cols - 2))
             i += 1
+
         self.win_handler.border()
         self.win_handler.refresh()
         if self.win_title is not None:
             self.win_title.refresh()
+
+    def _display_line(self, line, highlight_word, line_index, color_pair):
+        """
+        Display a single line in a window taking care of the word highlighting
+
+        :param line: the line to display
+        :type line: str
+        :param highlight_word: the word to highlight
+        :type highlight_word: str
+        :param line_index: index of the line to display
+        :type line_index: int
+        :param color_pair: color pair for highlight
+        :type color_pair: int
+        """
+        trunc_w = line[:self.cols - 2]
+        l_trunc_w = len(trunc_w)
+        pad = ' ' * (self.cols - 2 - l_trunc_w)
+        if highlight_word == '':
+            self.win_handler.addstr(line_index + 1, 1, trunc_w + pad)
+        elif line == highlight_word:
+            self.win_handler.addstr(line_index + 1, 1, trunc_w + pad,
+                                    curses.color_pair(color_pair))
+        else:
+            tok = line.split(highlight_word)
+            if len(tok) == 1:
+                # no highlight_word found
+                self.win_handler.addstr(line_index + 1, 1, trunc_w + pad)
+            else:
+                self.win_handler.addstr(line_index + 1, 1, '')
+                for t in tok:
+                    self.win_handler.addstr(t)
+                    self.win_handler.addstr(highlight_word,
+                                            curses.color_pair(color_pair))
+
+                self.win_handler.addstr(line_index + 1, l_trunc_w + 1, pad)
 
     def assign_lines(self, terms):
         """
