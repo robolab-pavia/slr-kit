@@ -60,7 +60,8 @@ class Win(object):
         self.win_handler.refresh()
         self.lines = []
 
-    def display_lines(self, rev=True, highlight_word='', color_pair=1):
+    def display_lines(self, rev=True, highlight_word='', only_the_word=False,
+                      color_pair=1):
         """
         Display the lines associated to the window
 
@@ -68,6 +69,8 @@ class Win(object):
         :type rev: bool
         :param highlight_word: the word to highlight. Default: empty string
         :type highlight_word: str
+        :param only_the_word: if True only highlight_word is highlighted.
+        :type only_the_word: bool
         :param color_pair: the curses color pair to use to hightlight. Default 1
         :type color_pair: int
         """
@@ -81,7 +84,7 @@ class Win(object):
             if i >= self.rows - 2:
                 break
 
-            self._display_line(w, highlight_word, i, color_pair)
+            self._display_line(w, highlight_word, only_the_word, i, color_pair)
             i += 1
 
         while i < self.rows - 2:
@@ -93,7 +96,8 @@ class Win(object):
         if self.win_title is not None:
             self.win_title.refresh()
 
-    def _display_line(self, line, highlight_word, line_index, color_pair):
+    def _display_line(self, line, highlight_word, only_word, line_index,
+                      color_pair):
         """
         Display a single line in a window taking care of the word highlighting
 
@@ -101,6 +105,8 @@ class Win(object):
         :type line: str
         :param highlight_word: the word to highlight
         :type highlight_word: str
+        :param only_word: if True, highlight only highlight_word
+        :type only_word: bool
         :param line_index: index of the line to display
         :type line_index: int
         :param color_pair: color pair for highlight
@@ -109,7 +115,8 @@ class Win(object):
         trunc_w = line[:self.cols - 2]
         l_trunc_w = len(trunc_w)
         pad = ' ' * (self.cols - 2 - l_trunc_w)
-        if highlight_word == '':
+        flag = line != highlight_word and only_word
+        if highlight_word == '' or flag:
             self.win_handler.addstr(line_index + 1, 1, trunc_w + pad)
         elif line == highlight_word:
             self.win_handler.addstr(line_index + 1, 1, trunc_w + pad,
@@ -321,7 +328,9 @@ def refresh_label_windows(term_to_highlight, label, windows):
         if win in ['__WORDS', '__STATS']:
             continue
         if win == label.label_name:
-            windows[win].display_lines(rev=True, highlight_word=term_to_highlight,
+            windows[win].display_lines(rev=True,
+                                       highlight_word=term_to_highlight,
+                                       only_the_word=True,
                                        color_pair=2)
         else:
             windows[win].display_lines(rev=True)
