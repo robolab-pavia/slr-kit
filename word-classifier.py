@@ -270,7 +270,7 @@ def do_classify(klass, words, review, evaluated_term, sort_word_key,
     :return: the new sort_word_key and the new number of related terms
     :rtype: (str, int)
     """
-    windows[klass.name].lines.append(evaluated_term)
+    windows[klass.label_name].lines.append(evaluated_term)
     refresh_label_windows(evaluated_term, klass, windows)
 
     words.classify_term(evaluated_term, klass,
@@ -306,7 +306,7 @@ def refresh_label_windows(term_to_highlight, label, windows):
     for win in windows:
         if win in ['__WORDS', '__STATS']:
             continue
-        if win == label.name:
+        if win == label.label_name:
             windows[win].display_lines(rev=True, highlight_word=term_to_highlight,
                                        color_pair=2)
         else:
@@ -348,7 +348,7 @@ def undo(words, review, sort_word_key, related_items_count, windows, logger,
     words.classify_term(last_word.word, review, -1)
     # remove last_word from the window that actually contains it
     try:
-        win = windows[group.name]
+        win = windows[group.label_name]
         win.lines.remove(last_word.word)
         prev_last_word = words.get_last_classified_word()
         if prev_last_word is not None:
@@ -402,15 +402,15 @@ def create_windows(win_width, rows, review):
     win_classes = [Label.KEYWORD, Label.RELEVANT, Label.NOISE,
                    Label.NOT_RELEVANT, Label.POSTPONED]
     for i, cls in enumerate(win_classes):
-        windows[cls.name] = Win(cls, title=cls.name.capitalize(),
-                                rows=rows, cols=win_width, y=(rows + 1) * i,
-                                x=0, show_title=True)
+        windows[cls.label_name] = Win(cls, title=cls.label_name.capitalize(),
+                                      rows=rows, cols=win_width, y=(rows + 1) * i,
+                                      x=0, show_title=True)
 
     title = 'Input label: {}'
     if review == Label.NONE:
         title = title.format('None')
     else:
-        title = title.format(review.classname.capitalize())
+        title = title.format(review.label_name.capitalize())
 
     windows['__WORDS'] = Win(None, title=title, rows=27, cols=win_width, y=9,
                              x=win_width, show_title=True)
@@ -442,7 +442,7 @@ def curses_main(scr, words, args, review, logger=None, profiler=None):
         try:
             with open('last_review.json') as fin:
                 data = json.load(fin)
-                if review.classname == data['label']:
+                if review.label_name == data['label']:
                     confirmed = data['confirmed']
                 # else: last review was about another label so confirmed must be
                 # empty: nothing to do
@@ -472,7 +472,7 @@ def curses_main(scr, words, args, review, logger=None, profiler=None):
         if win in ['__WORDS', '__STATS']:
             continue
 
-        if win == review.classname:
+        if win == review.label_name:
             # in review mode we must add to the window associated with the label
             # review only the items in confirmed (if any)
             conf_word = [w for w in words.items if w.word in confirmed]
@@ -528,7 +528,7 @@ def curses_main(scr, words, args, review, logger=None, profiler=None):
         if c in classifing_keys:
             klass = Label.get_from_key(c)
             profiler.info("WORD '{}' AS '{}'".format(evaluated_word,
-                                                     klass.name))
+                                                     klass.label_name))
             related_items_count, sort_word_key = do_classify(klass, words,
                                                              review,
                                                              evaluated_word,
@@ -542,7 +542,7 @@ def curses_main(scr, words, args, review, logger=None, profiler=None):
                                 words.get_last_classified_order() + 1,
                                 sort_word_key)
             windows['__WORDS'].lines = windows['__WORDS'].lines[1:]
-            windows[Label.POSTPONED.name].lines.append(evaluated_word)
+            windows[Label.POSTPONED.label_name].lines.append(evaluated_word)
             refresh_label_windows(evaluated_word, Label.POSTPONED, windows)
             related_items_count -= 1
         elif c == 'w':
@@ -585,7 +585,7 @@ def main():
 
     if args.input is not None:
         try:
-            review = Label.get_from_classname(args.input)
+            review = Label.get_from_name(args.input)
         except ValueError:
             debug_logger.error('{} is not a valid label'.format(args.input))
             sys.exit('Error: {} is not a valid label'.format(args.input))
@@ -598,7 +598,7 @@ def main():
     _, _ = words.from_csv(args.datafile)
     profiler_logger.info("CLASSIFIED: {}".format(words.count_classified()))
     if review != Label.NONE:
-        label = review.classname
+        label = review.label_name
     else:
         label = 'NONE'
 
@@ -619,7 +619,7 @@ def main():
             if w.group == review and w.order is not None:
                 confirmed.append(w.word)
 
-        data = {'label': review.classname,
+        data = {'label': review.label_name,
                 'confirmed': confirmed}
 
         with open('last_review.json', 'w') as fout:

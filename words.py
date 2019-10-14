@@ -53,7 +53,7 @@ class Label(enum.Enum):
         :rtype: Label
         """
         for label in Label:
-            if label.name == name:
+            if label.label_name == name:
                 return label
 
         raise ValueError('"{}" is not a valid label name'.format(name))
@@ -69,7 +69,7 @@ class Label(enum.Enum):
         :param key: key associated to the label
         :type key: str
         """
-        self.name = name
+        self.label_name = name
         self.key = key
 
 
@@ -171,7 +171,7 @@ class WordList(object):
 
                 item = {'keyword': w.word,
                         'count': w.count,
-                        'group': w.group.name,
+                        'group': w.group.label_name,
                         'order': order,
                         'related': w.related}
                 writer.writerow(item)
