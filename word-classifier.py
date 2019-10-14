@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import sys
-from words import Label, WordList
+from words import Label, TermList
 
 
 class Win(object):
@@ -139,10 +139,10 @@ class Win(object):
         """
         Assign the terms in terms with the same label as the window
         :param terms: the terms list
-        :type terms: list[Word]
+        :type terms: list[Term]
         """
         terms = sorted(terms, key=lambda t: t.order)
-        self.lines = [w.word for w in terms if w.group == self.group]
+        self.lines = [w.term for w in terms if w.group == self.group]
 
 
 def setup_logger(name, log_file, formatter=logging.Formatter('%(asctime)s %(levelname)s %(message)s'),
@@ -207,25 +207,25 @@ def avg_or_zero(num, den):
     return avg
 
 
-def get_stats_strings(words, related_items_count=0):
+def get_stats_strings(terms, related_items_count=0):
     """
     Calculates the statistics and formats them into strings
 
-    :param words: the list of terms
-    :type words: WordList
+    :param terms: the list of terms
+    :type terms: TermList
     :param related_items_count: the current number of related term
     :type related_items_count: int
     :return: the statistics about words formatted as strings
     :rtype: list[str]
     """
     stats_strings = []
-    n_completed = words.count_classified()
-    n_keywords = words.count_by_label(Label.KEYWORD)
-    n_noise = words.count_by_label(Label.NOISE)
-    n_not_relevant = words.count_by_label(Label.NOT_RELEVANT)
-    n_later = words.count_by_label(Label.POSTPONED)
-    stats_strings.append('Total words:  {:7}'.format(len(words.items)))
-    avg = avg_or_zero(n_completed, len(words.items))
+    n_completed = terms.count_classified()
+    n_keywords = terms.count_by_label(Label.KEYWORD)
+    n_noise = terms.count_by_label(Label.NOISE)
+    n_not_relevant = terms.count_by_label(Label.NOT_RELEVANT)
+    n_later = terms.count_by_label(Label.POSTPONED)
+    stats_strings.append('Total words:  {:7}'.format(len(terms.items)))
+    avg = avg_or_zero(n_completed, len(terms.items))
     stats_strings.append('Completed:    {:7} ({:6.2f}%)'.format(n_completed,
                                                                 avg))
     avg = avg_or_zero(n_keywords, n_completed)
@@ -270,15 +270,15 @@ def init_curses():
     return stdscr
 
 
-def do_classify(klass, words, review, evaluated_term, sort_word_key,
+def do_classify(label, terms, review, evaluated_term, sort_word_key,
                 related_items_count, windows):
     """
     Handle the term classification process of the evaluated_term
 
-    :param klass: label to be assigned to the evaluated_term
-    :type klass: Label
-    :param words: the list of terms
-    :type words: WordList
+    :param label: label to be assigned to the evaluated_term
+    :type label: Label
+    :param terms: the list of terms
+    :type terms: TermList
     :param review: label under review
     :type review: Label
     :param evaluated_term: term to classify
@@ -292,16 +292,16 @@ def do_classify(klass, words, review, evaluated_term, sort_word_key,
     :return: the new sort_word_key and the new number of related terms
     :rtype: (str, int)
     """
-    windows[klass.label_name].lines.append(evaluated_term)
-    refresh_label_windows(evaluated_term, klass, windows)
+    windows[label.label_name].lines.append(evaluated_term)
+    refresh_label_windows(evaluated_term, label, windows)
 
-    words.classify_term(evaluated_term, klass,
-                        words.get_last_classified_order() + 1, sort_word_key)
+    terms.classify_term(evaluated_term, label,
+                        terms.get_last_classified_order() + 1, sort_word_key)
 
     if related_items_count <= 0:
         sort_word_key = evaluated_term
 
-    containing, not_containing = words.return_related_items(sort_word_key,
+    containing, not_containing = terms.return_related_items(sort_word_key,
                                                             label=review)
 
     if related_items_count <= 0:
@@ -337,13 +337,13 @@ def refresh_label_windows(term_to_highlight, label, windows):
             windows[win].display_lines(rev=True)
 
 
-def undo(words, review, sort_word_key, related_items_count, windows, logger,
+def undo(terms, review, sort_word_key, related_items_count, windows, logger,
          profiler):
     """
     Handle the undo of a term
 
-    :param words: the list of terms
-    :type words: WordList
+    :param terms: the list of terms
+    :type terms: TermList
     :param review: label under review
     :type review: Label
     :param sort_word_key: actual term used for the related terms
@@ -359,24 +359,24 @@ def undo(words, review, sort_word_key, related_items_count, windows, logger,
     :return: the new sort_word_key and the new number of related terms
     :rtype: (str, int)
     """
-    last_word = words.get_last_classified_word()
+    last_word = terms.get_last_classified_term()
     if last_word is None or last_word.group == review:
         return related_items_count, sort_word_key
 
     group = last_word.group
     related = last_word.related
-    logger.debug("Undo: {} group {} order {}".format(last_word.word,
+    logger.debug("Undo: {} group {} order {}".format(last_word.term,
                                                      group,
                                                      last_word.order))
     # un-mark last_word
-    words.classify_term(last_word.word, review, -1)
+    terms.classify_term(last_word.term, review, -1)
     # remove last_word from the window that actually contains it
     try:
         win = windows[group.label_name]
-        win.lines.remove(last_word.word)
-        prev_last_word = words.get_last_classified_word()
+        win.lines.remove(last_word.term)
+        prev_last_word = terms.get_last_classified_term()
         if prev_last_word is not None:
-            refresh_label_windows(prev_last_word.word, prev_last_word.group,
+            refresh_label_windows(prev_last_word.term, prev_last_word.group,
                                   windows)
         else:
             refresh_label_windows('', Label.NONE, windows)
@@ -386,12 +386,12 @@ def undo(words, review, sort_word_key, related_items_count, windows, logger,
     # handle related word
     if related == sort_word_key:
         related_items_count += 1
-        rwl = [last_word.word]
+        rwl = [last_word.term]
         rwl.extend(windows['__WORDS'].lines)
         windows['__WORDS'].lines = rwl
     else:
         sort_word_key = related
-        containing, not_containing = words.return_related_items(sort_word_key,
+        containing, not_containing = terms.return_related_items(sort_word_key,
                                                                 label=review)
         related_items_count = len(containing)
         windows['__WORDS'].lines = containing
@@ -404,7 +404,7 @@ def undo(words, review, sort_word_key, related_items_count, windows, logger,
         # related_items_count to the correct value of 0
         related_items_count = 0
 
-    profiler.info("WORD '{}' UNDONE".format(last_word.word))
+    profiler.info("WORD '{}' UNDONE".format(last_word.term))
 
     return related_items_count, sort_word_key
 
@@ -442,14 +442,14 @@ def create_windows(win_width, rows, review):
     return windows
 
 
-def curses_main(scr, words, args, review, logger=None, profiler=None):
+def curses_main(scr, terms, args, review, logger=None, profiler=None):
     """
     Main loop
 
     :param scr: main window (the entire screen). It is passed by curses
     :type scr: _curses.window
-    :param words: list of terms
-    :type words: WordList
+    :param terms: list of terms
+    :type terms: TermList
     :param args: command line arguments
     :type args: argparse.Namespace
     :param review: label to review if any
@@ -474,9 +474,9 @@ def curses_main(scr, words, args, review, logger=None, profiler=None):
             # no last review so confirmed must be empty: nothing to do
             pass
 
-        # FIXME: method in WordList
-        for w in words.items:
-            if w.word in confirmed:
+        # FIXME: method in TermList
+        for w in terms.items:
+            if w.term in confirmed:
                 w.order = 0
             else:
                 w.order = -1
@@ -499,13 +499,13 @@ def curses_main(scr, words, args, review, logger=None, profiler=None):
         if win == review.label_name:
             # in review mode we must add to the window associated with the label
             # review only the items in confirmed (if any)
-            conf_word = [w for w in words.items if w.word in confirmed]
+            conf_word = [w for w in terms.items if w.term in confirmed]
             windows[win].assign_lines(conf_word)
         else:
-            windows[win].assign_lines(words.items)
+            windows[win].assign_lines(terms.items)
 
     if review == Label.NONE:
-        last_word = words.get_last_classified_word()
+        last_word = terms.get_last_classified_term()
     else:
         last_word = None
 
@@ -517,25 +517,29 @@ def curses_main(scr, words, args, review, logger=None, profiler=None):
             # review mode
             # FIXME: better way?
             lines = []
-            for w in words.items:
-                if w.group == review and w.word not in confirmed:
-                    lines.append(w.word)
+            for w in terms.items:
+                if w.group == review and w.term not in confirmed:
+                    lines.append(w.term)
         else:
-            lines = [w.word for w in words.items if not w.is_classified()]
+            lines = [w.term for w in terms.items if not w.is_classified()]
     else:
-        refresh_label_windows(last_word.word, last_word.group, windows)
+        refresh_label_windows(last_word.term, last_word.group, windows)
         sort_word_key = last_word.related
         if sort_word_key == '':
-            sort_word_key = last_word.word
+            sort_word_key = last_word.term
 
-        containing, not_containing = words.return_related_items(sort_word_key)
+        containing, not_containing = terms.return_related_items(sort_word_key)
         related_items_count = len(containing)
         lines = containing
         lines.extend(not_containing)
 
     windows['__WORDS'].lines = lines
-    windows['__STATS'].lines = get_stats_strings(words, related_items_count)
+    windows['__STATS'].lines = get_stats_strings(terms, related_items_count)
     windows['__STATS'].display_lines(rev=False)
+    classifing_keys = [Label.KEYWORD.key,
+                       Label.NOT_RELEVANT.key,
+                       Label.NOISE.key,
+                       Label.RELEVANT.key]
     while True:
         if len(windows['__WORDS'].lines) <= 0:
             break
@@ -545,15 +549,11 @@ def curses_main(scr, words, args, review, logger=None, profiler=None):
 
         windows['__WORDS'].display_lines(rev=False, highlight_word=sort_word_key)
         c = chr(stdscr.getch())
-        classifing_keys = [Label.KEYWORD.key,
-                           Label.NOT_RELEVANT.key,
-                           Label.NOISE.key,
-                           Label.RELEVANT.key]
         if c in classifing_keys:
-            klass = Label.get_from_key(c)
+            label = Label.get_from_key(c)
             profiler.info("WORD '{}' AS '{}'".format(evaluated_word,
-                                                     klass.label_name))
-            related_items_count, sort_word_key = do_classify(klass, words,
+                                                     label.label_name))
+            related_items_count, sort_word_key = do_classify(label, terms,
                                                              review,
                                                              evaluated_word,
                                                              sort_word_key,
@@ -562,8 +562,8 @@ def curses_main(scr, words, args, review, logger=None, profiler=None):
         elif c == 'p':
             profiler.info("WORD '{}' POSTPONED".format(evaluated_word))
             # classification: POSTPONED
-            words.classify_term(evaluated_word, Label.POSTPONED,
-                                words.get_last_classified_order() + 1,
+            terms.classify_term(evaluated_word, Label.POSTPONED,
+                                terms.get_last_classified_order() + 1,
                                 sort_word_key)
             windows['__WORDS'].lines = windows['__WORDS'].lines[1:]
             windows[Label.POSTPONED.label_name].lines.append(evaluated_word)
@@ -571,10 +571,10 @@ def curses_main(scr, words, args, review, logger=None, profiler=None):
             related_items_count -= 1
         elif c == 'w':
             # write to file
-            words.to_csv(datafile)
+            terms.to_csv(datafile)
         elif c == 'u':
             # undo last operation
-            related_items_count, sort_word_key = undo(words, review,
+            related_items_count, sort_word_key = undo(terms, review,
                                                       sort_word_key,
                                                       related_items_count,
                                                       windows, logger, profiler)
@@ -583,11 +583,11 @@ def curses_main(scr, words, args, review, logger=None, profiler=None):
             # quit
             break
 
-        windows['__STATS'].lines = get_stats_strings(words, related_items_count)
+        windows['__STATS'].lines = get_stats_strings(terms, related_items_count)
         windows['__STATS'].display_lines(rev=False)
 
         if not args.dry_run and not args.no_auto_save:
-            words.to_csv(datafile)
+            terms.to_csv(datafile)
 
 
 def main():
@@ -618,9 +618,9 @@ def main():
 
     profiler_logger.info("*** PROGRAM STARTED ***".format(args.datafile))
     profiler_logger.info("DATAFILE: '{}'".format(args.datafile))
-    words = WordList()
-    _, _ = words.from_csv(args.datafile)
-    profiler_logger.info("CLASSIFIED: {}".format(words.count_classified()))
+    terms = TermList()
+    _, _ = terms.from_csv(args.datafile)
+    profiler_logger.info("CLASSIFIED: {}".format(terms.count_classified()))
     if review != Label.NONE:
         label = review.label_name
     else:
@@ -628,10 +628,10 @@ def main():
 
     profiler_logger.info("INPUT LABEL: {}".format(label))
 
-    curses.wrapper(curses_main, words, args, review,
+    curses.wrapper(curses_main, terms, args, review,
                    logger=debug_logger, profiler=profiler_logger)
 
-    profiler_logger.info("CLASSIFIED: {}".format(words.count_classified()))
+    profiler_logger.info("CLASSIFIED: {}".format(terms.count_classified()))
     profiler_logger.info("DATAFILE '{}'".format(args.datafile))
     profiler_logger.info("*** PROGRAM TERMINATED ***")
     curses.endwin()
@@ -639,9 +639,9 @@ def main():
     if review != Label.NONE:
         # ending review mode we must save some info
         confirmed = []
-        for w in words.items:
+        for w in terms.items:
             if w.group == review and w.order >= 0:
-                confirmed.append(w.word)
+                confirmed.append(w.term)
 
         data = {'label': review.label_name,
                 'confirmed': confirmed}
@@ -655,7 +655,7 @@ def main():
             os.unlink('last_review.json')
 
     if not args.dry_run:
-        words.to_csv(args.datafile)
+        terms.to_csv(args.datafile)
 
 
 if __name__ == "__main__":

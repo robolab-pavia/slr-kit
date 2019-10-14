@@ -5,16 +5,16 @@ from dataclasses import dataclass
 
 class Label(enum.Enum):
     """
-    Label for a classified word.
+    Label for a classified term.
 
     Each member contains a name and a key.
     name is a str. It should be a meaningful word describing the label.
-    It goes in the csv as the word classification
-    key is a str. It is the key used by the program to classify a word.
+    It goes in the csv as the term classification
+    key is a str. It is the key used by the program to classify a term.
 
     In Label member creation the tuple is (name, default_key)
     In the definition below the NONE Label is provided to 'classify' an
-    un-marked word.
+    un-marked term.
 
     :type name: str
     :type key: str
@@ -74,9 +74,9 @@ class Label(enum.Enum):
 
 
 @dataclass
-class Word:
+class Term:
     index: int
-    word: str
+    term: str
     count: int
     group: Label
     order: int
@@ -92,9 +92,9 @@ class Word:
         return self.group != Label.NONE
 
 
-class WordList(object):
+class TermList(object):
     """
-    :type items: list[Word] or None
+    :type items: list[Term] or None
     :type csv_header: list[str] or None
     """
 
@@ -103,7 +103,7 @@ class WordList(object):
         Creates a TermList
 
         :param items: a list of Term to be included in self. Default: None
-        :type items: list[Word] or None
+        :type items: list[Term] or None
         """
         self.items = items
         self.csv_header = None
@@ -115,7 +115,7 @@ class WordList(object):
         :param infile: path to the csv file to read
         :type infile: str
         :return: the csv header and the list of terms read by the file
-        :rtype: (list[str], list[Word])
+        :rtype: (list[str], list[Term])
         """
         with open(infile, newline='') as csv_file:
             csv_reader = csv.DictReader(csv_file, delimiter=',')
@@ -134,9 +134,9 @@ class WordList(object):
                 except ValueError:
                     group = Label.get_from_key(row['group'])
 
-                item = Word(
+                item = Term(
                     index=0,
-                    word=row['keyword'],
+                    term=row['keyword'],
                     count=row['count'],
                     group=group,
                     order=order,
@@ -169,7 +169,7 @@ class WordList(object):
                 else:
                     order = ''
 
-                item = {'keyword': w.word,
+                item = {'keyword': w.term,
                         'count': w.count,
                         'group': w.group.label_name,
                         'order': order,
@@ -189,12 +189,12 @@ class WordList(object):
 
         return order
 
-    def get_last_classified_word(self):
+    def get_last_classified_term(self):
         """
         Finds the last classified term
 
         :return: the last classified term
-        :rtype: Word or None
+        :rtype: Term or None
         """
         last = self.get_last_classified_order()
         if last < 0:
@@ -228,10 +228,10 @@ class WordList(object):
         :param related: related term (if any). Default: ''
         :type related: str
         :return: self
-        :rtype: WordList
+        :rtype: TermList
         """
         for w in self.items:
-            if w.word == term:
+            if w.term == term:
                 w.group = label
                 w.order = order
                 w.related = related
@@ -261,10 +261,10 @@ class WordList(object):
             if w.group != label or w.order >= 0:
                 continue
 
-            if self._str_contains(w.word, key):
-                containing.append(w.word)
+            if self._str_contains(w.term, key):
+                containing.append(w.term)
             else:
-                not_containing.append(w.word)
+                not_containing.append(w.term)
 
         return containing, not_containing
 
