@@ -141,6 +141,7 @@ class Win(object):
         :param terms: the terms list
         :type terms: list[Word]
         """
+        terms = sorted(terms, key=lambda t: t.order)
         self.lines = [w.word for w in terms if w.group == self.group]
 
 
