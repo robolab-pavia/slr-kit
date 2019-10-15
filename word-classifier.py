@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import sys
-from words import Label, TermList
+from terms import Label, TermList
 
 
 class Win(object):
