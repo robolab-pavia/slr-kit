@@ -42,7 +42,7 @@ class Win(object):
         :param show_title: if True the window must show its title. Default: False
         :type show_title: bool
         """
-        self.group = label
+        self.label = label
         self.title = title
         self.rows = rows
         self.cols = cols
@@ -142,7 +142,7 @@ class Win(object):
         :type terms: list[Term]
         """
         terms = sorted(terms, key=lambda t: t.order)
-        self.lines = [w.term for w in terms if w.label == self.group]
+        self.lines = [w.term for w in terms if w.label == self.label]
 
 
 def setup_logger(name, log_file, formatter=logging.Formatter('%(asctime)s %(levelname)s %(message)s'),
