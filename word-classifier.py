@@ -474,9 +474,11 @@ def curses_main(scr, terms, args, review, logger=None, profiler=None):
             # no last review so confirmed must be empty: nothing to do
             pass
 
+        i = 0
         for w in terms.items:
             if w.term in confirmed:
-                w.order = 0
+                w.order = i
+                i += 1
             else:
                 w.order = -1
 
@@ -623,6 +625,14 @@ def main():
         label = review.label_name
     else:
         label = 'NONE'
+        if os.path.exists('last_review.json'):
+            # if no review we must delete the previous last_review.json to avoid
+            # problems in future reviews
+            os.unlink('last_review.json')
+            # also reset order and related
+            for t in terms.items:
+                t.order = -1
+                t.related = ''
 
     profiler_logger.info("INPUT LABEL: {}".format(label))
 
@@ -646,11 +656,6 @@ def main():
 
         with open('last_review.json', 'w') as fout:
             json.dump(data, fout)
-    else:
-        if os.path.exists('last_review.json'):
-            # if no review we must delete the previous last_review.json to avoid
-            # problems in future reviews
-            os.unlink('last_review.json')
 
     if not args.dry_run:
         terms.to_csv(args.datafile)
