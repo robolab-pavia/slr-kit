@@ -474,7 +474,6 @@ def curses_main(scr, terms, args, review, logger=None, profiler=None):
             # no last review so confirmed must be empty: nothing to do
             pass
 
-        # FIXME: method in TermList
         for w in terms.items:
             if w.term in confirmed:
                 w.order = 0
@@ -515,7 +514,6 @@ def curses_main(scr, terms, args, review, logger=None, profiler=None):
         sort_word_key = ''
         if review != Label.NONE:
             # review mode
-            # FIXME: better way?
             lines = []
             for w in terms.items:
                 if w.group == review and w.term not in confirmed:
