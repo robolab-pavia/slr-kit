@@ -142,7 +142,7 @@ class Win(object):
         :type terms: list[Term]
         """
         terms = sorted(terms, key=lambda t: t.order)
-        self.lines = [w.term for w in terms if w.group == self.group]
+        self.lines = [w.term for w in terms if w.label == self.group]
 
 
 def setup_logger(name, log_file, formatter=logging.Formatter('%(asctime)s %(levelname)s %(message)s'),
@@ -360,10 +360,10 @@ def undo(terms, review, sort_word_key, related_items_count, windows, logger,
     :rtype: (str, int)
     """
     last_word = terms.get_last_classified_term()
-    if last_word is None or last_word.group == review:
+    if last_word is None or last_word.label == review:
         return related_items_count, sort_word_key
 
-    group = last_word.group
+    group = last_word.label
     related = last_word.related
     logger.debug("Undo: {} group {} order {}".format(last_word.term,
                                                      group,
@@ -376,7 +376,7 @@ def undo(terms, review, sort_word_key, related_items_count, windows, logger,
         win.lines.remove(last_word.term)
         prev_last_word = terms.get_last_classified_term()
         if prev_last_word is not None:
-            refresh_label_windows(prev_last_word.term, prev_last_word.group,
+            refresh_label_windows(prev_last_word.term, prev_last_word.label,
                                   windows)
         else:
             refresh_label_windows('', Label.NONE, windows)
@@ -516,12 +516,12 @@ def curses_main(scr, terms, args, review, logger=None, profiler=None):
             # review mode
             lines = []
             for w in terms.items:
-                if w.group == review and w.term not in confirmed:
+                if w.label == review and w.term not in confirmed:
                     lines.append(w.term)
         else:
             lines = [w.term for w in terms.items if not w.is_classified()]
     else:
-        refresh_label_windows(last_word.term, last_word.group, windows)
+        refresh_label_windows(last_word.term, last_word.label, windows)
         sort_word_key = last_word.related
         if sort_word_key == '':
             sort_word_key = last_word.term
@@ -638,7 +638,7 @@ def main():
         # ending review mode we must save some info
         confirmed = []
         for w in terms.items:
-            if w.group == review and w.order >= 0:
+            if w.label == review and w.order >= 0:
                 confirmed.append(w.term)
 
         data = {'label': review.label_name,

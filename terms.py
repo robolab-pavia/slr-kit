@@ -78,7 +78,7 @@ class Term:
     index: int
     term: str
     count: int
-    group: Label
+    label: Label
     order: int
     related: str
 
@@ -89,7 +89,7 @@ class Term:
         :return: True if the Term is classified, False otherwise
         :rtype: bool
         """
-        return self.group != Label.NONE
+        return self.label != Label.NONE
 
 
 class TermList(object):
@@ -130,15 +130,16 @@ class TermList(object):
 
                 related = row.get('related', '')
                 try:
-                    group = Label.get_from_name(row['group'])
-                except ValueError:
-                    group = Label.get_from_key(row['group'])
+                    label = Label.get_from_name(row['label'])
+                except KeyError:
+                    print('\n{} does not contains the field "label"\n'.format(infile))
+                    raise
 
                 item = Term(
                     index=0,
                     term=row['keyword'],
                     count=row['count'],
-                    group=group,
+                    label=label,
                     order=order,
                     related=related
                 )
@@ -171,7 +172,7 @@ class TermList(object):
 
                 item = {'keyword': w.term,
                         'count': w.count,
-                        'group': w.group.label_name,
+                        'label': w.label.label_name,
                         'order': order,
                         'related': w.related}
                 writer.writerow(item)
@@ -232,7 +233,7 @@ class TermList(object):
         """
         for w in self.items:
             if w.term == term:
-                w.group = label
+                w.label = label
                 w.order = order
                 w.related = related
                 break
@@ -258,7 +259,7 @@ class TermList(object):
         containing = []
         not_containing = []
         for w in self.items:
-            if w.group != label or w.order >= 0:
+            if w.label != label or w.order >= 0:
                 continue
 
             if self._str_contains(w.term, key):
@@ -286,7 +287,7 @@ class TermList(object):
         :return: the number of terms classified as label
         :rtype: int
         """
-        return len([w for w in self.items if w.group == label])
+        return len([w for w in self.items if w.label == label])
 
     @staticmethod
     def _str_contains(string, substring):
