@@ -123,15 +123,17 @@ class Win(object):
                                     curses.color_pair(color_pair))
         else:
             tok = line.split(highlight_word)
-            if len(tok) == 1:
+            tok_len = len(tok)
+            if tok_len == 1:
                 # no highlight_word found
                 self.win_handler.addstr(line_index + 1, 1, trunc_w + pad)
             else:
                 self.win_handler.addstr(line_index + 1, 1, '')
-                for t in tok:
+                for i, t in enumerate(tok):
                     self.win_handler.addstr(t)
-                    self.win_handler.addstr(highlight_word,
-                                            curses.color_pair(color_pair))
+                    if i < tok_len - 1:
+                        self.win_handler.addstr(highlight_word,
+                                                curses.color_pair(color_pair))
 
                 self.win_handler.addstr(line_index + 1, l_trunc_w + 1, pad)
 
