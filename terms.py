@@ -108,6 +108,23 @@ class TermList(object):
         self.items = items
         self.csv_header = None
 
+
+    def get(self, string):
+        """
+        Finds the Term containing string
+
+        If no Term t satisfies the condition t.term == string than None is
+        returned.
+        :param string: the string to be searched
+        :type string: str
+        :return: the Term found or None
+        :rtype: Term or None
+        """
+        for t in self.items:
+            if t.term == string:
+                return t
+
+        return None
     def sort_by_order(self, ascending=True):
         """
         Sorts the TermList by order in place
