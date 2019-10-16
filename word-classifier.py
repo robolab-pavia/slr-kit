@@ -324,7 +324,7 @@ def refresh_label_windows(term_to_highlight, label, windows):
     :type term_to_highlight: str
     :param label: label of the window that has to highlight the term
     :type label: Label
-    :param windows: dict of the wondows
+    :param windows: dict of the windows
     :type windows: dict[str, Win]
     """
     for win in windows:
