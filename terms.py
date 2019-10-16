@@ -125,7 +125,27 @@ class TermList(object):
             items = [t for t in self.items if t.label == label]
 
         return TermList(items)
-    
+
+    def get_not_classified(self):
+        """
+        Gets a new TermList with all the Terms not classified
+
+        :return: a TermList containing the Terms not classified
+        :rtype: TermList
+        """
+        items = [t for t in self.items if not t.is_classified()]
+        return TermList(items)
+
+    def get_classified(self):
+        """
+        Gets a new TermList with all the Terms already classified
+
+        :return: a TermList containing the Terms classified
+        :rtype: TermList
+        """
+        items = [t for t in self.items if t.is_classified()]
+        return TermList(items)
+
     def from_csv(self, infile):
         """
         Gets the terms from a csv file
