@@ -108,6 +108,15 @@ class TermList(object):
         self.items = items
         self.csv_header = None
 
+    def sort_by_order(self, ascending=True):
+        """
+        Sorts the TermList by order in place
+
+        :param ascending: if True, sort in ascending order.
+        :type ascending: bool
+        """
+        self.items.sort(key=lambda t: t.order, reverse=not ascending)
+
     def get_from_label(self, label):
         """
         Gets a new TermList with all the Terms with the specified labels
