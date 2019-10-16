@@ -108,6 +108,24 @@ class TermList(object):
         self.items = items
         self.csv_header = None
 
+    def get_from_label(self, label):
+        """
+        Gets a new TermList with all the Terms with the specified labels
+
+        :param label: the label to search
+        :type label: Label or list[Label]
+        :return: a TermList containing the Terms classified with the labels
+        :rtype: TermList
+        """
+        # if isinstance(label, list)
+        try:
+            items = [t for t in self.items if t.label in label]
+        except TypeError:
+            # label is not a list: use equality
+            items = [t for t in self.items if t.label == label]
+
+        return TermList(items)
+    
     def from_csv(self, infile):
         """
         Gets the terms from a csv file
