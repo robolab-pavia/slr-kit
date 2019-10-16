@@ -301,4 +301,4 @@ class TermList(object):
         :return: True if string contains substring
         :rtype: bool
         """
-        return any([substring == word for word in string.split()])
+        return substring in string
