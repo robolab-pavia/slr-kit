@@ -121,7 +121,7 @@ class TermList(object):
             csv_reader = csv.DictReader(csv_file, delimiter=',')
             header = csv_reader.fieldnames
             items = []
-            for row in csv_reader:
+            for i, row in enumerate(csv_reader):
                 order_value = row['order']
                 if order_value == '':
                     order = -1
@@ -136,7 +136,7 @@ class TermList(object):
                     raise
 
                 item = Term(
-                    index=0,
+                    index=i,
                     term=row['keyword'],
                     count=row['count'],
                     label=label,
@@ -159,12 +159,13 @@ class TermList(object):
         :param outfile: path to the csv file to write the terms
         :type outfile: str
         """
+        items = sorted(self.items, key=lambda t: t.index)
         with open(outfile, mode='w') as out:
             writer = csv.DictWriter(out, fieldnames=self.csv_header,
                                     delimiter=',', quotechar='"',
                                     quoting=csv.QUOTE_MINIMAL)
             writer.writeheader()
-            for w in self.items:
+            for w in items:
                 if w.order >= 0:
                     order = str(w.order)
                 else:
