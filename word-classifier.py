@@ -503,7 +503,7 @@ def curses_main(scr, terms, args, review, logger=None, profiler=None):
         if win == review.label_name:
             # in review mode we must add to the window associated with the label
             # review only the items in confirmed (if any)
-            conf_word = [w for w in terms.items if w.string in confirmed]
+            conf_word = [terms.get(s) for s in confirmed]
             windows[win].assign_lines(conf_word)
         else:
             windows[win].assign_lines(terms.items)
