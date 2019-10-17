@@ -341,7 +341,7 @@ class TermList(object):
         :return: the number of classified terms
         :rtype: int
         """
-        return len([item for item in self.items if item.is_classified()])
+        return len(self.get_classified())
 
     def count_by_label(self, label):
         """
@@ -352,7 +352,7 @@ class TermList(object):
         :return: the number of terms classified as label
         :rtype: int
         """
-        return len([w for w in self.items if w.label == label])
+        return len(self.get_from_label(label))
 
     @staticmethod
     def _str_contains(string, substring):
