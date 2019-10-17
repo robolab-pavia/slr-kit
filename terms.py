@@ -143,6 +143,21 @@ class TermList(object):
 
         return strings
 
+    def remove(self, strings):
+        """
+        Removes the terms with the specified strings in place
+
+        :param strings: list of string to look for
+        :type strings: list[str]
+        """
+        idx = []
+        for i, t in enumerate(list(self.items)):
+            if t.string in strings:
+                idx.append(i)
+
+        for i in reversed(idx):
+            del self.items[i]
+
     def get(self, string):
         """
         Finds the Term containing string
