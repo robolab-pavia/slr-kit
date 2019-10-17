@@ -309,8 +309,9 @@ def do_classify(label, terms, review, evaluated_term, sort_word_key,
     if related_items_count <= 0:
         related_items_count = len(containing) + 1
 
-    windows['__WORDS'].lines = containing
-    windows['__WORDS'].lines.extend(not_containing)
+    lines = containing + not_containing
+
+    windows['__WORDS'].lines = lines.get_strings()
     windows['__WORDS'].display_lines(rev=False, highlight_word=sort_word_key)
     related_items_count -= 1
     return related_items_count, sort_word_key
@@ -396,8 +397,8 @@ def undo(terms, review, sort_word_key, related_items_count, windows, logger,
         containing, not_containing = terms.return_related_items(sort_word_key,
                                                                 label=review)
         related_items_count = len(containing)
-        windows['__WORDS'].lines = containing
-        windows['__WORDS'].lines.extend(not_containing)
+        lines = containing + not_containing
+        windows['__WORDS'].lines = lines.get_strings()
         windows['__WORDS'].display_lines(rev=False,
                                          highlight_word=sort_word_key)
 
@@ -523,7 +524,7 @@ def curses_main(scr, terms, args, review, logger=None, profiler=None):
                 if w.label == review and w.string not in confirmed:
                     lines.append(w.string)
         else:
-            lines = [w.string for w in terms.items if not w.is_classified()]
+            lines = terms.get_not_classified()
     else:
         refresh_label_windows(last_word.string, last_word.label, windows)
         sort_word_key = last_word.related
@@ -532,10 +533,9 @@ def curses_main(scr, terms, args, review, logger=None, profiler=None):
 
         containing, not_containing = terms.return_related_items(sort_word_key)
         related_items_count = len(containing)
-        lines = containing
-        lines.extend(not_containing)
+        lines = containing + not_containing
 
-    windows['__WORDS'].lines = lines
+    windows['__WORDS'].lines = lines.get_strings()
     windows['__STATS'].lines = get_stats_strings(terms, related_items_count)
     windows['__STATS'].display_lines(rev=False)
     classifing_keys = [Label.KEYWORD.key,

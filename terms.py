@@ -344,9 +344,9 @@ class TermList(object):
         """
         Searches related items in self and returns the resulting partition
 
-        This method splits self.items in two list: the first one with all the
-        strings that contains the substring key; the second one with all the
-        strings that not contain key.
+        This method splits self.items in two TermList: the first one with all
+        the Terms that contains the substring key; the second one with all the
+        Terms that not contain key.
         Only the terms with the specified label are considered.
         The method returns two lists of strings.
         :param key: the substring to find in the terms in self.items
@@ -354,7 +354,7 @@ class TermList(object):
         :param label: label to consider
         :type label: Label
         :return: the partition of the items in self based on key
-        :rtype: (list[str], list[str])
+        :rtype: (TermList, TermList)
         """
         containing = []
         not_containing = []
@@ -363,11 +363,11 @@ class TermList(object):
                 continue
 
             if self._str_contains(w.string, key):
-                containing.append(w.string)
+                containing.append(w)
             else:
-                not_containing.append(w.string)
+                not_containing.append(w)
 
-        return containing, not_containing
+        return TermList(containing), TermList(not_containing)
 
     def count_classified(self):
         """
