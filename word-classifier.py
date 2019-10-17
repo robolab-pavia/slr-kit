@@ -519,10 +519,8 @@ def curses_main(scr, terms, args, review, logger=None, profiler=None):
         sort_word_key = ''
         if review != Label.NONE:
             # review mode
-            lines = []
-            for w in terms.items:
-                if w.label == review and w.string not in confirmed:
-                    lines.append(w.string)
+            lines = terms.get_from_label(review)
+            lines.remove(confirmed)
         else:
             lines = terms.get_not_classified()
     else:
