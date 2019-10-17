@@ -108,6 +108,25 @@ class TermList(object):
         self.items = items
         self.csv_header = None
 
+    def __add__(self, other):
+        """
+        Concatenate two TermList
+
+        If other is not a TermList this method returns NotImplemented
+
+        :param other: the other TermList
+        :type other: TermList
+        :return: the new TermList or NotImplemented
+        :rtype: TermList or NotImplementedType
+        """
+        if not isinstance(other, TermList):
+            return NotImplemented
+
+        items = []
+        items.extend(self.items)
+        items.extend(other.items)
+        return TermList(items)
+
     def get_strings(self):
         """
         Returns the string of each Term
