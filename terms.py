@@ -108,6 +108,9 @@ class TermList(object):
         self.items = items
         self.csv_header = None
 
+    def __len__(self):
+        return len(self.items)
+
     def __add__(self, other):
         """
         Concatenate two TermList
