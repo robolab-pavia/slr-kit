@@ -144,7 +144,7 @@ class Win(object):
         :type terms: list[Term]
         """
         terms = sorted(terms, key=lambda t: t.order)
-        self.lines = [w.term for w in terms if w.label == self.label]
+        self.lines = [w.string for w in terms if w.label == self.label]
 
 
 def setup_logger(name, log_file, formatter=logging.Formatter('%(asctime)s %(levelname)s %(message)s'),
@@ -367,18 +367,18 @@ def undo(terms, review, sort_word_key, related_items_count, windows, logger,
 
     group = last_word.label
     related = last_word.related
-    logger.debug("Undo: {} group {} order {}".format(last_word.term,
+    logger.debug("Undo: {} group {} order {}".format(last_word.string,
                                                      group,
                                                      last_word.order))
     # un-mark last_word
-    terms.classify_term(last_word.term, review, -1)
+    terms.classify_term(last_word.string, review, -1)
     # remove last_word from the window that actually contains it
     try:
         win = windows[group.label_name]
-        win.lines.remove(last_word.term)
+        win.lines.remove(last_word.string)
         prev_last_word = terms.get_last_classified_term()
         if prev_last_word is not None:
-            refresh_label_windows(prev_last_word.term, prev_last_word.label,
+            refresh_label_windows(prev_last_word.string, prev_last_word.label,
                                   windows)
         else:
             refresh_label_windows('', Label.NONE, windows)
@@ -388,7 +388,7 @@ def undo(terms, review, sort_word_key, related_items_count, windows, logger,
     # handle related word
     if related == sort_word_key:
         related_items_count += 1
-        rwl = [last_word.term]
+        rwl = [last_word.string]
         rwl.extend(windows['__WORDS'].lines)
         windows['__WORDS'].lines = rwl
     else:
@@ -406,7 +406,7 @@ def undo(terms, review, sort_word_key, related_items_count, windows, logger,
         # related_items_count to the correct value of 0
         related_items_count = 0
 
-    profiler.info("WORD '{}' UNDONE".format(last_word.term))
+    profiler.info("WORD '{}' UNDONE".format(last_word.string))
 
     return related_items_count, sort_word_key
 
@@ -478,7 +478,7 @@ def curses_main(scr, terms, args, review, logger=None, profiler=None):
 
         i = 0
         for w in terms.items:
-            if w.term in confirmed:
+            if w.string in confirmed:
                 w.order = i
                 i += 1
             else:
@@ -502,7 +502,7 @@ def curses_main(scr, terms, args, review, logger=None, profiler=None):
         if win == review.label_name:
             # in review mode we must add to the window associated with the label
             # review only the items in confirmed (if any)
-            conf_word = [w for w in terms.items if w.term in confirmed]
+            conf_word = [w for w in terms.items if w.string in confirmed]
             windows[win].assign_lines(conf_word)
         else:
             windows[win].assign_lines(terms.items)
@@ -520,15 +520,15 @@ def curses_main(scr, terms, args, review, logger=None, profiler=None):
             # review mode
             lines = []
             for w in terms.items:
-                if w.label == review and w.term not in confirmed:
-                    lines.append(w.term)
+                if w.label == review and w.string not in confirmed:
+                    lines.append(w.string)
         else:
-            lines = [w.term for w in terms.items if not w.is_classified()]
+            lines = [w.string for w in terms.items if not w.is_classified()]
     else:
-        refresh_label_windows(last_word.term, last_word.label, windows)
+        refresh_label_windows(last_word.string, last_word.label, windows)
         sort_word_key = last_word.related
         if sort_word_key == '':
-            sort_word_key = last_word.term
+            sort_word_key = last_word.string
 
         containing, not_containing = terms.return_related_items(sort_word_key)
         related_items_count = len(containing)
@@ -651,7 +651,7 @@ def main():
         confirmed = []
         for w in terms.items:
             if w.label == review and w.order >= 0:
-                confirmed.append(w.term)
+                confirmed.append(w.string)
 
         data = {'label': review.label_name,
                 'confirmed': confirmed}

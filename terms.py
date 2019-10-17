@@ -76,7 +76,7 @@ class Label(enum.Enum):
 @dataclass
 class Term:
     index: int
-    term: str
+    string: str
     count: int
     label: Label
     order: int
@@ -113,7 +113,7 @@ class TermList(object):
         """
         Finds the Term containing string
 
-        If no Term t satisfies the condition t.term == string than None is
+        If no Term t satisfies the condition t.string == string than None is
         returned.
         :param string: the string to be searched
         :type string: str
@@ -121,10 +121,11 @@ class TermList(object):
         :rtype: Term or None
         """
         for t in self.items:
-            if t.term == string:
+            if t.string == string:
                 return t
 
         return None
+
     def sort_by_order(self, ascending=True):
         """
         Sorts the TermList by order in place
@@ -201,7 +202,7 @@ class TermList(object):
 
                 item = Term(
                     index=i,
-                    term=row['keyword'],
+                    string=row['keyword'],
                     count=row['count'],
                     label=label,
                     order=order,
@@ -235,7 +236,7 @@ class TermList(object):
                 else:
                     order = ''
 
-                item = {'keyword': w.term,
+                item = {'keyword': w.string,
                         'count': w.count,
                         'label': w.label.label_name,
                         'order': order,
@@ -278,7 +279,7 @@ class TermList(object):
         This method adds label, classification order and related term to the
         Term in self.items that represents the string term.
         term is the string representation of the Term that will be classified.
-        The method searches a Term t in self.items such that t.term == term.
+        The method searches a Term t in self.items such that t.string == term.
         order must be an int. An int less than 0 indicates no classification
         order.
         related is a string indicating the active related term at the moment of
@@ -297,7 +298,7 @@ class TermList(object):
         :rtype: TermList
         """
         for w in self.items:
-            if w.term == term:
+            if w.string == term:
                 w.label = label
                 w.order = order
                 w.related = related
@@ -327,10 +328,10 @@ class TermList(object):
             if w.label != label or w.order >= 0:
                 continue
 
-            if self._str_contains(w.term, key):
-                containing.append(w.term)
+            if self._str_contains(w.string, key):
+                containing.append(w.string)
             else:
-                not_containing.append(w.term)
+                not_containing.append(w.string)
 
         return containing, not_containing
 
