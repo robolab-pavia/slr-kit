@@ -108,6 +108,18 @@ class TermList(object):
         self.items = items
         self.csv_header = None
 
+    def get_strings(self):
+        """
+        Returns the string of each Term
+
+        :return: the string of each Term as a list
+        :rtype: list[str]
+        """
+        strings = []
+        for t in self.items:
+            strings.append(t.string)
+
+        return strings
 
     def get(self, string):
         """
