@@ -409,6 +409,19 @@ class TermList(object):
         """
         return len(self.get_from_label(label))
 
+    def get_labels(self):
+        """
+        Gets a set of all the labels in self
+
+        :return: the set of all the labels in self
+        :rtype: set[Label]
+        """
+        labels = set()
+        for t in self.items:
+            labels.add(t.label)
+
+        return labels
+
     @staticmethod
     def _str_contains(string, substring):
         """
