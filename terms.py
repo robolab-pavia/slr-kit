@@ -35,6 +35,7 @@ class Label(enum.Enum):
         :type key: str
         :return: the Label associated with key
         :rtype: Label
+        :raise ValueError: if key is not a valid key
         """
         for label in Label:
             if label.key == key:
@@ -51,6 +52,7 @@ class Label(enum.Enum):
         :type name: str
         :return: the Label associated with name
         :rtype: Label
+        :raise ValueError: if name is not a valid name
         """
         for label in Label:
             if label.label_name == name:
