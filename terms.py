@@ -263,6 +263,7 @@ class TermList(object):
             header.append('related')
 
         self.csv_header = header
+        items.sort(key=lambda t: t.order)
         self.items = items
         return header, items
 
@@ -346,11 +347,13 @@ class TermList(object):
         :return: self
         :rtype: TermList
         """
-        for w in self.items:
+        for i, w in enumerate(self.items):
             if w.string == term:
                 w.label = label
                 w.order = order
                 w.related = related
+                del self.items[i]
+                self.items.append(w)
                 break
 
         return self
