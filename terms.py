@@ -434,4 +434,22 @@ class TermList(object):
         :return: True if string contains substring
         :rtype: bool
         """
-        return substring in string
+        if string == substring:
+            return True
+
+        start = 0
+        idx = string.find(substring, start)
+        while idx >= 0:
+            start = idx + len(substring)
+            if idx == 0:
+                if string[len(substring)] == ' ':
+                    return True
+            elif string[idx - 1] == ' ':
+                if idx + len(substring) == len(string):
+                    return True
+                elif string[idx + len(substring)] == ' ':
+                    return True
+
+            idx = string.find(substring, start)
+
+        return False
