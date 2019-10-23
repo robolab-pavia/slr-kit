@@ -362,7 +362,7 @@ def undo(terms, review, sort_word_key, related_items_count, windows, logger,
     :rtype: (str, int)
     """
     last_word = terms.get_last_classified_term()
-    if last_word is None or last_word.label == review:
+    if last_word is None:
         return related_items_count, sort_word_key
 
     group = last_word.label
