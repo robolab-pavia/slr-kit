@@ -362,7 +362,7 @@ def undo(terms, to_classify, review, sort_word_key, related_items_count, logger,
     :rtype: (TermList, int, str)
     """
     last_word = terms.get_last_classified_term()
-    if last_word is None or last_word.label == review:
+    if last_word is None:
         return to_classify, related_items_count, sort_word_key
 
     label = last_word.label
@@ -463,28 +463,24 @@ def curses_main(scr, terms, args, review, logger=None, profiler=None):
     """
     datafile = args.datafile
     confirmed = []
+    reset = False
     if review != Label.NONE:
         # review mode: retrieve some info and reset order and related
         try:
             with open('last_review.json') as fin:
                 data = json.load(fin)
-                if review.label_name == data['label']:
-                    confirmed = data['confirmed']
-                # else: last review was about another label so confirmed must be
-                # empty: nothing to do
+                if review.label_name != data['label']:
+                    reset = True
+                # else: last review was about this label so reset must be False:
+                # nothing to do
         except FileNotFoundError:
-            # no last review so confirmed must be empty: nothing to do
+            # no last review so reset must be False: nothing to do
             pass
 
-        i = 0
-        for w in terms.items:
-            if w.string in confirmed:
-                w.order = i
-                i += 1
-            else:
+        if reset:
+            for w in terms.items:
                 w.order = -1
-
-            w.related = ''
+                w.related = ''
 
     stdscr = init_curses()
     win_width = 40
@@ -502,15 +498,12 @@ def curses_main(scr, terms, args, review, logger=None, profiler=None):
         if win == review.label_name:
             # in review mode we must add to the window associated with the label
             # review only the items in confirmed (if any)
-            conf_word = [terms.get(s) for s in confirmed]
-            windows[win].assign_lines(conf_word)
+            conf_word = terms.get_from_label(review, order_set=True)
+            windows[win].assign_lines(conf_word.items)
         else:
             windows[win].assign_lines(terms.items)
 
-    if review == Label.NONE:
-        last_word = terms.get_last_classified_term()
-    else:
-        last_word = None
+    last_word = terms.get_last_classified_term()
 
     if last_word is None:
         refresh_label_windows('', Label.NONE, windows)
@@ -518,7 +511,7 @@ def curses_main(scr, terms, args, review, logger=None, profiler=None):
         sort_word_key = ''
         if review != Label.NONE:
             # review mode
-            to_classify = terms.get_from_label(review)
+            to_classify = terms.get_from_label(review, order_set=True)
             to_classify.remove(confirmed)
         else:
             to_classify = terms.get_not_classified()
@@ -528,7 +521,8 @@ def curses_main(scr, terms, args, review, logger=None, profiler=None):
         if sort_word_key == '':
             sort_word_key = last_word.string
 
-        containing, not_containing = terms.return_related_items(sort_word_key)
+        containing, not_containing = terms.return_related_items(sort_word_key,
+                                                                label=review)
         related_items_count = len(containing)
         to_classify = containing + not_containing
 
@@ -700,13 +694,7 @@ def main():
 
     if review != Label.NONE:
         # ending review mode we must save some info
-        confirmed = []
-        for w in terms.items:
-            if w.label == review and w.order >= 0:
-                confirmed.append(w.string)
-
-        data = {'label': review.label_name,
-                'confirmed': confirmed}
+        data = {'label': review.label_name}
 
         with open('last_review.json', 'w') as fout:
             json.dump(data, fout)

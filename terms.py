@@ -186,21 +186,35 @@ class TermList(object):
         """
         self.items.sort(key=lambda t: t.order, reverse=not ascending)
 
-    def get_from_label(self, label):
+    def get_from_label(self, label, order_set=None):
         """
         Gets a new TermList with all the Terms with the specified labels
 
+        The parameter order_set is use to filter by order. If it is None (the
+        default) no filtering on the order is perform.
+        If order_set is True than only the terms with order >= 0 are selected.
+        If order_set is False than only the terms with order < 0 are selected.
         :param label: the label to search
-        :type label: Label or list[Label]
+        :type label: Label or list[Label] or tuple[Label]
+        :param order_set: also filters by order
+        :type order_set: bool or None
         :return: a TermList containing the Terms classified with the labels
         :rtype: TermList
         """
-        # if isinstance(label, list)
-        try:
-            items = [t for t in self.items if t.label in label]
-        except TypeError:
-            # label is not a list: use equality
-            items = [t for t in self.items if t.label == label]
+        if isinstance(label, Label):
+            label = [label]
+        elif not isinstance(label, (list, tuple)):
+            raise TypeError('label has wrong type {}'.format(type(label)))
+
+        items = []
+        for t in self.items:
+            if t.label in label:
+                if order_set is None:
+                    items.append(t)
+                elif order_set and t.order >= 0:
+                    items.append(t)
+                elif not order_set and t.order < 0:
+                    items.append(t)
 
         return TermList(items)
 
