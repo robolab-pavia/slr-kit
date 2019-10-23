@@ -434,6 +434,9 @@ class TermList(object):
         :return: True if string contains substring
         :rtype: bool
         """
+        if substring == '':
+            return False
+
         if string == substring:
             return True
 
