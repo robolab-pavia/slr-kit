@@ -474,8 +474,8 @@ def curses_main(scr, terms, args, review, logger=None, profiler=None):
                 # else: last review was about this label so reset must be False:
                 # nothing to do
         except FileNotFoundError:
-            # no last review so reset must be False: nothing to do
-            pass
+            # no last review so reset must be True
+            reset = True
 
         if reset:
             for w in terms.items:
