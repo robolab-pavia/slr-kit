@@ -396,7 +396,7 @@ class TermList(object):
             if w.label != label or w.order >= 0:
                 continue
 
-            if self._str_contains(w.string, key):
+            if self.is_related(w.string, key):
                 containing.append(w)
             else:
                 not_containing.append(w)
@@ -437,7 +437,7 @@ class TermList(object):
         return labels
 
     @staticmethod
-    def _str_contains(string, substring):
+    def is_related(string, substring):
         """
         Tells if string contains substring
 
