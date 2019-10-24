@@ -579,6 +579,9 @@ def curses_main(scr, terms, args, review, logger=None, profiler=None):
         elif c == 'q':
             # quit
             break
+        else:
+            # no recognized key: doing nothing (and avoiding useless autosave)
+            continue
 
         windows['__STATS'].lines = get_stats_strings(terms, related_items_count)
         windows['__STATS'].display_lines(rev=False)
