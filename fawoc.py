@@ -3,6 +3,7 @@ import curses
 import json
 import logging
 import os
+import pathlib
 import sys
 from terms import Label, TermList, Term
 
@@ -444,7 +445,8 @@ def create_windows(win_width, rows, review):
     return windows
 
 
-def curses_main(scr, terms, args, review, logger=None, profiler=None):
+def curses_main(scr, terms, args, review, last_reviews, logger=None,
+                profiler=None):
     """
     Main loop
 
@@ -456,6 +458,8 @@ def curses_main(scr, terms, args, review, logger=None, profiler=None):
     :type args: argparse.Namespace
     :param review: label to review if any
     :type review: Label
+    :param last_reviews: last reviews performed. key: abs path of the csv; value: reviewed label name
+    :type last_reviews: dict[str, str]
     :param logger: debug logger. Default: None
     :type logger: logging.Logger or None
     :param profiler: profiler logger. Default None
@@ -465,16 +469,8 @@ def curses_main(scr, terms, args, review, logger=None, profiler=None):
     confirmed = []
     reset = False
     if review != Label.NONE:
-        # review mode: retrieve some info and reset order and related
-        try:
-            with open('last_review.json') as fin:
-                data = json.load(fin)
-                if review.label_name != data['label']:
-                    reset = True
-                # else: last review was about this label so reset must be False:
-                # nothing to do
-        except FileNotFoundError:
-            # no last review so reset must be True
+        # review mode: check last_reviews
+        if review.label_name != last_reviews.get(datafile, ''):
             reset = True
 
         if reset:
@@ -536,13 +532,18 @@ def curses_main(scr, terms, args, review, logger=None, profiler=None):
                        Label.RELEVANT.key]
     while True:
         if len(to_classify) <= 0:
-            break
+            evaluated_word = None
+        else:
+            evaluated_word = to_classify.items[0]
 
-        evaluated_word = to_classify.items[0]
         if related_items_count <= 0:
             sort_word_key = ''
 
         c = chr(stdscr.getch())
+        if c not in ['w', 'q', 'u'] and evaluated_word is None:
+            # no terms to classify. the only working keys are write, undo and
+            # quit the others will do nothing
+            continue
 
         try:
             label = Label.get_from_key(c)
@@ -588,6 +589,7 @@ def curses_main(scr, terms, args, review, logger=None, profiler=None):
             # quit
             break
         else:
+            # no recognized key: doing nothing (and avoiding useless autosave)
             continue
 
         if label is not None:
@@ -664,19 +666,34 @@ def main():
     else:
         review = Label.NONE
 
-    profiler_logger.info("*** PROGRAM STARTED ***".format(args.datafile))
-    profiler_logger.info("DATAFILE: '{}'".format(args.datafile))
+    profiler_logger.info("*** PROGRAM STARTED ***")
+    datafile_path = str(pathlib.Path(args.datafile).absolute())
+    profiler_logger.info("DATAFILE: '{}'".format(datafile_path))
+    # use the absolute path
+    args.datafile = datafile_path
     terms = TermList()
     _, _ = terms.from_csv(args.datafile)
     profiler_logger.info("CLASSIFIED: {}".format(terms.count_classified()))
+    # check the last_review file
+    try:
+        with open('last_review.json') as file:
+            last_reviews = json.load(file)
+    except FileNotFoundError:
+        # no file to care about
+        last_reviews = dict()
+
     if review != Label.NONE:
         label = review.label_name
     else:
         label = 'NONE'
-        if os.path.exists('last_review.json'):
-            # if no review we must delete the previous last_review.json to avoid
-            # problems in future reviews
-            os.unlink('last_review.json')
+        if datafile_path in last_reviews:
+            # remove the last review on the same csv
+            del last_reviews[datafile_path]
+            if len(last_reviews) <= 0:
+                try:
+                    os.unlink('last_review.json')
+                except FileNotFoundError:
+                    pass
             # also reset order and related
             for t in terms.items:
                 t.order = -1
@@ -684,20 +701,21 @@ def main():
 
     profiler_logger.info("INPUT LABEL: {}".format(label))
 
-    curses.wrapper(curses_main, terms, args, review,
+    curses.wrapper(curses_main, terms, args, review, last_reviews,
                    logger=debug_logger, profiler=profiler_logger)
 
     profiler_logger.info("CLASSIFIED: {}".format(terms.count_classified()))
-    profiler_logger.info("DATAFILE '{}'".format(args.datafile))
+    profiler_logger.info("DATAFILE '{}'".format(datafile_path))
     profiler_logger.info("*** PROGRAM TERMINATED ***")
     curses.endwin()
 
     if review != Label.NONE:
         # ending review mode we must save some info
-        data = {'label': review.label_name}
+        last_reviews[datafile_path] = review.label_name
 
+    if len(last_reviews) > 0:
         with open('last_review.json', 'w') as fout:
-            json.dump(data, fout)
+            json.dump(last_reviews, fout)
 
     if not args.dry_run:
         terms.to_csv(args.datafile)
