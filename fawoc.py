@@ -3,6 +3,7 @@ import curses
 import json
 import logging
 import os
+import pathlib
 import sys
 from terms import Label, TermList
 
@@ -612,8 +613,9 @@ def main():
     else:
         review = Label.NONE
 
-    profiler_logger.info("*** PROGRAM STARTED ***".format(args.datafile))
-    profiler_logger.info("DATAFILE: '{}'".format(args.datafile))
+    profiler_logger.info("*** PROGRAM STARTED ***")
+    datafile_path = str(pathlib.Path(args.datafile).absolute())
+    profiler_logger.info("DATAFILE: '{}'".format(datafile_path))
     terms = TermList()
     _, _ = terms.from_csv(args.datafile)
     profiler_logger.info("CLASSIFIED: {}".format(terms.count_classified()))
@@ -636,7 +638,7 @@ def main():
                    logger=debug_logger, profiler=profiler_logger)
 
     profiler_logger.info("CLASSIFIED: {}".format(terms.count_classified()))
-    profiler_logger.info("DATAFILE '{}'".format(args.datafile))
+    profiler_logger.info("DATAFILE '{}'".format(datafile_path))
     profiler_logger.info("*** PROGRAM TERMINATED ***")
     curses.endwin()
 
