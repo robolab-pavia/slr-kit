@@ -539,13 +539,21 @@ def curses_main(scr, terms, args, review, logger=None, profiler=None):
                        Label.RELEVANT.key]
     while True:
         if len(windows['__WORDS'].lines) <= 0:
-            break
-        evaluated_word = windows['__WORDS'].lines[0]
+            evaluated_word = ''
+        else:
+            evaluated_word = windows['__WORDS'].lines[0]
+
         if related_items_count <= 0:
             sort_word_key = ''
 
-        windows['__WORDS'].display_lines(rev=False, highlight_word=sort_word_key)
+        windows['__WORDS'].display_lines(rev=False,
+                                         highlight_word=sort_word_key)
         c = chr(stdscr.getch())
+        if c not in ['w', 'q', 'u'] and evaluated_word == '':
+            # no terms to classify. the only working keys are write, undo and
+            # quit the others will do nothing
+            continue
+
         if c in classifing_keys:
             label = Label.get_from_key(c)
             profiler.info("WORD '{}' AS '{}'".format(evaluated_word,
