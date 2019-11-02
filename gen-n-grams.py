@@ -14,6 +14,28 @@ from sklearn.feature_extraction.text import CountVectorizer
 import sys
 import csv
 import logging
+import argparse
+
+
+def setup_logger(name, log_file, formatter=logging.Formatter('%(asctime)s %(levelname)s %(message)s'),
+                 level=logging.INFO):
+    """Function to setup a generic loggers."""
+    handler = logging.FileHandler(log_file)
+    handler.setFormatter(formatter)
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    logger.addHandler(handler)
+    return logger
+
+
+def init_argparser():
+    """Initialize the command line parser."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument('datafile', action="store", type=str,
+                        help="input CSV data file")
+    parser.add_argument('--output', '-o', metavar='FILENAME',
+                        help='output file name')
+    return parser
 
 
 # Most frequently occuring n-grams
@@ -48,9 +70,9 @@ def load_stop_words(input_file, language='english'):
         stop_words_list = f.read().split('\n')
     stop_words_list = [w for w in stop_words_list if w != '']
     stop_words_list = [w for w in stop_words_list if w[0] != '#']
-    ##Creating a list of stop words and adding custom stopwords
+    # Creating a list of stop words and adding custom stopwords
     stop_words = set(stopwords.words("english"))
-    ##Creating a list of custom stopwords
+    # Creating a list of custom stopwords
     new_words = stop_words_list
     stop_words = stop_words.union(new_words)
     return stop_words
@@ -79,81 +101,69 @@ def process_corpus(dataset, stop_words):
     return corpus
 
 
-def init_logger(logfile):
-    # Create a custom logger
-    logger = logging.getLogger(__name__)
+def main():
+    parser = init_argparser()
+    args = parser.parse_args()
 
-    # Create handlers
-    c_handler = logging.StreamHandler()
-    f_handler = logging.FileHandler(logfile)
-    c_handler.setLevel(logging.DEBUG)
-    f_handler.setLevel(logging.DEBUG)
+    debug_logger = setup_logger('debug_logger', 'slr-kit.log',
+                                level=logging.DEBUG)
 
-    # Create formatters and add it to handlers
-    c_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-    f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    c_handler.setFormatter(c_format)
-    f_handler.setFormatter(f_format)
+    # load the dataset
+    dataset = pandas.read_csv(args.datafile, delimiter = '\t')
+    debug_logger.debug("Dataset loaded {} items".format(len(dataset['abstract1'])))
+    #logging.debug(dataset.head())
 
-    # Add handlers to the logger
-    logger.addHandler(c_handler)
-    logger.addHandler(f_handler)
+    stop_words = load_stop_words("stop_words.txt", language='english')
+    debug_logger.debug("Stopword loaded and updated")
 
-    return logger
+    corpus = process_corpus(dataset['abstract1'], stop_words)
+    debug_logger.debug("Corpus processed")
 
+    # View corpus item
+    # logging.debug(corpus[2])
 
-logging.basicConfig(filename='slr-kit.log', filemode='a', format='%(asctime)s [%(levelname)s] %(message)s', level=logging.DEBUG)
+    #cv=CountVectorizer(max_df=0.8,stop_words=stop_words, max_features=10000, ngram_range=(1,4))
+    #X=cv.fit_transform(corpus)
+    #l = list(cv.vocabulary_.keys())
+    #print(l)
+    #print(len(l))
 
-# load the dataset
-dataset = pandas.read_csv(sys.argv[1], delimiter = '\t')
-logging.debug("Dataset loaded {} items".format(len(dataset['abstract1'])))
-#logging.debug(dataset.head())
+    top_words = get_top_n_words(corpus, n=None)
+    all_words = top_words
 
-stop_words = load_stop_words("stop_words.txt", language='english')
-logging.debug("Stopword loaded and updated")
+    top2_words = get_top_n_grams(corpus, n=2, amount=5000)
+    all_words.extend(top2_words)
 
-corpus = process_corpus(dataset['abstract1'], stop_words)
-logging.debug("Corpus processed")
+    top3_words = get_top_n_grams(corpus, n=3, amount=5000)
+    all_words.extend(top3_words)
 
-# View corpus item
-# logging.debug(corpus[2])
+    top4_words = get_top_n_grams(corpus, n=4, amount=5000)
+    all_words.extend(top4_words)
 
-#cv=CountVectorizer(max_df=0.8,stop_words=stop_words, max_features=10000, ngram_range=(1,4))
-#X=cv.fit_transform(corpus)
-#l = list(cv.vocabulary_.keys())
-#print(l)
-#print(len(l))
-
-#Convert most freq words to dataframe for plotting bar plot
-top_words = get_top_n_words(corpus, n=None)
-all_words = top_words
-
-top2_words = get_top_n_grams(corpus, n=2, amount=5000)
-all_words.extend(top2_words)
-
-top3_words = get_top_n_grams(corpus, n=3, amount=5000)
-all_words.extend(top3_words)
-
-top4_words = get_top_n_grams(corpus, n=4, amount=5000)
-all_words.extend(top4_words)
-
-with open('output_x.csv', mode='w') as output_file:
-    writer = csv.writer(output_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-    writer.writerow(['keyword', 'count', 'group'])
+    # write to output, either a file or stdout (default)
+    output_file = open(args.output, 'w') if args.output is not None else sys.stdout
+    writer = csv.writer(output_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+    writer.writerow(['keyword', 'count', 'label'])
     for item in all_words:
         writer.writerow([item[0], item[1], ''])
+    if output_file is not sys.stdout:
+        output_file.close()
 
-# # Fetch wordcount for each abstract
-# dataset['word_count'] = dataset['abstract1'].apply(lambda x: len(str(x).split(" ")))
-# print(dataset[['id','word_count']].head())
-# 
-# # Descriptive statistics of word counts
-# print(dataset.word_count.describe())
-# 
-# # Identify common words
-# freq = pandas.Series(' '.join(dataset['abstract1']).split()).value_counts()[:20]
-# print(freq)
-# 
-# #Identify uncommon words
-# freq1 =  pandas.Series(' '.join(dataset['abstract1']).split()).value_counts()[-20:]
-# print(freq1)
+    # # Fetch wordcount for each abstract
+    # dataset['word_count'] = dataset['abstract1'].apply(lambda x: len(str(x).split(" ")))
+    # print(dataset[['id','word_count']].head())
+    # 
+    # # Descriptive statistics of word counts
+    # print(dataset.word_count.describe())
+    # 
+    # # Identify common words
+    # freq = pandas.Series(' '.join(dataset['abstract1']).split()).value_counts()[:20]
+    # print(freq)
+    # 
+    # #Identify uncommon words
+    # freq1 =  pandas.Series(' '.join(dataset['abstract1']).split()).value_counts()[-20:]
+    # print(freq1)
+
+
+if __name__ == "__main__":
+    main()
