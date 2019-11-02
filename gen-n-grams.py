@@ -107,31 +107,32 @@ def process_corpus(dataset, stop_words):
     return corpus
 
 
+def convert_int_parameter(args, arg_name, default=None):
+    """Try toconvert an integer number from the command line argument.
+
+    Checks the validity of the value.
+    Assigns an optional default value if no option is provided.
+    Exits in case of error during the conversion.
+    """
+    arg_string = args.__dict__[arg_name]
+    if arg_string is not None:
+        try:
+            value = int(arg_string)
+        except:
+            print('Invalid value for parameter "{}": "{}"'.format(arg_name, arg_string))
+            sys.exit(1)
+    else:
+        value = default
+    return value
+
+
 def main():
     parser = init_argparser()
     args = parser.parse_args()
 
-    # TODO: create a function for these checkings
-
     # set the value of n_grams, possibly from the command line
-    if args.n_grams is not None:
-        try:
-            n_grams = int(args.n_grams)
-        except:
-            print('Invalid value for parameter "n-grams": "{}"'.format(args.n_grams))
-            sys.exit(1)
-    else:
-        n_grams = 4
-
-    # set the value of num_n_grams, possibly from the command line
-    if args.num_n_grams is not None:
-        try:
-            num_n_grams = int(args.num_n_grams)
-        except:
-            print('Invalid value for parameter "num_n-grams": "{}"'.format(args.num_n_grams))
-            sys.exit(1)
-    else:
-        num_n_grams = 5000
+    n_grams = convert_int_parameter(args, 'n_grams', default=4)
+    num_n_grams = convert_int_parameter(args, 'num_n_grams', default=5000)
 
     debug_logger = setup_logger('debug_logger', 'slr-kit.log',
                                 level=logging.DEBUG)
