@@ -108,7 +108,7 @@ def process_corpus(dataset, stop_words):
 
 
 def convert_int_parameter(args, arg_name, default=None):
-    """Try toconvert an integer number from the command line argument.
+    """Try to convert an integer number from the command line argument.
 
     Checks the validity of the value.
     Assigns an optional default value if no option is provided.
