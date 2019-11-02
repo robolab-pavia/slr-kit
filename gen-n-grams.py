@@ -35,6 +35,8 @@ def init_argparser():
                         help="input CSV data file")
     parser.add_argument('--output', '-o', metavar='FILENAME',
                         help='output file name')
+    parser.add_argument('--stop-words', '-s', metavar='FILENAME', dest='stop_words_file',
+                        help='stop words file name')
     return parser
 
 
@@ -75,7 +77,7 @@ def load_stop_words(input_file, language='english'):
     # Creating a list of custom stopwords
     new_words = stop_words_list
     stop_words = stop_words.union(new_words)
-    return stop_words
+    return list(stop_words)
 
 
 def process_corpus(dataset, stop_words):
@@ -113,8 +115,12 @@ def main():
     debug_logger.debug("Dataset loaded {} items".format(len(dataset['abstract1'])))
     #logging.debug(dataset.head())
 
-    stop_words = load_stop_words("stop_words.txt", language='english')
-    debug_logger.debug("Stopword loaded and updated")
+    if args.stop_words_file is not None:
+        stop_words = load_stop_words(args.stop_words_file, language='english')
+        debug_logger.debug("Stopwords loaded and updated")
+    else:
+        stop_words = []
+    # print(stop_words)
 
     corpus = process_corpus(dataset['abstract1'], stop_words)
     debug_logger.debug("Corpus processed")
