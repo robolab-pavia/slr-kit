@@ -51,24 +51,29 @@ def load_stop_words(input_file, language='english'):
     return list(stop_words)
 
 
+def preprocess_item(item, stop_words):
+    # Remove punctuations
+    text = re.sub('[^a-zA-Z]', ' ', item)
+    # Convert to lowercase
+    text = text.lower()
+    # Remove tags
+    text=re.sub("&lt;/?.*?&gt;"," &lt;&gt; ", text)
+    # Remove special characters and digits
+    text=re.sub("(\\d|\\W)+"," ", text)
+    # Convert to list from string
+    text = text.split()
+    # Stemming
+    ps=PorterStemmer()
+    # Lemmatisation
+    lem = WordNetLemmatizer()
+    text = [lem.lemmatize(word) for word in text if not word in stop_words] 
+    return text
+
+
 def process_corpus(dataset, stop_words):
     corpus = []
     for item in dataset:
-        # Remove punctuations
-        text = re.sub('[^a-zA-Z]', ' ', item)
-        # Convert to lowercase
-        text = text.lower()
-        # Remove tags
-        text=re.sub("&lt;/?.*?&gt;"," &lt;&gt; ", text)
-        # Remove special characters and digits
-        text=re.sub("(\\d|\\W)+"," ", text)
-        # Convert to list from string
-        text = text.split()
-        # Stemming
-        ps=PorterStemmer()
-        # Lemmatisation
-        lem = WordNetLemmatizer()
-        text = [lem.lemmatize(word) for word in text if not word in stop_words] 
+        text = preprocess_item(item, stop_words)
         text = " ".join(text)
         corpus.append(text)
     return corpus
