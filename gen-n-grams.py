@@ -35,8 +35,6 @@ def init_argparser():
                         help="input CSV data file")
     parser.add_argument('--output', '-o', metavar='FILENAME',
                         help='output file name')
-    parser.add_argument('--stop-words', '-s', metavar='FILENAME', dest='stop_words_file',
-                        help='stop words file name')
     parser.add_argument('--n-grams', '-n', metavar='N', dest='n_grams', default=4,
                         help='maximum size of n-grams number')
     parser.add_argument('--num-n-grams', '-m', metavar='N', dest='num_n_grams', default=5000,
@@ -68,20 +66,6 @@ def get_top_n_words(corpus, n=None):
                        reverse=True)
     #print("Length: {}".format(len(words_freq)))
     return words_freq[:n]
-
-
-def load_stop_words(input_file, language='english'):
-    stop_words_list = []
-    with open(input_file, "r") as f:
-        stop_words_list = f.read().split('\n')
-    stop_words_list = [w for w in stop_words_list if w != '']
-    stop_words_list = [w for w in stop_words_list if w[0] != '#']
-    # Creating a list of stop words and adding custom stopwords
-    stop_words = set(stopwords.words("english"))
-    # Creating a list of custom stopwords
-    new_words = stop_words_list
-    stop_words = stop_words.union(new_words)
-    return list(stop_words)
 
 
 def process_corpus(dataset, stop_words):
@@ -127,6 +111,7 @@ def convert_int_parameter(args, arg_name, default=None):
 
 
 def main():
+    target_column = 'abstract_lem'
     parser = init_argparser()
     args = parser.parse_args()
 
@@ -139,20 +124,16 @@ def main():
     # TODO: write log string with values of the parameters used in the execution
 
     # load the dataset
-    dataset = pandas.read_csv(args.datafile, delimiter = '\t')
-    # TODO: check that a column called 'abstract1' actually exists in the input file
-    debug_logger.debug("Dataset loaded {} items".format(len(dataset['abstract1'])))
+    dataset = pandas.read_csv(args.datafile, delimiter='\t')
+    dataset.fillna('', inplace=True)
+    if target_column not in dataset:
+        print('File "{}" must contain a column labelled as "{}".'.format(args.datafile, target_column))
+        sys.exit(1)
+    debug_logger.debug("Dataset loaded {} items".format(len(dataset[target_column])))
     #logging.debug(dataset.head())
 
-    if args.stop_words_file is not None:
-        stop_words = load_stop_words(args.stop_words_file, language='english')
-        debug_logger.debug("Stopwords loaded and updated")
-    else:
-        stop_words = []
-    # print(stop_words)
-
-    corpus = process_corpus(dataset['abstract1'], stop_words)
-    debug_logger.debug("Corpus processed")
+    corpus = dataset[target_column].to_list()
+    #print(corpus)
 
     # View corpus item
     # logging.debug(corpus[2])
@@ -171,6 +152,7 @@ def main():
         all_terms.extend(top_terms)
 
     # write to output, either a file or stdout (default)
+    # TODO: use pandas to_csv instead of explicit csv row output
     output_file = open(args.output, 'w') if args.output is not None else sys.stdout
     writer = csv.writer(output_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
     writer.writerow(['keyword', 'count', 'label'])
