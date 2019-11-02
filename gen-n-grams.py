@@ -37,6 +37,10 @@ def init_argparser():
                         help='output file name')
     parser.add_argument('--stop-words', '-s', metavar='FILENAME', dest='stop_words_file',
                         help='stop words file name')
+    parser.add_argument('--n-grams', '-n', metavar='N', dest='n_grams', default=4,
+                        help='maximum size of n-grams number')
+    parser.add_argument('--num-n-grams', '-m', metavar='N', dest='num_n_grams', default=5000,
+                        help='number of n-grams items')
     return parser
 
 
@@ -107,11 +111,35 @@ def main():
     parser = init_argparser()
     args = parser.parse_args()
 
+    # TODO: create a function for these checkings
+
+    # set the value of n_grams, possibly from the command line
+    if args.n_grams is not None:
+        try:
+            n_grams = int(args.n_grams)
+        except:
+            print('Invalid value for parameter "n-grams": "{}"'.format(args.n_grams))
+            sys.exit(1)
+    else:
+        n_grams = 4
+
+    # set the value of num_n_grams, possibly from the command line
+    if args.num_n_grams is not None:
+        try:
+            num_n_grams = int(args.num_n_grams)
+        except:
+            print('Invalid value for parameter "num_n-grams": "{}"'.format(args.num_n_grams))
+            sys.exit(1)
+    else:
+        num_n_grams = 5000
+
     debug_logger = setup_logger('debug_logger', 'slr-kit.log',
                                 level=logging.DEBUG)
+    # TODO: write log string with values of the parameters used in the execution
 
     # load the dataset
     dataset = pandas.read_csv(args.datafile, delimiter = '\t')
+    # TODO: check that a column called 'abstract1' actually exists in the input file
     debug_logger.debug("Dataset loaded {} items".format(len(dataset['abstract1'])))
     #logging.debug(dataset.head())
 
@@ -134,23 +162,18 @@ def main():
     #print(l)
     #print(len(l))
 
-    top_words = get_top_n_words(corpus, n=None)
-    all_words = top_words
+    top_terms = get_top_n_words(corpus, n=None)
+    all_terms = top_terms
 
-    top2_words = get_top_n_grams(corpus, n=2, amount=5000)
-    all_words.extend(top2_words)
-
-    top3_words = get_top_n_grams(corpus, n=3, amount=5000)
-    all_words.extend(top3_words)
-
-    top4_words = get_top_n_grams(corpus, n=4, amount=5000)
-    all_words.extend(top4_words)
+    for n in range(2, n_grams + 1):
+        top_terms = get_top_n_grams(corpus, n=n, amount=num_n_grams)
+        all_terms.extend(top_terms)
 
     # write to output, either a file or stdout (default)
     output_file = open(args.output, 'w') if args.output is not None else sys.stdout
     writer = csv.writer(output_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
     writer.writerow(['keyword', 'count', 'label'])
-    for item in all_words:
+    for item in all_terms:
         writer.writerow([item[0], item[1], ''])
     if output_file is not sys.stdout:
         output_file.close()
