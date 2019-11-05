@@ -24,6 +24,8 @@ def setup_logger(name, log_file, formatter=logging.Formatter('%(asctime)s %(leve
     logger.addHandler(handler)
     return logger
 
+debug_logger = setup_logger('debug_logger', 'slr-kit.log',
+                            level=logging.DEBUG)
 
 def init_argparser():
     """Initialize the command line parser."""
@@ -39,14 +41,39 @@ def init_argparser():
     return parser
 
 
+def find_all_occurrences(term, document):
+    l = []
+    # prepend and append a space to both keyword and abstract
+    # in order to look for terms delimited by spaces (whole words)
+    term_expanded = ' ' + term + ' '
+    doc_expanded = ' ' + document + ' '
+    for match in re.finditer(term_expanded, doc_expanded):
+        l.append(match.start())
+    return l
+
+
+def find_occurrences_in_all_documents(terms, documents_df, output_file):
+    # loop over all the terms
+    tot = len(terms)
+    for i, term in enumerate(terms):
+        info = {'term': term, 'occurrences': {}}
+        #term_expanded = ' ' + term + ' '
+        for index, row in documents_df.iterrows():
+            l = find_all_occurrences(term, row['abstract_lem'])
+            if len(l) > 0:
+                info['occurrences'][row['id']] = l
+        output_file.write(json.dumps(info))
+        output_file.write('\n')
+        if (i % 5) == 0:
+            debug_logger.debug('Finding occurrences ({}/{})'.format(i, tot))
+
+
 def main():
     abstracts_column = 'abstract_lem'
     terms_column = 'keyword'
     parser = init_argparser()
     args = parser.parse_args()
 
-    debug_logger = setup_logger('debug_logger', 'slr-kit.log',
-                                level=logging.DEBUG)
     # TODO: write log string with values of the parameters used in the execution
 
     # load the datasets
@@ -68,33 +95,12 @@ def main():
     else:
         label = 'keyword'   # default behavior
     #print(label)
-    keyword_flags = terms['label'] == label
-    keywords = terms[keyword_flags]
+    terms_flags = terms['label'] == label
+    terms = terms[terms_flags]
     #print(keywords)
 
-    # TODO: encapsulate the processing into a callable function
-
     output_file = open(args.output, 'w') if args.output is not None else sys.stdout
-
-    # loop over all the selected terms
-    tot = len(keywords[terms_column])
-    for i, k in enumerate(keywords[terms_column]):
-        info = {'term': k, 'occurrences': {}}
-        # prepend and append a space to both keyword and abstract
-        # in order to look for terms delimited by spaces (whole words)
-        k_expanded = ' ' + k + ' '
-        for index, row in abstracts.iterrows():
-            l = []
-            abs_expanded = ' ' + row[abstracts_column] + ' '
-            for match in re.finditer(k_expanded, abs_expanded):
-                l.append(match.start())
-                #l.append((match.start(), match.end()))
-            if len(l) > 0:
-                info['occurrences'][row['id']] = l
-        output_file.write(json.dumps(info))
-        output_file.write('\n')
-        if (i % 5) == 0:
-            debug_logger.debug('Finding occurrences ({}/{})'.format(i, tot))
+    find_occurrences_in_all_documents(terms[terms_column], abstracts, output_file)
     output_file.close()
 
 
