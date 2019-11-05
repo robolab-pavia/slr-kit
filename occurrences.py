@@ -12,6 +12,7 @@ import sys
 import json
 import logging
 import argparse
+from multiprocessing import Pool
 
 
 def setup_logger(name, log_file, formatter=logging.Formatter('%(asctime)s %(levelname)s %(message)s'),
@@ -41,7 +42,7 @@ def init_argparser():
     return parser
 
 
-def find_all_occurrences(term, document):
+def find_all_occurrences(term, document, doc_id):
     l = []
     # prepend and append a space to both keyword and abstract
     # in order to look for terms delimited by spaces (whole words)
@@ -49,19 +50,22 @@ def find_all_occurrences(term, document):
     doc_expanded = ' ' + document + ' '
     for match in re.finditer(term_expanded, doc_expanded):
         l.append(match.start())
-    return l
+    return doc_id, l
 
 
 def find_occurrences_in_all_documents(terms, documents_df, output_file):
     # loop over all the terms
     tot = len(terms)
+    document_list = list(documents_df['abstract_lem'])
+    doc_id_list = list(documents_df['id'])
     for i, term in enumerate(terms):
         info = {'term': term, 'occurrences': {}}
-        #term_expanded = ' ' + term + ' '
-        for index, row in documents_df.iterrows():
-            l = find_all_occurrences(term, row['abstract_lem'])
-            if len(l) > 0:
-                info['occurrences'][row['id']] = l
+        term_list = [term] * len(document_list)
+        # parallel invocation of the search function
+        with Pool() as pool:
+            result = pool.starmap(find_all_occurrences, zip(term_list, document_list, doc_id_list))
+        # keeps non empty lists of occurrences
+        info['occurrences'] = {r[0]: r[1] for r in result if len(r[1]) > 0}
         output_file.write(json.dumps(info))
         output_file.write('\n')
         if (i % 5) == 0:
