@@ -41,12 +41,16 @@ def main():
     nrelevant = pandas.read_csv('occ-not-relevant-count.csv', delimiter='\t')
     nrelevant.fillna('', inplace=True)
 
+    # convert the dataframe into a Series indexed by Abstract
+    # making the search of an existing abstract very quick
+    nrel = pandas.Series(zip(nrelevant['Count'], nrelevant['Terms']), index=nrelevant['Abstract'])
+
     print('{}\t{}\t{}\t{}\t{}'.format('Abstract', 'Keyword count', 'Not-relevant count', 'Keyword Terms', 'Not-relevant Terms'))
     tot = len(keywords['Abstract'])
     for ik, k in keywords.iterrows():
-        for nrk, nr in nrelevant.iterrows():
-            if k['Abstract'] == nr['Abstract']:
-                print('{}\t{}\t{}\t{}\t{}'.format(k['Abstract'], k['Count'], nr['Count'], k['Terms'], nr['Terms']))
+        abst = k['Abstract']
+        if abst in nrel:
+            print('{}\t{}\t{}\t{}\t{}'.format(abst, k['Count'], nrel[abst][0], k['Terms'], nrel[abst][1]))
         if (ik % 50) == 0:
             debug_logger.debug('Matching keywords and not-relevant {}/{}'.format(ik, tot))
     
