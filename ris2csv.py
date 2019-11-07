@@ -1,7 +1,7 @@
 import argparse
 import sys
 import pandas as pd
-from __RISparser.RISparser import readris
+from RISparser import readris
 
 
 def init_argparser():
@@ -14,6 +14,12 @@ def init_argparser():
     parser.add_argument('--columns', '-c', metavar='col1,..,coln',
                         help='list of comma-separated columns to export; \'?\' for the list of available columns')
     return parser
+
+
+def show_columns(df):
+    print('Valid columns:')
+    for c in df.columns:
+        print('   {}'.format(c))
 
 
 def main():
@@ -30,15 +36,21 @@ def main():
         cols = args.columns.split(',')
         # checks if help was requested
         if len(cols) == 1 and cols[0] == '?':
-            print('Valid columns:')
-            for c in risdf.columns:
-                print('   {}'.format(c))
+            show_columns(risdf)
             sys.exit(1)
         # checks that the requested items exist in the RIS file
         for c in cols:
             if c not in risdf:
-                print('Invalid column: "{}"'.format(c))
+                print('Invalid column: "{}".'.format(c))
                 sys.exit(1)
+    else:
+        # uses 'title' as default column
+        if 'title' in risdf:
+            cols = ['title']
+        else:
+            print('Column "title" not present; no columns specified.')
+            show_columns(risdf)
+            sys.exit(1)
 
     export_csv = risdf.to_csv(
             output_file,
