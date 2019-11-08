@@ -216,6 +216,7 @@ pip-selfcheck.json
 *.txt
 *.json
 .~lock*#
+*.ris
 
 # pycharm stuff
 .idea
