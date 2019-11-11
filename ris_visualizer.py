@@ -8,11 +8,12 @@ def change_selection(event, df, tk_vars):
     idx = event.widget.curselection()[0]
     tk_vars['title'].set(df.loc[idx, 'title'])
     tk_vars['abstract']['state'] = 'normal'
+    tk_vars['abstract'].delete('1.0', 'end')
     tk_vars['abstract'].insert('1.0', df.loc[idx, 'abstract'])
     tk_vars['abstract']['state'] = 'disabled'
-    tk_vars['authors'].set(df.loc[idx, 'authors'])
-    tk_vars['year'].set(df.loc[idx, 'year'])
-    tk_vars['pub'].set(df.loc[idx, 'secondary_title'])
+    tk_vars['authors'].set('Authors: {}'.format(df.loc[idx, 'authors']))
+    tk_vars['year'].set('Year: {}'.format(df.loc[idx, 'year']))
+    tk_vars['pub'].set('Pubblication: {}'.format(df.loc[idx, 'secondary_title']))
 
 
 def authors_convert(auth_str):
@@ -38,8 +39,7 @@ def main():
     root = tk.Tk()
     root.title('RIS Visualizer')
     mainframe = ttk.Frame(root, padding="3 3 12 12")
-    mainframe.grid(column=0, row=0, sticky=(tk.N, tk.W, tk.E,
-                                            tk.S))
+    mainframe.grid(column=0, row=0, sticky=(tk.N, tk.W, tk.E, tk.S))
     root.rowconfigure(0, weight=1)
     root.columnconfigure(0, weight=1)
     lnames = tk.StringVar(value=lst)
@@ -76,9 +76,9 @@ def main():
     abstract['state'] = 'normal'
     abstract.insert('1.0', df.loc[0, 'abstract'])
     abstract['state'] = 'disabled'
-    authors.set(df.loc[0, 'authors'])
-    year.set(df.loc[0, 'year'])
-    pub.set(df.loc[0, 'secondary_title'])
+    authors.set('Authors: {}'.format(df.loc[0, 'authors']))
+    year.set('Year: {}'.format(df.loc[0, 'year']))
+    pub.set('Pubblication: {}'.format(df.loc[0, 'secondary_title']))
 
     tk_vars = {'title': title, 'abstract': abstract, 'authors': authors,
                'year': year, 'pub': pub}
