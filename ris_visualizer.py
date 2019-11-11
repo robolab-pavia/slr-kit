@@ -1,3 +1,4 @@
+import ast
 import tkinter as tk
 from tkinter import ttk
 import pandas as pd
@@ -9,12 +10,27 @@ def change_selection(event, df, tk_vars):
     tk_vars['abstract']['state'] = 'normal'
     tk_vars['abstract'].insert('1.0', df.loc[idx, 'abstract'])
     tk_vars['abstract']['state'] = 'disabled'
+    tk_vars['authors'].set(df.loc[idx, 'authors'])
+
+
+def authors_convert(auth_str):
+    """
+
+    :param auth_str:
+    :type auth_str: str
+    :return:
+    """
+    auth_list = ast.literal_eval(auth_str)
+    authors = ', '.join([a.replace(',', '') for a in auth_list])
+    return authors
 
 
 def main():
     df = pd.read_csv('rts-sample-ris.csv', sep='\t',
                      usecols=['id', 'authors', 'title', 'secondary_title',
-                              'abstract', 'year'])
+                              'abstract', 'year'],
+                     converters={'authors': authors_convert})
+
     lst = df.apply(lambda r: '{} - {}'.format(r['id'], r['title']), axis=1)
     lst = lst.to_list()
     root = tk.Tk()
@@ -41,12 +57,17 @@ def main():
                                  command=abstract.yview)
     abs_scrollbar.grid(column=4, row=2, sticky=(tk.N, tk.S))
     abstract['yscrollcommand'] = abs_scrollbar.set
+
+    authors = tk.StringVar()
+    ttk.Label(mainframe, textvariable=authors).grid(column=3, row=3,
+                                                    sticky=(tk.W, tk.E))
     title.set(df.loc[0, 'title'])
     abstract['state'] = 'normal'
     abstract.insert('1.0', df.loc[0, 'abstract'])
     abstract['state'] = 'disabled'
+    authors.set(df.loc[0, 'authors'])
 
-    tk_vars = {'title': title, 'abstract': abstract}
+    tk_vars = {'title': title, 'abstract': abstract, 'authors': authors}
 
     lbox.bind('<<ListboxSelect>>',
               lambda event: change_selection(event, df, tk_vars))
