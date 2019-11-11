@@ -35,7 +35,7 @@ def main():
     ttk.Label(mainframe, textvariable=title).grid(column=3, row=1,
                                                   sticky=(tk.W, tk.E))
 
-    abstract = tk.Text(mainframe, wrap='word', state='disabled')
+    abstract = tk.Text(mainframe, wrap='word', state='disabled', height=10)
     abstract.grid(column=3, row=2, sticky=(tk.W, tk.E))
     abs_scrollbar = tk.Scrollbar(mainframe, orient=tk.VERTICAL,
                                  command=abstract.yview)
