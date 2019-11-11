@@ -11,6 +11,7 @@ def change_selection(event, df, tk_vars):
     tk_vars['abstract'].insert('1.0', df.loc[idx, 'abstract'])
     tk_vars['abstract']['state'] = 'disabled'
     tk_vars['authors'].set(df.loc[idx, 'authors'])
+    tk_vars['year'].set(df.loc[idx, 'year'])
 
 
 def authors_convert(auth_str):
@@ -61,13 +62,20 @@ def main():
     authors = tk.StringVar()
     ttk.Label(mainframe, textvariable=authors).grid(column=3, row=3,
                                                     sticky=(tk.W, tk.E))
+
+    year = tk.StringVar()
+    ttk.Label(mainframe, textvariable=year).grid(column=3, row=4,
+                                                 sticky=(tk.W, tk.E))
+
     title.set(df.loc[0, 'title'])
     abstract['state'] = 'normal'
     abstract.insert('1.0', df.loc[0, 'abstract'])
     abstract['state'] = 'disabled'
     authors.set(df.loc[0, 'authors'])
+    year.set(df.loc[0, 'year'])
 
-    tk_vars = {'title': title, 'abstract': abstract, 'authors': authors}
+    tk_vars = {'title': title, 'abstract': abstract, 'authors': authors,
+               'year': year}
 
     lbox.bind('<<ListboxSelect>>',
               lambda event: change_selection(event, df, tk_vars))
