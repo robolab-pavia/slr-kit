@@ -5,17 +5,7 @@ import sys
 import json
 import logging
 import argparse
-
-
-def setup_logger(name, log_file, formatter=logging.Formatter('%(asctime)s %(levelname)s %(message)s'),
-                 level=logging.INFO):
-    """Function to setup a generic loggers."""
-    handler = logging.FileHandler(log_file)
-    handler.setFormatter(formatter)
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
-    logger.addHandler(handler)
-    return logger
+from utils import setup_logger
 
 
 def init_argparser():
