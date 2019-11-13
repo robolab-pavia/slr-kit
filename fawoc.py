@@ -6,6 +6,7 @@ import os
 import pathlib
 import sys
 from terms import Label, TermList
+from utils import setup_logger
 
 
 class Win(object):
@@ -146,30 +147,6 @@ class Win(object):
         """
         terms = sorted(terms, key=lambda t: t.order)
         self.lines = [w.term for w in terms if w.label == self.label]
-
-
-def setup_logger(name, log_file, formatter=logging.Formatter('%(asctime)s %(levelname)s %(message)s'),
-                 level=logging.INFO):
-    """
-    Function to setup a generic loggers.
-
-    :param name: name of the logger
-    :type name: str
-    :param log_file: file of the log
-    :type log_file: str
-    :param formatter: formatter to be used by the logger
-    :type formatter: logging.Formatter
-    :param level: level to display
-    :type level: int
-    :return: the logger
-    :rtype: logging.Logger
-    """
-    handler = logging.FileHandler(log_file)
-    handler.setFormatter(formatter)
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
-    logger.addHandler(handler)
-    return logger
 
 
 def init_argparser():
