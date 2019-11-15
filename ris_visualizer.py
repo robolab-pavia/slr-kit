@@ -84,7 +84,8 @@ class Gui:
         lbl.grid(column=2, row=1, sticky=(tk.W, tk.E))
         return authors
 
-    def _setup_abstract(self, frame):
+    @staticmethod
+    def _setup_abstract(frame):
         abstract = tk.Text(frame, wrap='word', state='disabled',
                            height=10)
         abstract.grid(column=3, row=2, columnspan=2, sticky=(tk.W, tk.E))
@@ -94,7 +95,8 @@ class Gui:
         abstract['yscrollcommand'] = abs_scrollbar.set
         return abstract
 
-    def _setup_title(self, frame):
+    @staticmethod
+    def _setup_title(frame):
         title = tk.StringVar()
         lbl = ttk.Label(frame, textvariable=title)
         lbl.grid(column=3, row=1, sticky=(tk.W, tk.E))
