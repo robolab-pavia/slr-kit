@@ -4,16 +4,90 @@ from tkinter import ttk
 import pandas as pd
 
 
-def change_selection(event, df, tk_vars):
-    idx = event.widget.curselection()[0]
-    tk_vars['title'].set(df.loc[idx, 'title'])
-    tk_vars['abstract']['state'] = 'normal'
-    tk_vars['abstract'].delete('1.0', 'end')
-    tk_vars['abstract'].insert('1.0', df.loc[idx, 'abstract'])
-    tk_vars['abstract']['state'] = 'disabled'
-    tk_vars['authors'].set('Authors: {}'.format(df.loc[idx, 'authors']))
-    tk_vars['year'].set('Year: {}'.format(df.loc[idx, 'year']))
-    tk_vars['pub'].set('Pubblication: {}'.format(df.loc[idx, 'secondary_title']))
+class Gui:
+
+    def __init__(self, df):
+        """
+        Creates the GUI of the app
+
+        :param df: dataframe of the RIS data
+        :type df: pd.DataFrame
+        """
+        self.df = df
+        self.root = tk.Tk()
+        self.root.title('RIS Visualizer')
+        self.mainframe = ttk.Frame(self.root, padding="3 3 12 12")
+        self.mainframe.grid(column=0, row=0, sticky=(tk.N, tk.W, tk.E, tk.S))
+        self.root.rowconfigure(0, weight=1)
+        self.root.columnconfigure(0, weight=1)
+
+        self.list_names, self.list_box = self._setup_list()
+        self.title = self._setup_title()
+        self.abstract = self._setup_abstract()
+        self.authors = self._setup_authors()
+        self.year = self._setup_date()
+        self.pub = self._setup_pubblication()
+
+        self._list_change_event(None)
+        self.list_box.bind('<<ListboxSelect>>', self._list_change_event)
+
+    def _list_change_event(self, event):
+        idx = self.list_box.curselection()[0]
+        self.title.set(self.df.loc[idx, 'title'])
+        self.abstract['state'] = 'normal'
+        self.abstract.delete('1.0', 'end')
+        self.abstract.insert('1.0', self.df.loc[idx, 'abstract'])
+        self.abstract['state'] = 'disabled'
+        self.authors.set('Authors: {}'.format(self.df.loc[idx, 'authors']))
+        self.year.set('Year: {}'.format(self.df.loc[idx, 'year']))
+        self.pub.set('Pubblication: {}'.format(self.df.loc[idx,
+                                                           'secondary_title']))
+
+    def _setup_list(self):
+        lst = self.df.apply(lambda r: '{} - {}'.format(r['id'], r['title']),
+                            axis=1)
+        lst = lst.to_list()
+        list_names = tk.StringVar(value=lst)
+        list_box = tk.Listbox(self.mainframe, height=10,
+                              listvariable=list_names, selectmode='browse')
+        list_box.grid(column=1, row=1, rowspan=6, sticky=(tk.N, tk.W,
+                                                          tk.E, tk.S))
+        list_box.selection_set(first=0)
+        return list_names, list_box
+
+    def _setup_pubblication(self):
+        pub = tk.StringVar()
+        lbl = ttk.Label(self.mainframe, textvariable=pub)
+        lbl.grid(column=3, row=5, sticky=(tk.W, tk.E))
+        return pub
+
+    def _setup_date(self):
+        year = tk.StringVar()
+        lbl = ttk.Label(self.mainframe, textvariable=year)
+        lbl.grid(column=3, row=4, sticky=(tk.W, tk.E))
+        return year
+
+    def _setup_authors(self):
+        authors = tk.StringVar()
+        lbl = ttk.Label(self.mainframe, textvariable=authors)
+        lbl.grid(column=3, row=3, sticky=(tk.W, tk.E))
+        return authors
+
+    def _setup_abstract(self):
+        abstract = tk.Text(self.mainframe, wrap='word', state='disabled',
+                           height=10)
+        abstract.grid(column=3, row=2, columnspan=2, sticky=(tk.W, tk.E))
+        abs_scrollbar = tk.Scrollbar(self.mainframe, orient=tk.VERTICAL,
+                                     command=abstract.yview)
+        abs_scrollbar.grid(column=5, row=2, sticky=(tk.N, tk.S))
+        abstract['yscrollcommand'] = abs_scrollbar.set
+        return abstract
+
+    def _setup_title(self):
+        title = tk.StringVar()
+        lbl = ttk.Label(self.mainframe, textvariable=title)
+        lbl.grid(column=3, row=1, sticky=(tk.W, tk.E))
+        return title
 
 
 def authors_convert(auth_str):
@@ -34,58 +108,8 @@ def main():
                               'abstract', 'year'],
                      converters={'authors': authors_convert})
 
-    lst = df.apply(lambda r: '{} - {}'.format(r['id'], r['title']), axis=1)
-    lst = lst.to_list()
-    root = tk.Tk()
-    root.title('RIS Visualizer')
-    mainframe = ttk.Frame(root, padding="3 3 12 12")
-    mainframe.grid(column=0, row=0, sticky=(tk.N, tk.W, tk.E, tk.S))
-    root.rowconfigure(0, weight=1)
-    root.columnconfigure(0, weight=1)
-    lnames = tk.StringVar(value=lst)
-    lbox = tk.Listbox(mainframe, height=10, listvariable=lnames,
-                      selectmode='browse')
-    lbox.grid(column=1, row=1, rowspan=6, sticky=(tk.N, tk.W,
-                                                  tk.E, tk.S))
-    lbox.selection_set(first=0)
-
-    title = tk.StringVar()
-    ttk.Label(mainframe, textvariable=title).grid(column=3, row=1,
-                                                  sticky=(tk.W, tk.E))
-
-    abstract = tk.Text(mainframe, wrap='word', state='disabled', height=10)
-    abstract.grid(column=3, row=2, sticky=(tk.W, tk.E))
-    abs_scrollbar = tk.Scrollbar(mainframe, orient=tk.VERTICAL,
-                                 command=abstract.yview)
-    abs_scrollbar.grid(column=4, row=2, sticky=(tk.N, tk.S))
-    abstract['yscrollcommand'] = abs_scrollbar.set
-
-    authors = tk.StringVar()
-    ttk.Label(mainframe, textvariable=authors).grid(column=3, row=3,
-                                                    sticky=(tk.W, tk.E))
-
-    year = tk.StringVar()
-    ttk.Label(mainframe, textvariable=year).grid(column=3, row=4,
-                                                 sticky=(tk.W, tk.E))
-
-    pub = tk.StringVar()
-    ttk.Label(mainframe, textvariable=pub).grid(column=3, row=5,
-                                                sticky=(tk.W, tk.E))
-
-    title.set(df.loc[0, 'title'])
-    abstract['state'] = 'normal'
-    abstract.insert('1.0', df.loc[0, 'abstract'])
-    abstract['state'] = 'disabled'
-    authors.set('Authors: {}'.format(df.loc[0, 'authors']))
-    year.set('Year: {}'.format(df.loc[0, 'year']))
-    pub.set('Pubblication: {}'.format(df.loc[0, 'secondary_title']))
-
-    tk_vars = {'title': title, 'abstract': abstract, 'authors': authors,
-               'year': year, 'pub': pub}
-
-    lbox.bind('<<ListboxSelect>>',
-              lambda event: change_selection(event, df, tk_vars))
-    root.mainloop()
+    gui = Gui(df)
+    gui.root.mainloop()
 
 
 if __name__ == '__main__':
