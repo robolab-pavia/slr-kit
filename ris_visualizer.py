@@ -21,12 +21,12 @@ class Gui:
         self.root.rowconfigure(0, weight=1)
         self.root.columnconfigure(0, weight=1)
 
-        self.list_names, self.list_box = self._setup_list()
-        self.title = self._setup_title()
-        self.abstract = self._setup_abstract()
-        self.authors = self._setup_authors()
-        self.year = self._setup_date()
-        self.pub = self._setup_pubblication()
+        self.list_names, self.list_box = self._setup_list(self.mainframe)
+        self.title = self._setup_title(self.mainframe)
+        self.abstract = self._setup_abstract(self.mainframe)
+        self.authors = self._setup_authors(self.mainframe)
+        self.year = self._setup_date(self.mainframe)
+        self.pub = self._setup_pubblication(self.mainframe)
 
         self._list_change_event(None)
         self.list_box.bind('<<ListboxSelect>>', self._list_change_event)
@@ -43,49 +43,49 @@ class Gui:
         self.pub.set('Pubblication: {}'.format(self.df.loc[idx,
                                                            'secondary_title']))
 
-    def _setup_list(self):
+    def _setup_list(self, frame):
         lst = self.df.apply(lambda r: '{} - {}'.format(r['id'], r['title']),
                             axis=1)
         lst = lst.to_list()
         list_names = tk.StringVar(value=lst)
-        list_box = tk.Listbox(self.mainframe, height=10,
+        list_box = tk.Listbox(frame, height=10,
                               listvariable=list_names, selectmode='browse')
         list_box.grid(column=1, row=1, rowspan=6, sticky=(tk.N, tk.W,
                                                           tk.E, tk.S))
         list_box.selection_set(first=0)
         return list_names, list_box
 
-    def _setup_pubblication(self):
+    def _setup_pubblication(self, frame):
         pub = tk.StringVar()
-        lbl = ttk.Label(self.mainframe, textvariable=pub)
+        lbl = ttk.Label(frame, textvariable=pub)
         lbl.grid(column=3, row=5, sticky=(tk.W, tk.E))
         return pub
 
-    def _setup_date(self):
+    def _setup_date(self, frame):
         year = tk.StringVar()
-        lbl = ttk.Label(self.mainframe, textvariable=year)
+        lbl = ttk.Label(frame, textvariable=year)
         lbl.grid(column=3, row=4, sticky=(tk.W, tk.E))
         return year
 
-    def _setup_authors(self):
+    def _setup_authors(self, frame):
         authors = tk.StringVar()
-        lbl = ttk.Label(self.mainframe, textvariable=authors)
+        lbl = ttk.Label(frame, textvariable=authors)
         lbl.grid(column=3, row=3, sticky=(tk.W, tk.E))
         return authors
 
-    def _setup_abstract(self):
-        abstract = tk.Text(self.mainframe, wrap='word', state='disabled',
+    def _setup_abstract(self, frame):
+        abstract = tk.Text(frame, wrap='word', state='disabled',
                            height=10)
         abstract.grid(column=3, row=2, columnspan=2, sticky=(tk.W, tk.E))
-        abs_scrollbar = tk.Scrollbar(self.mainframe, orient=tk.VERTICAL,
+        abs_scrollbar = tk.Scrollbar(frame, orient=tk.VERTICAL,
                                      command=abstract.yview)
         abs_scrollbar.grid(column=5, row=2, sticky=(tk.N, tk.S))
         abstract['yscrollcommand'] = abs_scrollbar.set
         return abstract
 
-    def _setup_title(self):
+    def _setup_title(self, frame):
         title = tk.StringVar()
-        lbl = ttk.Label(self.mainframe, textvariable=title)
+        lbl = ttk.Label(frame, textvariable=title)
         lbl.grid(column=3, row=1, sticky=(tk.W, tk.E))
         return title
 
