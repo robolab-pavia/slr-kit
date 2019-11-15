@@ -33,6 +33,7 @@ class Gui:
 
         self._list_change_event(None)
         self.list_box.bind('<<ListboxSelect>>', self._list_change_event)
+        self.list_box.focus()
 
     def _list_change_event(self, event):
         idx = self.list_box.curselection()[0]
