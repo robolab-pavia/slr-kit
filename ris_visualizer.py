@@ -24,9 +24,12 @@ class Gui:
         self.list_names, self.list_box = self._setup_list(self.mainframe)
         self.title = self._setup_title(self.mainframe)
         self.abstract = self._setup_abstract(self.mainframe)
-        self.authors = self._setup_authors(self.mainframe)
-        self.year = self._setup_date(self.mainframe)
-        self.pub = self._setup_pubblication(self.mainframe)
+        other_frame = ttk.Frame(self.mainframe)
+        other_frame.grid(column=3, row=3, columnspan=2,
+                         sticky=(tk.N, tk.W, tk.E, tk.S))
+        self.authors = self._setup_authors(other_frame)
+        self.year = self._setup_year(other_frame)
+        self.pub = self._setup_pubblication(other_frame)
 
         self._list_change_event(None)
         self.list_box.bind('<<ListboxSelect>>', self._list_change_event)
@@ -38,10 +41,9 @@ class Gui:
         self.abstract.delete('1.0', 'end')
         self.abstract.insert('1.0', self.df.loc[idx, 'abstract'])
         self.abstract['state'] = 'disabled'
-        self.authors.set('Authors: {}'.format(self.df.loc[idx, 'authors']))
-        self.year.set('Year: {}'.format(self.df.loc[idx, 'year']))
-        self.pub.set('Pubblication: {}'.format(self.df.loc[idx,
-                                                           'secondary_title']))
+        self.authors.set(self.df.loc[idx, 'authors'])
+        self.year.set(self.df.loc[idx, 'year'])
+        self.pub.set(self.df.loc[idx, 'secondary_title'])
 
     def _setup_list(self, frame):
         lst = self.df.apply(lambda r: '{} - {}'.format(r['id'], r['title']),
@@ -55,22 +57,31 @@ class Gui:
         list_box.selection_set(first=0)
         return list_names, list_box
 
-    def _setup_pubblication(self, frame):
+    @staticmethod
+    def _setup_pubblication(frame):
+        ttk.Label(frame, text='Pubblication: ').grid(column=1, row=3,
+                                                     sticky=(tk.W, tk.E))
         pub = tk.StringVar()
         lbl = ttk.Label(frame, textvariable=pub)
-        lbl.grid(column=3, row=5, sticky=(tk.W, tk.E))
+        lbl.grid(column=2, row=3, sticky=(tk.W, tk.E))
         return pub
 
-    def _setup_date(self, frame):
+    @staticmethod
+    def _setup_year(frame):
+        ttk.Label(frame, text='Year: ').grid(column=1, row=2,
+                                             sticky=(tk.W, tk.E))
         year = tk.StringVar()
         lbl = ttk.Label(frame, textvariable=year)
-        lbl.grid(column=3, row=4, sticky=(tk.W, tk.E))
+        lbl.grid(column=2, row=2, sticky=(tk.W, tk.E))
         return year
 
-    def _setup_authors(self, frame):
+    @staticmethod
+    def _setup_authors(frame):
+        ttk.Label(frame, text='Authors: ').grid(column=1, row=1,
+                                                sticky=(tk.W, tk.E))
         authors = tk.StringVar()
         lbl = ttk.Label(frame, textvariable=authors)
-        lbl.grid(column=3, row=3, sticky=(tk.W, tk.E))
+        lbl.grid(column=2, row=1, sticky=(tk.W, tk.E))
         return authors
 
     def _setup_abstract(self, frame):
