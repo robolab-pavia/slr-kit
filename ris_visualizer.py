@@ -36,7 +36,11 @@ class Gui:
         self.list_box.focus()
 
     def _list_change_event(self, event):
-        idx = self.list_box.curselection()[0]
+        try:
+            idx = self.list_box.curselection()[0]
+        except IndexError:
+            return
+
         self.title.set(self.df.loc[idx, 'title'])
         self.abstract['state'] = 'normal'
         self.abstract.delete('1.0', 'end')
