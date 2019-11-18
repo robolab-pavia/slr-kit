@@ -31,6 +31,12 @@ class Gui:
         self.year = self._setup_year(other_frame)
         self.pub = self._setup_pubblication(other_frame)
 
+        for child in self.mainframe.winfo_children():
+            if any(s in str(child) for s in ['text', 'scrollbar']):
+                continue
+
+            child.grid_configure(padx=5, pady=5)
+
         self._list_change_event(None)
         self.list_box.bind('<<ListboxSelect>>', self._list_change_event)
         self.list_box.focus()
