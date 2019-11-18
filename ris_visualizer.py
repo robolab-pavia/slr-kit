@@ -57,6 +57,14 @@ class Gui:
         self.pub.set(self.df.loc[idx, 'secondary_title'])
 
     def _setup_list(self, frame):
+        """
+        Setups the list of papers
+
+        :param frame: frame where to put the list widget
+        :type frame: ttk.Frame
+        :return: the list variable to modify the list and the listbox widget
+        :rtype: (tk.StringVar, tk.Listbox)
+        """
         lst = self.df.apply(lambda r: '{} - {}'.format(r['id'], r['title']),
                             axis=1)
         lst = lst.to_list()
@@ -70,6 +78,14 @@ class Gui:
 
     @staticmethod
     def _setup_pubblication(frame):
+        """
+        Setups the pubblication widget and label
+
+        :param frame: frame where to put the pubblication widget and label
+        :type frame: ttk.Frame
+        :return: the pubblication tk variable associated to the widget
+        :rtype: tk.StringVar
+        """
         ttk.Label(frame, text='Pubblication: ').grid(column=1, row=3,
                                                      sticky=(tk.W, tk.E))
         pub = tk.StringVar()
@@ -79,6 +95,14 @@ class Gui:
 
     @staticmethod
     def _setup_year(frame):
+        """
+        Setups the year widget and label
+
+        :param frame: frame where to put the year widget and label
+        :type frame: ttk.Frame
+        :return: the year tk variable associated to the widget
+        :rtype: tk.StringVar
+        """
         ttk.Label(frame, text='Year: ').grid(column=1, row=2,
                                              sticky=(tk.W, tk.E))
         year = tk.StringVar()
@@ -88,6 +112,14 @@ class Gui:
 
     @staticmethod
     def _setup_authors(frame):
+        """
+        Setups the authors widget and label
+
+        :param frame: frame where to put the author widget and label
+        :type frame: ttk.Frame
+        :return: the author tk variable associated to the widget
+        :rtype: tk.StringVar
+        """
         ttk.Label(frame, text='Authors: ').grid(column=1, row=1,
                                                 sticky=(tk.W, tk.E))
         authors = tk.StringVar()
@@ -97,6 +129,15 @@ class Gui:
 
     @staticmethod
     def _setup_abstract(frame):
+        """
+        Setups the text widget for the abstract.
+
+        It setups also the vertical scrollbar
+        :param frame: frame where to put the text widget
+        :type frame: ttk.Frame
+        :return: the text widget
+        :rtype: tk.Text
+        """
         abstract = tk.Text(frame, wrap='word', state='disabled',
                            height=10)
         abstract.grid(column=3, row=2, columnspan=2, sticky=(tk.W, tk.E))
@@ -108,6 +149,14 @@ class Gui:
 
     @staticmethod
     def _setup_title(frame):
+        """
+        Setups the paper title
+
+        :param frame: frame where to put the title widget
+        :type frame: ttk.Frame
+        :return: the title tk variable associated to the widget
+        :rtype: tk.StringVar
+        """
         title = tk.StringVar()
         lbl = ttk.Label(frame, textvariable=title)
         lbl.grid(column=3, row=1, sticky=(tk.W, tk.E))
@@ -116,10 +165,12 @@ class Gui:
 
 def authors_convert(auth_str):
     """
+    Converts the string in a list of authors
 
-    :param auth_str:
+    :param auth_str: the string to convert. Must be a valid python list declaration
     :type auth_str: str
-    :return:
+    :return: the converted list
+    :rtype: list[str]
     """
     auth_list = ast.literal_eval(auth_str)
     authors = ', '.join([a.replace(',', '') for a in auth_list])
