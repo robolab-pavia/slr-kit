@@ -20,10 +20,11 @@ class Gui:
         self.mainframe.grid(column=0, row=0, sticky=(tk.N, tk.W, tk.E, tk.S))
         self.root.rowconfigure(0, weight=1)
         self.root.columnconfigure(0, weight=1)
+        self.mainframe_col_count = 0
 
         self.list_names, self.list_box = self._setup_list(self.mainframe)
         self.title = self._setup_title(self.mainframe)
-        self.abstract = self._setup_abstract(self.mainframe)
+        self.abstract = self._setup_abstract()
         other_frame = ttk.Frame(self.mainframe)
         other_frame.grid(column=3, row=3, columnspan=2,
                          sticky=(tk.N, tk.W, tk.E, tk.S))
@@ -32,7 +33,7 @@ class Gui:
         self.pub = self._setup_pubblication(other_frame)
 
         for child in self.mainframe.winfo_children():
-            if any(s in str(child) for s in ['text', 'scrollbar']):
+            if any(s in str(child) for s in ['listbox', 'text', 'scrollbar']):
                 continue
 
             child.grid_configure(padx=5, pady=5)
@@ -65,15 +66,23 @@ class Gui:
         :return: the list variable to modify the list and the listbox widget
         :rtype: (tk.StringVar, tk.Listbox)
         """
-        lst = self.df.apply(lambda r: '{} - {}'.format(r['id'], r['title']),
-                            axis=1)
-        lst = lst.to_list()
+        lst: list = self.df.apply(lambda r: '{} - {}'.format(r['id'],
+                                                             r['title']),
+                                  axis=1).tolist()
+
         list_names = tk.StringVar(value=lst)
         list_box = tk.Listbox(frame, height=10,
                               listvariable=list_names, selectmode='browse')
-        list_box.grid(column=1, row=1, rowspan=6, sticky=(tk.N, tk.W,
-                                                          tk.E, tk.S))
+        self.mainframe_col_count += 1
+        list_box.grid(column=self.mainframe_col_count, row=1, rowspan=6,
+                      sticky=(tk.N, tk.W, tk.E, tk.S), padx=(5, 0))
         list_box.selection_set(first=0)
+        list_scrollbar = tk.Scrollbar(frame, orient=tk.VERTICAL,
+                                      command=list_box.yview)
+        self.mainframe_col_count += 1
+        list_scrollbar.grid(column=self.mainframe_col_count, row=1, rowspan=6,
+                            sticky=(tk.N, tk.S), padx=(0, 5))
+        list_box['yscrollcommand'] = list_scrollbar.set
         return list_names, list_box
 
     @staticmethod
@@ -127,23 +136,24 @@ class Gui:
         lbl.grid(column=2, row=1, sticky=(tk.W, tk.E))
         return authors
 
-    @staticmethod
-    def _setup_abstract(frame):
+    def _setup_abstract(self):
         """
         Setups the text widget for the abstract.
 
         It setups also the vertical scrollbar
-        :param frame: frame where to put the text widget
-        :type frame: ttk.Frame
         :return: the text widget
         :rtype: tk.Text
         """
-        abstract = tk.Text(frame, wrap='word', state='disabled',
+        abstract = tk.Text(self.mainframe, wrap='word', state='disabled',
                            height=10)
-        abstract.grid(column=3, row=2, columnspan=2, sticky=(tk.W, tk.E))
-        abs_scrollbar = tk.Scrollbar(frame, orient=tk.VERTICAL,
+        self.mainframe_col_count += 1
+        abstract.grid(column=self.mainframe_col_count, row=2, columnspan=2,
+                      sticky=(tk.W, tk.E))
+        abs_scrollbar = tk.Scrollbar(self.mainframe, orient=tk.VERTICAL,
                                      command=abstract.yview)
-        abs_scrollbar.grid(column=5, row=2, sticky=(tk.N, tk.S))
+        self.mainframe_col_count += 2
+        abs_scrollbar.grid(column=self.mainframe_col_count, row=2,
+                           sticky=(tk.N, tk.S))
         abstract['yscrollcommand'] = abs_scrollbar.set
         return abstract
 
