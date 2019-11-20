@@ -4,6 +4,42 @@ from tkinter import ttk
 import pandas as pd
 
 
+class TextWrapper(tk.Text):
+    def __init__(self, master=None, cnf=None, **kwargs):
+        if cnf is None:
+            cnf = {}
+        super().__init__(master, cnf, **kwargs)
+        self.tag_configure('highlight', font='bold', foreground='red')
+
+    def highlight_words(self, words):
+        """
+        Hightlights the specified words
+
+        :param words: list of words to highlight
+        :type words: str or list[str]
+        """
+        if isinstance(words, str):
+            words = [words]
+
+        s = self.get('1.0', 'end')
+        idx = []
+        for w in words:
+            st = 0
+            flag = True
+            while flag:
+                try:
+                    i = s.index(w, st)
+                    st = i + len(w)
+                    idx.append((i, st))
+                except ValueError:
+                    flag = False
+
+        for start, end in idx:
+            sstart = '1.{}'.format(start)
+            sstop = '1.{}'.format(end)
+            self.tag_add('highlight', sstart, sstop)
+
+
 class Gui:
 
     def __init__(self, df):
