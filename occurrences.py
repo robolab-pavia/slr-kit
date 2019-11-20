@@ -5,17 +5,8 @@ import json
 import logging
 import argparse
 from multiprocessing import Pool
+from utils import setup_logger
 
-
-def setup_logger(name, log_file, formatter=logging.Formatter('%(asctime)s %(levelname)s %(message)s'),
-                 level=logging.INFO):
-    """Function to setup a generic loggers."""
-    handler = logging.FileHandler(log_file)
-    handler.setFormatter(formatter)
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
-    logger.addHandler(handler)
-    return logger
 
 debug_logger = setup_logger('debug_logger', 'slr-kit.log',
                             level=logging.DEBUG)
