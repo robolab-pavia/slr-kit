@@ -2,6 +2,7 @@ import ast
 import tkinter as tk
 from tkinter import ttk
 import pandas as pd
+import utils
 
 
 class TextWrapper(tk.Text):
@@ -24,16 +25,7 @@ class TextWrapper(tk.Text):
         s = self.get('1.0', 'end')
         idx = []
         for w in words:
-            st = 0
-            flag = True
-            while flag:
-                try:
-                    i = s.index(w, st)
-                    st = i + len(w)
-                    idx.append((i, st))
-                except ValueError:
-                    flag = False
-
+            idx += list(utils.substring_index(s, w))
         for start, end in idx:
             sstart = '1.{}'.format(start)
             sstop = '1.{}'.format(end)
