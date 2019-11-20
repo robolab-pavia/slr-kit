@@ -31,6 +31,22 @@ class TextWrapper(tk.Text):
             sstop = '1.{}'.format(end)
             self.tag_add('highlight', sstart, sstop)
 
+    def highlight_style(self, color, bold=True):
+        """
+        Sets the highlight style
+
+        :param color: string defining the color. Can be a name or a hexcode in the form '#RRGGBB'
+        :type color: str
+        :param bold: use bold style or not
+        :type bold: bool
+        """
+        if bold:
+            font = 'bold'
+        else:
+            font = ''
+
+        self.tag_configure('highlight', font=font, foreground=color)
+
 
 class Gui:
 
