@@ -61,6 +61,8 @@ class Gui:
         :type df: pd.DataFrame
         """
         self.df = df
+        self.filter_txt = ''
+        self.fdf = None
         self.root = tk.Tk()
         self.root.title('RIS Visualizer')
         self.mainframe = ttk.Frame(self.root, padding="3 3 12 12")
@@ -85,9 +87,44 @@ class Gui:
 
             child.grid_configure(padx=5, pady=5)
 
+        self.filterframe = ttk.LabelFrame(self.root, text='Filter')
+        self.filterframe.grid(row=1, column=0, sticky=(tk.N, tk.W, tk.E, tk.S))
+        self.filter = self._setup_filter_entry()
+
         self._list_change_event(None)
         self.list_box.bind('<<ListboxSelect>>', self._list_change_event)
         self.list_box.focus()
+
+    def _setup_filter_entry(self):
+        filter_var = tk.StringVar()
+        fil = ttk.Entry(self.filterframe, textvariable=filter_var)
+        fil.grid(row=0, column=0, sticky=(tk.W, tk.E))
+        fil.grid_configure(padx=5, pady=5)
+        fil.bind('<Key>', self._filter_set)
+        return filter_var
+
+    def _filter_set(self, event):
+        """
+
+        :param event:
+        :type event: tk.Event
+        """
+        if event.char == '\r':
+            self.filter_txt = self.filter.get()
+            if self.filter_txt == '':
+                if self.fdf is None:
+                    return
+
+                self.fdf = None
+                df = self.df
+            else:
+                cond = self.df['abstract'].apply(lambda v: utils.substring_check(v, self.filter_txt))
+                self.fdf = self.df[cond]
+                df = self.fdf
+
+            self.list_names.set(self._prepare_list(df))
+            self.list_box.selection_set(first=0)
+            self._list_change_event(None)
 
     def _list_change_event(self, event):
         try:
@@ -95,14 +132,20 @@ class Gui:
         except IndexError:
             return
 
-        self.title.set(self.df.loc[idx, 'title'])
+        if self.fdf is not None:
+            df = self.fdf
+        else:
+            df = self.df
+
+        self.title.set(df['title'].iat[idx])
         self.abstract['state'] = 'normal'
         self.abstract.delete('1.0', 'end')
-        self.abstract.insert('1.0', self.df.loc[idx, 'abstract'])
+        self.abstract.insert('1.0', df['abstract'].iat[idx])
         self.abstract['state'] = 'disabled'
-        self.authors.set(self.df.loc[idx, 'authors'])
-        self.year.set(self.df.loc[idx, 'year'])
-        self.pub.set(self.df.loc[idx, 'secondary_title'])
+        self.abstract.highlight_words(self.filter_txt)
+        self.authors.set(df['authors'].iat[idx])
+        self.year.set(df['year'].iat[idx])
+        self.pub.set(df['secondary_title'].iat[idx])
 
     def _setup_list(self, frame):
         """
@@ -201,10 +244,10 @@ class Gui:
 
         It setups also the vertical scrollbar
         :return: the text widget
-        :rtype: tk.Text
+        :rtype: TextWrapper
         """
-        abstract = tk.Text(self.mainframe, wrap='word', state='disabled',
-                           height=10)
+        abstract = TextWrapper(self.mainframe, wrap='word', state='disabled',
+                               height=10)
         self.mainframe_col_count += 1
         abstract.grid(column=self.mainframe_col_count, row=2, columnspan=2,
                       sticky=(tk.W, tk.E))
@@ -214,6 +257,7 @@ class Gui:
         abs_scrollbar.grid(column=self.mainframe_col_count, row=2,
                            sticky=(tk.N, tk.S))
         abstract['yscrollcommand'] = abs_scrollbar.set
+        abstract.highlight_style('red')
         return abstract
 
     @staticmethod
