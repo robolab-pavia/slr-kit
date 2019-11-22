@@ -126,8 +126,12 @@ class Gui:
                 df = self.df
             else:
                 cond = self.df['abstract'].apply(lambda v: utils.substring_check(v, self.filter_txt))
-                self.fdf = self.df[cond]
-                df = self.fdf
+                if any(cond):
+                    self.fdf = self.df[cond]
+                    df = self.fdf
+                else:
+                    self.fdf = None
+                    df = self.df
 
             self.list_names.set(self._prepare_list(df))
             self.list_box.selection_set(first=0)
