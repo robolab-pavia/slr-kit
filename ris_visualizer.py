@@ -136,6 +136,7 @@ class Gui:
             self.list_names.set(self._prepare_list(df))
             self.list_box.selection_set(first=0)
             self._list_change_event(None)
+            self.list_box.focus()
 
     def _list_change_event(self, event):
         """
