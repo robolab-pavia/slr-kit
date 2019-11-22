@@ -64,3 +64,20 @@ def substring_index(haystack, needle):
                 yield (idx, idx + len(needle))
 
         idx = haystack.find(needle, start)
+
+
+def substring_check(haystack, needle):
+    """
+    Tells if haystack contains at least one instance of needle between two word boundaries
+
+    :param haystack: the string to examine
+    :type haystack: str
+    :param needle: the string to search
+    :type needle: str
+    :return: True if needle is found
+    :rtype: bool
+    """
+    for _ in substring_index(haystack, needle):
+        return True
+    else:
+        return False
