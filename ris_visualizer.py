@@ -96,6 +96,12 @@ class Gui:
         self.list_box.focus()
 
     def _setup_filter_entry(self):
+        """
+        Setups the filter entry
+
+        :return: the variable that contains the text of the filter entry
+        :rtype: tk.StringVar
+        """
         filter_var = tk.StringVar()
         fil = ttk.Entry(self.filterframe, textvariable=filter_var)
         fil.grid(row=0, column=0, sticky=(tk.W, tk.E))
@@ -105,8 +111,9 @@ class Gui:
 
     def _filter_set(self, event):
         """
+        Method used as a callback for the Key event of the filter entry
 
-        :param event:
+        :param event: the event data
         :type event: tk.Event
         """
         if event.char == '\r':
@@ -127,6 +134,12 @@ class Gui:
             self._list_change_event(None)
 
     def _list_change_event(self, event):
+        """
+        Method used as a callback for the ListboxSelect event
+
+        :param event: the event data or None if this method is not called by Tk
+        :type event: tk.Event or None
+        """
         try:
             idx = self.list_box.curselection()[0]
         except IndexError:
