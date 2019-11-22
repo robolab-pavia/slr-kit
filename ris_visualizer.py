@@ -10,7 +10,6 @@ class TextWrapper(tk.Text):
         if cnf is None:
             cnf = {}
         super().__init__(master, cnf, **kwargs)
-        self.tag_configure('highlight', font='bold', foreground='red')
 
     def highlight_words(self, words):
         """
@@ -19,6 +18,10 @@ class TextWrapper(tk.Text):
         :param words: list of words to highlight
         :type words: str or list[str]
         """
+        tags = self.tag_ranges('highlight')
+        for i in range(0, len(tags) - 1, 2):
+            self.tag_remove('highlight', tags[i], tags[i + 1])
+
         if isinstance(words, str):
             words = [words]
 
