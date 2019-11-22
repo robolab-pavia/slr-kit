@@ -113,9 +113,7 @@ class Gui:
         :return: the list variable to modify the list and the listbox widget
         :rtype: (tk.StringVar, tk.Listbox)
         """
-        lst: list = self.df.apply(lambda r: '{} - {}'.format(r['id'],
-                                                             r['title']),
-                                  axis=1).tolist()
+        lst = self._prepare_list(self.df)
 
         list_names = tk.StringVar(value=lst)
         list_box = tk.Listbox(frame, height=10,
@@ -131,6 +129,20 @@ class Gui:
                             sticky=(tk.N, tk.S), padx=(0, 5))
         list_box['yscrollcommand'] = list_scrollbar.set
         return list_names, list_box
+
+    @staticmethod
+    def _prepare_list(df):
+        """
+        Creates the list of entry to be used in the listbox
+
+        :param df: Dataframe from which to take the data
+        :type df: pd.DataFrame
+        :return: the prepared list
+        :rtype: list[str]
+        """
+        lst: list = df.apply(lambda r: '{} - {}'.format(r['id'], r['title']),
+                             axis=1).tolist()
+        return lst
 
     @staticmethod
     def _setup_pubblication(frame):
