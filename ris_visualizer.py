@@ -155,7 +155,11 @@ class Gui:
         else:
             df = self.df
 
-        self.title.set(df['title'].iat[idx])
+        # self.title.set(df['title'].iat[idx])
+        self.title['state'] = 'normal'
+        self.title.delete('1.0', 'end')
+        self.title.insert('1.0', df['title'].iat[idx])
+        self.title['state'] = 'disabled'
         self.abstract['state'] = 'normal'
         self.abstract.delete('1.0', 'end')
         self.abstract.insert('1.0', df['abstract'].iat[idx])
@@ -286,11 +290,17 @@ class Gui:
         :param frame: frame where to put the title widget
         :type frame: ttk.Frame
         :return: the title tk variable associated to the widget
-        :rtype: tk.StringVar
+        :rtype: TextWrapper
         """
-        title = tk.StringVar()
-        lbl = ttk.Label(frame, textvariable=title)
-        lbl.grid(column=3, row=1, sticky=(tk.W, tk.E))
+        # title = tk.StringVar()
+        # lbl = ttk.Label(frame, textvariable=title)
+        # lbl.grid(column=3, row=1, sticky=(tk.W, tk.E))
+        title = TextWrapper(frame, wrap='word', state='disabled', height=1)
+        title.grid(column=3, row=1, sticky=(tk.W, tk.E))
+        title['relief'] = 'flat'
+        title['borderwidth'] = 0
+        title['highlightthickness'] = 0
+        title['background'] = '#d9d9d9'
         return title
 
 
