@@ -177,7 +177,7 @@ class Gui:
         lst = self._prepare_list(self.df)
 
         list_names = tk.StringVar(value=lst)
-        list_box = tk.Listbox(frame, height=10,
+        list_box = tk.Listbox(frame, height=10, width=40,
                               listvariable=list_names, selectmode='browse')
         self.mainframe_col_count += 1
         list_box.grid(column=self.mainframe_col_count, row=1, rowspan=6,
