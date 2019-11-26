@@ -63,6 +63,7 @@ class Gui:
         self.df = df
         self.filter_txt = ''
         self.fdf = None
+        self.filter_field = ''
         self.root = tk.Tk()
         self.root.title('RIS Visualizer')
         self.mainframe = ttk.Frame(self.root, padding="3 3 12 12")
@@ -125,26 +126,39 @@ class Gui:
         :type event: tk.Event
         """
         if event.char == '\r':
-            self.filter_txt = self.filter.get()
-            if self.filter_txt == '':
+            filter_txt = self.filter.get()
+            if filter_txt == '':
+                self.filter_txt = ''
                 if self.fdf is None:
                     return
 
                 self.fdf = None
                 df = self.df
             else:
-                cond = self.df['abstract'].apply(lambda v: utils.substring_check(v, self.filter_txt))
+                self.filter_field = self.filter_box.get()
+
+                cond = self._filter(filter_txt)
+
                 if any(cond):
                     self.fdf = self.df[cond]
                     df = self.fdf
+                    self.filter_txt = filter_txt
                 else:
                     self.fdf = None
                     df = self.df
+                    self.filter_txt = ''
 
             self.list_names.set(self._prepare_list(df))
             self.list_box.selection_set(first=0)
             self._list_change_event(None)
             self.list_box.focus()
+
+    def _filter(self, filter_txt):
+        def func(v):
+            return utils.substring_check(v, filter_txt)
+
+        cond = self.df[self.filter_field].apply(func)
+        return cond
 
     def _list_change_event(self, event):
         """
@@ -172,7 +186,12 @@ class Gui:
         self.abstract.delete('1.0', 'end')
         self.abstract.insert('1.0', df['abstract'].iat[idx])
         self.abstract['state'] = 'disabled'
-        self.abstract.highlight_words(self.filter_txt)
+
+        if self.filter_field == 'abstract':
+            self.abstract.highlight_words(self.filter_txt)
+        elif self.filter_field == 'title':
+            self.title.highlight_words(self.filter_txt)
+
         self.authors.set(df['authors'].iat[idx])
         self.year.set(df['year'].iat[idx])
         self.pub.set(df['secondary_title'].iat[idx])
@@ -309,6 +328,7 @@ class Gui:
         title['borderwidth'] = 0
         title['highlightthickness'] = 0
         title['background'] = '#d9d9d9'
+        title.highlight_style('red')
         return title
 
 
