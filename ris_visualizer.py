@@ -152,6 +152,7 @@ class Gui:
             filter_txt = self.filter.get()
             if filter_txt == '':
                 self.filter_txt = ''
+                self.status_bar.text = ''
                 if self.fdf is None:
                     return
 
@@ -159,17 +160,23 @@ class Gui:
                 df = self.df
             else:
                 self.filter_field = self.filter_box.get()
+                print(self.filter_field)
 
                 cond = self._filter(filter_txt)
+                s = f'Filter by {self.filter_field.upper()} Text: {filter_txt}'
 
                 if any(cond):
                     self.fdf = self.df[cond]
                     df = self.fdf
                     self.filter_txt = filter_txt
+                    s = f'{s} N° of results: {len(df)}'
                 else:
                     self.fdf = None
                     df = self.df
                     self.filter_txt = ''
+                    s = f'{s} No results'
+
+                self.status_bar.text = s
 
             self.list_names.set(self._prepare_list(df))
             self.list_box.selection_set(first=0)
