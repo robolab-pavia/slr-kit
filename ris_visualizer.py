@@ -90,10 +90,18 @@ class Gui:
         self.filterframe = ttk.LabelFrame(self.root, text='Filter')
         self.filterframe.grid(row=1, column=0, sticky=(tk.N, tk.W, tk.E, tk.S))
         self.filter = self._setup_filter_entry()
+        self.filter_box = self._setup_filter_combobox()
 
         self._list_change_event(None)
         self.list_box.bind('<<ListboxSelect>>', self._list_change_event)
         self.list_box.focus()
+
+    def _setup_filter_combobox(self):
+        filter_box = ttk.Combobox(self.filterframe, state='readonly',
+                                  values=('abstract', 'title'))
+        filter_box.grid(row=0, column=0, sticky=(tk.E, tk.W))
+        filter_box.set('abstract')
+        return filter_box
 
     def _setup_filter_entry(self):
         """
@@ -104,7 +112,7 @@ class Gui:
         """
         filter_var = tk.StringVar()
         fil = ttk.Entry(self.filterframe, textvariable=filter_var)
-        fil.grid(row=0, column=0, sticky=(tk.W, tk.E))
+        fil.grid(row=0, column=1, sticky=(tk.W, tk.E))
         fil.grid_configure(padx=5, pady=5)
         fil.bind('<Key>', self._filter_set)
         return filter_var
