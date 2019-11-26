@@ -51,6 +51,17 @@ class TextWrapper(tk.Text):
         self.tag_configure('highlight', font=font, foreground=color)
 
 
+class StatusBar(tk.Frame):
+    # Adapted from https://stackoverflow.com/a/8120427
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+        self.variable = tk.StringVar()
+        self.label = tk.Label(self, bd=1, relief=tk.SUNKEN, anchor=tk.W,
+                              textvariable=self.variable)
+        self.variable.set(' ')
+        self.label.pack(fill=tk.X)
+
+
 class Gui:
 
     def __init__(self, df):
@@ -92,6 +103,9 @@ class Gui:
         self.filterframe.grid(row=1, column=0, sticky=(tk.N, tk.W, tk.E, tk.S))
         self.filter = self._setup_filter_entry()
         self.filter_box = self._setup_filter_combobox()
+
+        self.status_bar = StatusBar(self.root)
+        self.status_bar.grid(column=0, row=4, sticky=(tk.W, tk.E))
 
         self._list_change_event(None)
         self.list_box.bind('<<ListboxSelect>>', self._list_change_event)
