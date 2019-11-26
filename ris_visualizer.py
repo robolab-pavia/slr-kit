@@ -61,6 +61,15 @@ class StatusBar(tk.Frame):
         self.variable.set(' ')
         self.label.pack(fill=tk.X)
 
+    @property
+    def text(self):
+        return self.variable.get()
+
+    @text.setter
+    def text(self, new_text):
+        self.variable.set(new_text)
+
+
 
 class Gui:
 
