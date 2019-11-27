@@ -38,7 +38,7 @@ class TextWrapper(tk.Text):
         """
         Sets the highlight style
 
-        :param color: string defining the color. Can be a name or a hexcode in the form '#RRGGBB'
+        :param color: color to use. Can be a name or a hexcode in the form '#RRGGBB'
         :type color: str
         :param bold: use bold style or not
         :type bold: bool
@@ -72,7 +72,6 @@ class StatusBar(tk.Frame):
         self.variable.set(new_text)
 
 
-
 class Gui:
 
     def __init__(self, df):
@@ -88,12 +87,34 @@ class Gui:
         self.filter_field = ''
         self.root = tk.Tk()
         self.root.title('RIS Visualizer')
-        self.mainframe = ttk.Frame(self.root, padding="3 3 12 12")
-        self.mainframe.grid(column=0, row=0, sticky=(tk.N, tk.W, tk.E, tk.S))
         self.root.rowconfigure(0, weight=1)
         self.root.columnconfigure(0, weight=1)
-        self.mainframe_col_count = 0
 
+        # main part of the window
+        self._setup_mainframe()
+
+        # filter part
+        self._setup_filter()
+
+        self.status_bar = StatusBar(self.root)
+        self.status_bar.grid(column=0, row=4, sticky=(tk.W, tk.E))
+
+        # events
+        self._list_change_event(None)
+        self.list_box.bind('<<ListboxSelect>>', self._list_change_event)
+
+        self.list_box.focus()
+
+    def _setup_filter(self):
+        self.filterframe = ttk.LabelFrame(self.root, text='Filter')
+        self.filterframe.grid(row=1, column=0, sticky=(tk.N, tk.W, tk.E, tk.S))
+        self.filter = self._setup_filter_entry()
+        self.filter_box = self._setup_filter_combobox()
+
+    def _setup_mainframe(self):
+        self.mainframe_col_count = 0
+        self.mainframe = ttk.Frame(self.root, padding="3 3 12 12")
+        self.mainframe.grid(column=0, row=0, sticky=(tk.N, tk.W, tk.E, tk.S))
         self.list_names, self.list_box = self._setup_list(self.mainframe)
         self.title = self._setup_title(self.mainframe)
         self.abstract = self._setup_abstract()
@@ -103,24 +124,11 @@ class Gui:
         self.authors = self._setup_authors(other_frame)
         self.year = self._setup_year(other_frame)
         self.pub = self._setup_pubblication(other_frame)
-
         for child in self.mainframe.winfo_children():
             if any(s in str(child) for s in ['listbox', 'text', 'scrollbar']):
                 continue
 
             child.grid_configure(padx=5, pady=5)
-
-        self.filterframe = ttk.LabelFrame(self.root, text='Filter')
-        self.filterframe.grid(row=1, column=0, sticky=(tk.N, tk.W, tk.E, tk.S))
-        self.filter = self._setup_filter_entry()
-        self.filter_box = self._setup_filter_combobox()
-
-        self.status_bar = StatusBar(self.root)
-        self.status_bar.grid(column=0, row=4, sticky=(tk.W, tk.E))
-
-        self._list_change_event(None)
-        self.list_box.bind('<<ListboxSelect>>', self._list_change_event)
-        self.list_box.focus()
 
     def _setup_filter_combobox(self):
         filter_box = ttk.Combobox(self.filterframe, state='readonly',
