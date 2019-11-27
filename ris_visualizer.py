@@ -53,11 +53,13 @@ class TextWrapper(tk.Text):
 
 class StatusBar(tk.Frame):
     # Adapted from https://stackoverflow.com/a/8120427
-    def __init__(self, master):
+    def __init__(self, master, height=8):
         tk.Frame.__init__(self, master)
         self.variable = tk.StringVar()
         self.label = tk.Label(self, bd=1, relief=tk.SUNKEN, anchor=tk.W,
-                              textvariable=self.variable)
+                              textvariable=self.variable,
+                              font=('TkDefaultFont', f'{height}'))
+        print(self.label['font'])
         self.variable.set(' ')
         self.label.pack(fill=tk.X)
 
