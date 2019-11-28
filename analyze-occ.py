@@ -14,7 +14,7 @@ def init_argparser():
     parser.add_argument('occurrence', action="store", type=str,
                         help="input JSON data file with occurrences")
     parser.add_argument('--output', '-o', metavar='FILENAME',
-                        help='output file name in line-wise JSON format')
+                        help='CSV file with the list of terms appearing in the documents')
     return parser
 
 
