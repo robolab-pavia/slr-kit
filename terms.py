@@ -118,7 +118,7 @@ class TermList(object):
         :rtype: (list[str], list[Term])
         """
         with open(infile, newline='') as csv_file:
-            csv_reader = csv.DictReader(csv_file, delimiter=',')
+            csv_reader = csv.DictReader(csv_file, delimiter='\t')
             header = csv_reader.fieldnames
             items = []
             for row in csv_reader:
@@ -161,7 +161,7 @@ class TermList(object):
         """
         with open(outfile, mode='w') as out:
             writer = csv.DictWriter(out, fieldnames=self.csv_header,
-                                    delimiter=',', quotechar='"',
+                                    delimiter='\t', quotechar='"',
                                     quoting=csv.QUOTE_MINIMAL)
             writer.writeheader()
             for w in self.items:
