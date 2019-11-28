@@ -108,13 +108,13 @@ class TermList(object):
         self.items = items
         self.csv_header = None
 
-    def from_csv(self, infile):
+    def from_tsv(self, infile):
         """
-        Gets the terms from a csv file
+        Gets the terms from a tsv file
 
-        :param infile: path to the csv file to read
+        :param infile: path to the tsv file to read
         :type infile: str
-        :return: the csv header and the list of terms read by the file
+        :return: the tsv header and the list of terms read by the file
         :rtype: (list[str], list[Term])
         """
         with open(infile, newline='') as csv_file:
@@ -152,11 +152,11 @@ class TermList(object):
         self.items = items
         return header, items
 
-    def to_csv(self, outfile):
+    def to_tsv(self, outfile):
         """
-        Saves the terms in a csv file
+        Saves the terms in a tsv file
 
-        :param outfile: path to the csv file to write the terms
+        :param outfile: path to the tsv file to write the terms
         :type outfile: str
         """
         with open(outfile, mode='w') as out:

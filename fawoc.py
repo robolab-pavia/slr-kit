@@ -548,7 +548,7 @@ def curses_main(scr, terms, args, review, last_reviews, logger=None,
             related_items_count -= 1
         elif c == 'w':
             # write to file
-            terms.to_csv(datafile)
+            terms.to_tsv(datafile)
         elif c == 'u':
             # undo last operation
             related_items_count, sort_word_key = undo(terms, review,
@@ -567,7 +567,7 @@ def curses_main(scr, terms, args, review, last_reviews, logger=None,
         windows['__STATS'].display_lines(rev=False)
 
         if not args.dry_run and not args.no_auto_save:
-            terms.to_csv(datafile)
+            terms.to_tsv(datafile)
 
 
 def main():
@@ -602,7 +602,7 @@ def main():
     # use the absolute path
     args.datafile = datafile_path
     terms = TermList()
-    _, _ = terms.from_csv(args.datafile)
+    _, _ = terms.from_tsv(args.datafile)
     profiler_logger.info("CLASSIFIED: {}".format(terms.count_classified()))
     # check the last_review file
     try:
@@ -648,7 +648,7 @@ def main():
             json.dump(last_reviews, fout)
 
     if not args.dry_run:
-        terms.to_csv(args.datafile)
+        terms.to_tsv(args.datafile)
 
 
 if __name__ == "__main__":
