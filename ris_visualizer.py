@@ -234,7 +234,7 @@ class Gui:
 
         self.authors.set(df['authors'].iat[idx])
         self.year.set(df['year'].iat[idx])
-        self.pub.set(df['secondary_title'].iat[idx])
+        self.pub.set(df['pubblication'].iat[idx])
 
     def _setup_list(self, frame):
         """
@@ -391,6 +391,7 @@ def main():
                      usecols=['id', 'authors', 'title', 'secondary_title',
                               'abstract', 'year'],
                      converters={'authors': authors_convert})
+    df.rename(columns={'secondary_title': 'pubblication'}, inplace=True)
 
     gui = Gui(df)
     gui.root.mainloop()
