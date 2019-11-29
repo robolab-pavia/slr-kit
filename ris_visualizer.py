@@ -384,6 +384,8 @@ class Gui:
         title['borderwidth'] = 0
         title['highlightthickness'] = 0
         title['background'] = '#d9d9d9'
+        title['foreground'] = '#000000'
+        title['font'] = 'TkDefaultFont'
         title.highlight_style('red')
         return title
 
