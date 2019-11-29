@@ -70,7 +70,6 @@ class StatusBar(tk.Frame):
         self.label = tk.Label(self, bd=1, relief=tk.SUNKEN, anchor=tk.W,
                               textvariable=self.variable,
                               font=('TkDefaultFont', f'{height}'))
-        print(self.label['font'])
         self.variable.set(' ')
         self.label.pack(fill=tk.X)
 
@@ -294,14 +293,20 @@ class Gui:
 
         :param frame: frame where to put the pubblication widget and label
         :type frame: ttk.Frame
-        :return: the pubblication tk variable associated to the widget
-        :rtype: tk.StringVar
+        :return: the pubblication widget
+        :rtype: TextWrapper
         """
         ttk.Label(frame, text='Pubblication: ').grid(column=1, row=3,
                                                      sticky=(tk.W, tk.E))
-        pub = tk.StringVar()
-        lbl = ttk.Label(frame, textvariable=pub)
-        lbl.grid(column=2, row=3, sticky=(tk.W, tk.E))
+        pub = TextWrapper(frame, wrap='word', state='disabled', height=1)
+        pub['relief'] = 'flat'
+        pub['borderwidth'] = 0
+        pub['highlightthickness'] = 0
+        pub['background'] = '#d9d9d9'
+        pub['foreground'] = '#000000'
+        pub['font'] = 'TkDefaultFont'
+        pub.highlight_style('red')
+        pub.grid(column=2, row=3, sticky=(tk.W, tk.E))
         return pub
 
     @staticmethod
@@ -367,7 +372,7 @@ class Gui:
 
         :param frame: frame where to put the title widget
         :type frame: ttk.Frame
-        :return: the title tk variable associated to the widget
+        :return: the title widget
         :rtype: TextWrapper
         """
         # title = tk.StringVar()
