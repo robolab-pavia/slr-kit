@@ -11,6 +11,17 @@ class TextWrapper(tk.Text):
             cnf = {}
         super().__init__(master, cnf, **kwargs)
 
+    def set(self, text):
+        disabled = False
+        if self['state'] == 'disabled':
+            disabled = True
+            self['state'] = 'normal'
+
+        self.delete('1.0', 'end')
+        self.insert('1.0', text)
+        if disabled:
+            self['state'] = 'disabled'
+
     def highlight_words(self, words):
         """
         Hightlights the specified words
