@@ -1,8 +1,11 @@
 import ast
+import string
 import tkinter as tk
 from tkinter import ttk
 import pandas as pd
 import utils
+
+WORD_DELIMITERS = string.whitespace + ',;.:"\''
 
 
 class TextWrapper(tk.Text):
@@ -39,7 +42,7 @@ class TextWrapper(tk.Text):
         s = self.get('1.0', 'end')
         idx = []
         for w in words:
-            idx += list(utils.substring_index(s, w))
+            idx += list(utils.substring_index(s, w, delim=WORD_DELIMITERS))
         for start, end in idx:
             sstart = '1.{}'.format(start)
             sstop = '1.{}'.format(end)
@@ -204,8 +207,10 @@ class Gui:
             self.list_box.focus()
 
     def _filter(self, filter_txt):
+        delim = WORD_DELIMITERS
+
         def func(v):
-            return utils.substring_check(v, filter_txt)
+            return utils.substring_check(v, filter_txt, delim=delim)
 
         cond = self.df[self.filter_field].apply(func)
         return cond
