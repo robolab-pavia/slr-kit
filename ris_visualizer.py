@@ -199,13 +199,13 @@ class Gui:
                 self.filter_field = self.filter_box.get()
                 print(self.filter_field)
 
-                cond = self._filter(filter_txt)
+                self.filter_txt = filter_txt
+                cond = self._filter()
                 s = f'Filter by {self.filter_field.upper()} Text: {filter_txt}'
 
                 if any(cond):
                     self.fdf = self.df[cond]
                     df = self.fdf
-                    self.filter_txt = filter_txt
                     s = f'{s} N° of results: {len(df)}'
                 else:
                     self.fdf = None
@@ -220,11 +220,11 @@ class Gui:
             self._list_change_event(None)
             self.list_box.focus()
 
-    def _filter(self, filter_txt):
+    def _filter(self):
         delim = WORD_DELIMITERS
 
         def func(v):
-            return utils.substring_check(v, filter_txt, delim=delim)
+            return utils.substring_check(v, self.filter_txt, delim=delim)
 
         cond = self.df[self.filter_field].apply(func)
         return cond
