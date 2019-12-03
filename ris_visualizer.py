@@ -9,12 +9,22 @@ WORD_DELIMITERS = string.whitespace + ',;.:"\''
 
 
 class TextWrapper(tk.Text):
+    """
+    Wrapper class for the Text widget
+    """
     def __init__(self, master=None, cnf=None, **kwargs):
         if cnf is None:
             cnf = {}
+
         super().__init__(master, cnf, **kwargs)
 
     def set(self, text):
+        """
+        Sets the text of the TextWrapper
+
+        :param text: text to show
+        :type text: str
+        """
         disabled = False
         if self['state'] == 'disabled':
             disabled = True
@@ -100,6 +110,11 @@ class StatusBar(tk.Frame):
 
 
 class Gui:
+    """
+    Gui of the application
+
+    :type fdf: pd.DataFrame or None
+    """
 
     def __init__(self, df):
         """
@@ -123,6 +138,7 @@ class Gui:
         # filter part
         self._setup_filter()
 
+        # status bar
         self.status_bar = StatusBar(self.root)
         self.status_bar.grid(column=0, row=4, sticky=(tk.W, tk.E))
 
@@ -133,12 +149,18 @@ class Gui:
         self.list_box.focus()
 
     def _setup_filter(self):
+        """
+        Setups the whole filter frame of the application
+        """
         self.filterframe = ttk.LabelFrame(self.root, text='Filter')
         self.filterframe.grid(row=1, column=0, sticky=(tk.N, tk.W, tk.E, tk.S))
         self.filter = self._setup_filter_entry()
         self.filter_box = self._setup_filter_combobox()
 
     def _setup_mainframe(self):
+        """
+        Setups the whole mainframe of the application
+        """
         self.mainframe_col_count = 0
         self.mainframe = ttk.Frame(self.root, padding="3 3 12 12")
         self.mainframe.grid(column=0, row=0, sticky=(tk.N, tk.W, tk.E, tk.S))
@@ -158,6 +180,9 @@ class Gui:
             child.grid_configure(padx=5, pady=5)
 
     def _setup_filter_combobox(self):
+        """
+        Setups the filter combobox
+        """
         filter_box = ttk.Combobox(self.filterframe, state='readonly',
                                   values=('abstract', 'title', 'pubblication'))
         filter_box.grid(row=0, column=0, sticky=(tk.E, tk.W))
@@ -214,6 +239,7 @@ class Gui:
                     s = f'{s} No results'
 
                 self.status_bar.text = s
+                print(self.status_bar.text)
 
             self.list_names.set(self._prepare_list(df))
             self.list_box.selection_set(first=0)
@@ -221,6 +247,12 @@ class Gui:
             self.list_box.focus()
 
     def _filter(self):
+        """
+        Filters the dataframe using the info in self.filter_txt and self.filter_field
+
+        :return: a Series indicating which rows of self.df correspond to the filter
+        :rtype: pd.Series
+        """
         delim = WORD_DELIMITERS
 
         def func(v):
