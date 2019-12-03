@@ -232,15 +232,8 @@ class Gui:
         else:
             df = self.df
 
-        # self.title.set(df['title'].iat[idx])
-        self.title['state'] = 'normal'
-        self.title.delete('1.0', 'end')
-        self.title.insert('1.0', df['title'].iat[idx])
-        self.title['state'] = 'disabled'
-        self.abstract['state'] = 'normal'
-        self.abstract.delete('1.0', 'end')
-        self.abstract.insert('1.0', df['abstract'].iat[idx])
-        self.abstract['state'] = 'disabled'
+        self.title.set(df['title'].iat[idx])
+        self.abstract.set(df['abstract'].iat[idx])
         self.pub.set(df['pubblication'].iat[idx])
 
         if self.filter_field == 'abstract':
