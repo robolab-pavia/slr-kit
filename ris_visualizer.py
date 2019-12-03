@@ -145,7 +145,7 @@ class Gui:
 
     def _setup_filter_combobox(self):
         filter_box = ttk.Combobox(self.filterframe, state='readonly',
-                                  values=('abstract', 'title'))
+                                  values=('abstract', 'title', 'pubblication'))
         filter_box.grid(row=0, column=0, sticky=(tk.E, tk.W))
         filter_box.set('abstract')
         return filter_box
@@ -241,15 +241,17 @@ class Gui:
         self.abstract.delete('1.0', 'end')
         self.abstract.insert('1.0', df['abstract'].iat[idx])
         self.abstract['state'] = 'disabled'
+        self.pub.set(df['pubblication'].iat[idx])
 
         if self.filter_field == 'abstract':
             self.abstract.highlight_words(self.filter_txt)
         elif self.filter_field == 'title':
             self.title.highlight_words(self.filter_txt)
+        elif self.filter_field == 'pubblication':
+            self.pub.highlight_words(self.filter_txt)
 
         self.authors.set(df['authors'].iat[idx])
         self.year.set(df['year'].iat[idx])
-        self.pub.set(df['pubblication'].iat[idx])
 
     def _setup_list(self, frame):
         """
