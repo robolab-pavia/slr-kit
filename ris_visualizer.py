@@ -66,8 +66,19 @@ class TextWrapper(tk.Text):
 
 
 class StatusBar(tk.Frame):
+    """
+    Status bar widget
+    """
     # Adapted from https://stackoverflow.com/a/8120427
     def __init__(self, master, height=8):
+        """
+        Creates a new StatusBar
+
+        :param master: the master widget of the StatusBar
+        :type master: tk.Widget
+        :param height: height of the StatusBar in font points
+        :type height: int
+        """
         tk.Frame.__init__(self, master)
         self.variable = tk.StringVar()
         self.label = tk.Label(self, bd=1, relief=tk.SUNKEN, anchor=tk.W,
@@ -78,6 +89,9 @@ class StatusBar(tk.Frame):
 
     @property
     def text(self):
+        """
+        Text of the status bar
+        """
         return self.variable.get()
 
     @text.setter
