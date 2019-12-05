@@ -212,6 +212,8 @@ class Gui:
         self.root.rowconfigure(0, weight=1)
         self.root.columnconfigure(0, weight=1)
 
+        self.root.bind('<Key>', self._key_press)
+
         # main part of the window
         self._setup_mainframe()
 
@@ -228,6 +230,22 @@ class Gui:
         self.list_box.bind('<<ListboxSelect>>', self._list_change_event)
 
         self.list_box.focus()
+
+    def _key_press(self, event):
+        if self.root.focus_get() != self.filterpanel.filter_entry:
+            print(event)
+            print(type(event.keysym), event.keysym)
+            key = getattr(event, 'char', '').lower()
+            if key == 'f':
+                self.filterpanel.toggle_filter()
+            elif key == 's':
+                self.filterpanel.toggle_search()
+
+            if (not self.filterpanel.filter_shown
+                    and not self.filterpanel.search_shown):
+                self.filterpanel.grid_remove()
+            else:
+                self.filterpanel.grid()
 
     def _setup_filter(self):
         """
