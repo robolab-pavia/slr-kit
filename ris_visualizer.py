@@ -276,30 +276,6 @@ class Gui:
 
             child.grid_configure(padx=5, pady=5)
 
-    def _setup_filter_combobox(self):
-        """
-        Setups the filter combobox
-        """
-        filter_box = ttk.Combobox(self.filterframe, state='readonly',
-                                  values=('abstract', 'title', 'pubblication'))
-        filter_box.grid(row=0, column=0, sticky=(tk.E, tk.W))
-        filter_box.set('abstract')
-        return filter_box
-
-    def _setup_filter_entry(self):
-        """
-        Setups the filter entry
-
-        :return: the variable that contains the text of the filter entry
-        :rtype: tk.StringVar
-        """
-        filter_var = tk.StringVar()
-        fil = ttk.Entry(self.filterframe, textvariable=filter_var)
-        fil.grid(row=0, column=1, sticky=(tk.W, tk.E))
-        fil.grid_configure(padx=5, pady=5)
-        fil.bind('<Key>', self._filter_set)
-        return filter_var
-
     def _filter_set(self, event):
         """
         Method used as a callback for the Key event of the filter entry
