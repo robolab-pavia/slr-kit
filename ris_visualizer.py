@@ -155,11 +155,11 @@ class TextWrapper(tk.Text):
         self.tag_configure('highlight', font=font, foreground=color)
 
 
+# Adapted from https://stackoverflow.com/a/8120427
 class StatusBar(tk.Frame):
     """
     Status bar widget
     """
-    # Adapted from https://stackoverflow.com/a/8120427
     def __init__(self, master, height=8):
         """
         Creates a new StatusBar
@@ -217,10 +217,11 @@ class Gui:
 
         # filter part
         self._setup_filter()
+        self.filterpanel.filter_entry.bind('<Key>', self._filter_set)
 
         # status bar
         self.status_bar = StatusBar(self.root)
-        self.status_bar.grid(column=0, row=4, sticky=(tk.W, tk.E))
+        self.status_bar.grid(column=0, row=4, columnspan=2, sticky=(tk.W, tk.E))
 
         # events
         self._list_change_event(None)
@@ -232,10 +233,7 @@ class Gui:
         """
         Setups the whole filter frame of the application
         """
-        self.filterframe = ttk.LabelFrame(self.root, text='Filter')
-        self.filterframe.grid(row=1, column=0, sticky=(tk.N, tk.W, tk.E, tk.S))
-        self.filter = self._setup_filter_entry()
-        self.filter_box = self._setup_filter_combobox()
+        self.filterpanel = SearchPanel(1, 0, master=self.root)
 
     def _setup_mainframe(self):
         """
@@ -243,7 +241,8 @@ class Gui:
         """
         self.mainframe_col_count = 0
         self.mainframe = ttk.Frame(self.root, padding="3 3 12 12")
-        self.mainframe.grid(column=0, row=0, sticky=(tk.N, tk.W, tk.E, tk.S))
+        self.mainframe.grid(column=0, row=0, columnspan=2,
+                            sticky=(tk.N, tk.W, tk.E, tk.S))
         self.list_names, self.list_box = self._setup_list(self.mainframe)
         self.title = self._setup_title(self.mainframe)
         self.abstract = self._setup_abstract()
@@ -290,8 +289,8 @@ class Gui:
         :param event: the event data
         :type event: tk.Event
         """
-        if event.char == '\r':
-            filter_txt = self.filter.get()
+        if getattr(event, 'char', '') == '\r':
+            filter_txt = self.filterpanel.filter_txt.get()
             if filter_txt == '':
                 self.filter_txt = ''
                 self.status_bar.text = ''
@@ -301,7 +300,7 @@ class Gui:
                 self.fdf = None
                 df = self.df
             else:
-                self.filter_field = self.filter_box.get()
+                self.filter_field = self.filterpanel.filter_box.get()
                 print(self.filter_field)
 
                 self.filter_txt = filter_txt
