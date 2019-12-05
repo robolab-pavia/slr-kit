@@ -8,10 +8,90 @@ import utils
 WORD_DELIMITERS = string.whitespace + ',;.:"\''
 
 
+class SearchPanel(ttk.Frame):
+    def __init__(self, row, column, master=None, **kwargs):
+        super().__init__(master, **kwargs)
+        self.grid(row=row, column=column, columnspan=2,
+                  sticky=(tk.N, tk.W, tk.E, tk.S))
+        self._filter_shown = False
+        self._search_shown = False
+        self._filterframe = ttk.LabelFrame(self, text='Filter')
+        self.filter_txt, self.filter_entry = self._setup_filter_entry()
+        self.filter_box = self._setup_filter_combobox()
+        self._searchframe = ttk.LabelFrame(self, text='Search by ID')
+        self.search_txt, self.search_entry = self._setup_search()
+
+    @property
+    def filter_shown(self):
+        return self._filter_shown
+
+    @property
+    def search_shown(self):
+        return self._search_shown
+
+    def _setup_filter_combobox(self):
+        """
+        Setups the filter combobox
+        """
+        filter_box = ttk.Combobox(self._filterframe, state='readonly',
+                                  values=('abstract', 'title', 'pubblication'))
+        filter_box.grid(row=0, column=0, sticky=(tk.E, tk.W))
+        filter_box.set('abstract')
+        return filter_box
+
+    def _setup_filter_entry(self):
+        """
+        Setups the filter entry
+
+        :return: the variable that contains the text and the filter entry widget
+        :rtype: (tk.StringVar, ttk.Entry)
+        """
+        filter_var = tk.StringVar()
+        fil = ttk.Entry(self._filterframe, textvariable=filter_var)
+        fil.grid(row=0, column=1, sticky=(tk.W, tk.E))
+        fil.grid_configure(padx=5, pady=5)
+        # fil.bind('<Key>', self._filter_set)
+        return filter_var, fil
+
+    def _setup_search(self):
+        search = tk.StringVar()
+        search_entry = ttk.Entry(self._searchframe, textvariable=search)
+        search_entry.grid(row=0, column=1, sticky=(tk.W, tk.E))
+        return search, search_entry
+
+    def toggle_filter(self):
+        if self._filter_shown:
+            self._filterframe.grid_remove()
+            if self._search_shown:
+                self._searchframe.grid_remove()
+                self._searchframe.grid(row=0, column=0, sticky=(tk.W, tk.E))
+
+        else:
+            self._filterframe.grid(row=0, column=0, sticky=(tk.W, tk.E))
+            if self._search_shown:
+                self._searchframe.grid_remove()
+                self._searchframe.grid(row=0, column=1, sticky=(tk.W, tk.E))
+
+        self._filter_shown = not self._filter_shown
+
+    def toggle_search(self):
+        if self._search_shown:
+            self._searchframe.grid_remove()
+
+        else:
+            if self._filter_shown:
+                self._searchframe.grid(row=0, column=1, sticky=(tk.W, tk.E))
+            else:
+                self._searchframe.grid(row=0, column=0, sticky=(tk.W, tk.E))
+
+        self._search_shown = not self._search_shown
+
+
 class TextWrapper(tk.Text):
     """
     Wrapper class for the Text widget
     """
+
     def __init__(self, master=None, cnf=None, **kwargs):
         if cnf is None:
             cnf = {}
