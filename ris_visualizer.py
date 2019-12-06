@@ -220,6 +220,7 @@ class Gui:
         # filter part
         self._setup_filter()
         self.filterpanel.filter_entry.bind('<Key>', self._filter_set)
+        self.filterpanel.search_entry.bind('<Key>', self._search_set)
 
         # status bar
         self.status_bar = StatusBar(self.root)
@@ -230,6 +231,30 @@ class Gui:
         self.list_box.bind('<<ListboxSelect>>', self._list_change_event)
 
         self.list_box.focus()
+
+    def _search_set(self, event):
+        if getattr(event, 'char', '') == '\r':
+            txt = self.filterpanel.search_txt.get()
+            if txt != '':
+                try:
+                    search_id = int(txt)
+                except ValueError:
+                    search_id = -1
+
+                if 0 <= search_id < len(self.df):
+                    self.list_box.select_clear(0, tk.END)
+                    self.list_box.select_set(first=search_id)
+                    self.list_box.activate(search_id)
+                    self._list_change_event(None)
+                else:
+                    s = self.status_bar.text
+                    if len(s) > 0:
+                        s = f'{s}         '
+
+                    s = f'{s}Invalid id: {txt}'
+                    self.status_bar.text = s
+
+            self.list_box.focus()
 
     def _key_press(self, event):
         if self.root.focus_get() != self.filterpanel.filter_entry:
