@@ -257,9 +257,8 @@ class Gui:
             self.list_box.focus()
 
     def _key_press(self, event):
-        if self.root.focus_get() != self.filterpanel.filter_entry:
-            print(event)
-            print(type(event.keysym), event.keysym)
+        entries = [self.filterpanel.filter_entry, self.filterpanel.search_entry]
+        if self.root.focus_get() not in entries:
             key = getattr(event, 'char', '').lower()
             if key == 'f':
                 self.filterpanel.toggle_filter()
