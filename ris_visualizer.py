@@ -49,14 +49,14 @@ class SearchPanel(ttk.Frame):
         filter_var = tk.StringVar()
         fil = ttk.Entry(self._filterframe, textvariable=filter_var)
         fil.grid(row=0, column=1, sticky=(tk.W, tk.E))
-        fil.grid_configure(padx=5, pady=5)
-        # fil.bind('<Key>', self._filter_set)
+        fil.grid_configure(padx=5, pady=3)
         return filter_var, fil
 
     def _setup_search(self):
         search = tk.StringVar()
         search_entry = ttk.Entry(self._searchframe, textvariable=search)
         search_entry.grid(row=0, column=1, sticky=(tk.W, tk.E))
+        search_entry.grid_configure(padx=5, pady=3)
         return search, search_entry
 
     def toggle_filter(self):
