@@ -1,3 +1,4 @@
+import argparse
 import ast
 import string
 import tkinter as tk
@@ -160,6 +161,7 @@ class StatusBar(tk.Frame):
     """
     Status bar widget
     """
+
     def __init__(self, master, height=8):
         """
         Creates a new StatusBar
@@ -547,8 +549,23 @@ def authors_convert(auth_str):
     return authors
 
 
+def init_argparser():
+    """
+    Initialize the command line parser.
+
+    :return: the command line parser
+    :rtype: argparse.ArgumentParser
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument('datafile', action="store", type=str,
+                        help="input TSV data file")
+    return parser
+
+
 def main():
-    df = pd.read_csv('rts-sample-ris.csv', sep='\t',
+    parser = init_argparser()
+    args = parser.parse_args()
+    df = pd.read_csv(args.datafile, sep='\t',
                      usecols=['id', 'authors', 'title', 'secondary_title',
                               'abstract', 'year'],
                      converters={'authors': authors_convert})
