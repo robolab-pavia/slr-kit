@@ -1,3 +1,4 @@
+import argparse
 import ast
 import string
 import tkinter as tk
@@ -160,6 +161,7 @@ class StatusBar(tk.Frame):
     """
     Status bar widget
     """
+
     def __init__(self, master, height=8):
         """
         Creates a new StatusBar
@@ -547,12 +549,62 @@ def authors_convert(auth_str):
     return authors
 
 
-def main():
-    df = pd.read_csv('rts-sample-ris.csv', sep='\t',
-                     usecols=['id', 'authors', 'title', 'secondary_title',
-                              'abstract', 'year'],
+def init_argparser():
+    """
+    Initialize the command line parser.
+
+    :return: the command line parser
+    :rtype: argparse.ArgumentParser
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument('datafile', action="store", type=str,
+                        help="input TSV data file")
+    return parser
+
+
+def usecols(col):
+    """
+    Helper function to select columns in input file
+
+    :param col: the name of the column to evaluate
+    :type col: str
+    :return: True if col must be included and False otherwise
+    :rtype: bool
+    """
+    colnames = ['id', 'authors', 'title', 'secondary_title', 'abstract',
+                'abstract1', 'year']
+    return col in colnames
+
+
+def prepare_df(args):
+    """
+    Loads and prepare the dataframe with information about the papers
+
+    :param args: command line arguments
+    :type args: argparse.Namespace
+    :return: the loaded dataframe
+    :rtype: pd.DataFrame
+    """
+    df = pd.read_csv(args.datafile, sep='\t',
+                     usecols=usecols,
                      converters={'authors': authors_convert})
-    df.rename(columns={'secondary_title': 'pubblication'}, inplace=True)
+    df.rename(columns={'secondary_title': 'pubblication',
+                       'abstract1': 'abstract'}, inplace=True)
+    for f in ['id', 'abstract']:
+        if f not in df.columns:
+            raise ValueError(f'Missing required field {f} in {args.datafile}')
+
+    for f in ['authors', 'title', 'year', 'pubblication']:
+        if f not in df.columns:
+            df[f] = [''] * len(df)
+
+    return df
+
+
+def main():
+    parser = init_argparser()
+    args = parser.parse_args()
+    df = prepare_df(args)
 
     gui = Gui(df)
     gui.root.mainloop()
