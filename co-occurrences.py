@@ -30,19 +30,34 @@ def main():
         for l in input_file:
             terms.append(json.loads(l))
 
-    occ_x_abs = {}
-    for t in terms:
-        for o in t['occurrences']:
-            if o not in occ_x_abs:
-                occ_x_abs[o] = {'count': 0, 'terms': set()}
-            occ_x_abs[o]['count'] += 1
-            occ_x_abs[o]['terms'].update([t['term']])
-    #print(occ_x_abs)
-    l = []
-    for abstract in occ_x_abs:
-        terms = ','.join(occ_x_abs[abstract]['terms'])
-        item = [abstract, occ_x_abs[abstract]['count'], terms]
-        l.append(item)
+    #terms = terms[-100:]
+    #for t in terms:
+    #    print(t)
+    #return
+
+    co_occ = {}
+    tot = len(terms) ** 2
+    done = 0
+    for i, t1 in enumerate(terms[:-1]):
+        for t2 in terms[i + 1:]:
+            if t1 == t2:
+                continue
+            for abs_id in t1['occurrences']:
+                if abs_id in t2['occurrences']:
+                    tup1 = (t1['term'], t2['term'])
+                    tup2 = (t2['term'], t1['term'])
+                    if tup1 in co_occ:
+                        co_occ[tup1] += 1
+                    else:
+                        co_occ[tup1] = 1
+            done += 1
+            if done % 100000 == 0:
+                debug_logger.debug('co-occurrences {}/{} ({:.2f})%'.format(done, tot, done / tot * 100))
+    for occ in co_occ:
+        print('{}\t{}\t{}'.format(occ[0], occ[1], co_occ[occ]))
+    return
+
+                        
     df = pandas.DataFrame(l, columns=['Abstract', 'Count', 'Terms'])
     df = df.sort_values(by=['Count'])
 
