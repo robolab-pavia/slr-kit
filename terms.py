@@ -134,7 +134,11 @@ class TermList(object):
 
                 related = row.get('related', '')
                 try:
-                    label = Label.get_from_name(row['label'])
+                    lbl_name = row['label']
+                    if lbl_name is None:
+                        lbl_name = ''
+
+                    label = Label.get_from_name(lbl_name)
                 except KeyError:
                     print('\n{} does not contains the field "label"\n'.format(infile))
                     raise
