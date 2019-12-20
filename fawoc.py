@@ -9,6 +9,9 @@ from terms import Label, TermList
 from utils import setup_logger
 
 
+DEBUG = False
+
+
 class Win(object):
     """
     Contains the list of lines to display.
@@ -652,4 +655,6 @@ def main():
 
 
 if __name__ == "__main__":
+    if DEBUG:
+        input('Wait for debug...')
     main()

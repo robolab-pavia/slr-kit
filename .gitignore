@@ -211,7 +211,7 @@ pip-selfcheck.json
 .nfs*
 
 # csv files and other stuff
-*.csv
+*.[ct]sv
 *.orig
 *.txt
 *.json

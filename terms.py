@@ -123,15 +123,22 @@ class TermList(object):
             header = csv_reader.fieldnames
             items = []
             for row in csv_reader:
-                order_value = row['order']
-                if order_value == '':
+                try:
+                    order_value = row['order']
+                    if order_value == '':
+                        order = -1
+                    else:
+                        order = int(order_value)
+                except KeyError:
                     order = -1
-                else:
-                    order = int(order_value)
 
                 related = row.get('related', '')
                 try:
-                    label = Label.get_from_name(row['label'])
+                    lbl_name = row['label']
+                    if lbl_name is None:
+                        lbl_name = ''
+
+                    label = Label.get_from_name(lbl_name)
                 except KeyError:
                     print('\n{} does not contains the field "label"\n'.format(infile))
                     raise
@@ -148,6 +155,9 @@ class TermList(object):
 
         if 'related' not in header:
             header.append('related')
+
+        if 'order' not in csv_reader.fieldnames:
+            header.append('order')
 
         self.csv_header = header
         self.items = items
