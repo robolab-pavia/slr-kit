@@ -524,6 +524,7 @@ def curses_main(scr, terms, args, review, last_reviews, logger=None,
         windows['__WORDS'].display_lines(rev=False,
                                          highlight_word=sort_word_key)
         c = chr(stdscr.getch())
+        c = c.lower()
         if c not in ['w', 'q', 'u'] and evaluated_word == '':
             # no terms to classify. the only working keys are write, undo and
             # quit the others will do nothing
