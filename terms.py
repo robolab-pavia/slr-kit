@@ -173,8 +173,8 @@ class TermList(object):
         :type outfile: str
         """
         # with open(outfile, mode='w') as out:
-        cwd = str(Path('.').resolve())
-        with tempfile.NamedTemporaryFile('w', dir=cwd,
+        path = str(Path(outfile).resolve().parent)
+        with tempfile.NamedTemporaryFile('w', dir=path,
                                          prefix='.fawoc.temp.',
                                          delete=False) as out:
             writer = csv.DictWriter(out, fieldnames=self.csv_header,
@@ -193,7 +193,8 @@ class TermList(object):
                         'order': order,
                         'related': w.related}
                 writer.writerow(item)
-                temp = Path(out.name)
+
+            temp = Path(out.name)
 
         temp.replace(outfile)
 
