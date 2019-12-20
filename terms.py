@@ -1,5 +1,7 @@
 import csv
 import enum
+from pathlib import Path
+import tempfile
 from dataclasses import dataclass
 import utils
 
@@ -170,7 +172,11 @@ class TermList(object):
         :param outfile: path to the tsv file to write the terms
         :type outfile: str
         """
-        with open(outfile, mode='w') as out:
+        # with open(outfile, mode='w') as out:
+        cwd = str(Path('.').resolve())
+        with tempfile.NamedTemporaryFile('w', dir=cwd,
+                                         prefix='.fawoc.temp.',
+                                         delete=False) as out:
             writer = csv.DictWriter(out, fieldnames=self.csv_header,
                                     delimiter='\t', quotechar='"',
                                     quoting=csv.QUOTE_MINIMAL)
@@ -187,6 +193,9 @@ class TermList(object):
                         'order': order,
                         'related': w.related}
                 writer.writerow(item)
+                temp = Path(out.name)
+
+        temp.replace(outfile)
 
     def get_last_classified_order(self):
         """
