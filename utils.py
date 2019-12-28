@@ -1,5 +1,27 @@
 import logging
 import string
+import sys
+
+
+def assert_column(infile, dataframe, column_name):
+    """
+    Check a datafile for the presence of a column.
+
+    Many scripts require that a specific column is present
+    in the datafile under processing. This function can be
+    to make sure that the script does not hang due to the
+    absence of the necessary column.
+
+    :param infile: name of the input file
+    :type name: str
+    :param dataframe: dataframe containing the required column
+    :type name: pandas dataframe or any dict-accessible variable
+    :param column_name: name of the required column
+    :type name: str
+    """
+    if column_name not in dataframe:
+        print('File "{}" must contain the "{}" column.'.format(infile, column_name))
+        sys.exit(1)
 
 
 def setup_logger(name, log_file,
