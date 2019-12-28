@@ -124,6 +124,9 @@ TODO: if fawoc does not find the necessary "helper" columns in the input file, i
 Notice that a word is not a term. In the term `this term important` there are the three words `this`, `term` and `important`.
 This statistic could help to spot wrong labelling and/or words that are likely to be noise across several datasets.
 
+It is an utility program that may not directly enter the main workflow, but can start providing interesting insights regarding noise words that can help, in the future, to spot possible noise words earlier, or to spot possible errors in the classification.
+
+
 ## `clear-postponed.py`
 
 - ACTION: Removes the label `postponed` from the input file.
