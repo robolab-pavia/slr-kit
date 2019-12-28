@@ -115,6 +115,18 @@ TODO: if fawoc does not find the necessary "helper" columns in the input file, i
 
 # Additional scripts
 
+## `noise-stats.py`
+
+- ACTION: Calculate a statistic regarding noise words; it calculates, for each word, the ratio of the words labelled as noise (plus unlabelled words) against the total number of that word
+- INPUT: The CSV file with the terms extracted by `gen-n-grams.py`.
+- OUTPUT: A CSV files with one word (not a term!) per row, with its total count, number of noise labels and unlabelled items, plus the calculation of an index of noisiness
+
+Notice that a word is not a term. In the term `this term important` there are the three words `this`, `term` and `important`.
+This statistic could help to spot wrong labelling and/or words that are likely to be noise across several datasets.
+
+It is an utility program that may not directly enter the main workflow, but can start providing interesting insights regarding noise words that can help, in the future, to spot possible noise words earlier, or to spot possible errors in the classification.
+
+
 ## `clear-postponed.py`
 
 - ACTION: Removes the label `postponed` from the input file.
