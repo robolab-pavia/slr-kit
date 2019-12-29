@@ -1,6 +1,23 @@
 import logging
 import string
+import json
 import sys
+
+
+def load_dtj(infile):
+    """
+    Load the document-terms JSON file format.
+
+    :param infile: name of the input file
+    :type name: str
+    :return: the list of parsed rows
+    :rtype: list of dicts
+    """
+    dtj = []
+    with open(infile) as input_file:
+        for line in input_file:
+            dtj.append(json.loads(line))
+    return dtj
 
 
 def assert_column(infile, dataframe, column_name):

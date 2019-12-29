@@ -5,7 +5,10 @@ import sys
 import json
 import logging
 import argparse
-from utils import setup_logger
+from utils import (
+    setup_logger,
+    load_dtj
+)
 
 
 def init_argparser():
@@ -25,10 +28,7 @@ def main():
     debug_logger = setup_logger('debug_logger', 'slr-kit.log',
                                 level=logging.DEBUG)
 
-    with open(args.occurrence) as input_file:
-        terms = []
-        for l in input_file:
-            terms.append(json.loads(l))
+    terms = load_dtj(args.occurrence)
 
     occ_x_abs = {}
     for t in terms:
