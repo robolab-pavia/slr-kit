@@ -12,7 +12,10 @@ from nltk.stem.wordnet import WordNetLemmatizer
 import sys
 import logging
 import argparse
-from utils import setup_logger
+from utils import (
+    setup_logger,
+    assert_column
+)
 
 
 def init_argparser():
@@ -70,7 +73,7 @@ def process_corpus(dataset, stop_words):
 
 
 def main():
-    target_column = 'abstract1'
+    target_column = 'abstract'
     parser = init_argparser()
     args = parser.parse_args()
 
@@ -81,9 +84,7 @@ def main():
     # load the dataset
     dataset = pandas.read_csv(args.datafile, delimiter='\t')
     dataset.fillna('', inplace=True)
-    if target_column not in dataset:
-        print('File "{}" must contain a column labelled as "{}".'.format(args.datafile, target_column))
-        sys.exit(1)
+    assert_column(args.datafile, dataset, target_column)
     debug_logger.debug("Dataset loaded {} items".format(len(dataset[target_column])))
     #logging.debug(dataset.head())
 
