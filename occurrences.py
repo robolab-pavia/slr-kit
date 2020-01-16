@@ -5,7 +5,10 @@ import json
 import logging
 import argparse
 from multiprocessing import Pool
-from utils import setup_logger
+from utils import (
+    setup_logger,
+    load_df
+)
 
 
 debug_logger = setup_logger('debug_logger', 'slr-kit.log',
@@ -64,16 +67,8 @@ def main():
     # TODO: write log string with values of the parameters used in the execution
 
     # load the datasets
-    abstracts = pandas.read_csv(args.abstracts, delimiter='\t')
-    abstracts.fillna('', inplace=True)
-    if abstracts_column not in abstracts:
-        print('File "{}" must contain a column labelled as "{}".'.format(args.abstracts, abstracts_column))
-        sys.exit(1)
-    terms = pandas.read_csv(args.terms, delimiter=',')
-    terms.fillna('', inplace=True)
-    if terms_column not in terms:
-        print('File "{}" must contain a column labelled as "{}".'.format(args.terms, terms_column))
-        sys.exit(1)
+    abstracts_df = load_df(args.abstracts, required_columns=[abstracts_column])
+    terms_df = load_df(args.terms, required_columns=[terms_column])
     #logging.debug(dataset.head())
 
     # select only the terms that are properly labelled
@@ -82,12 +77,12 @@ def main():
     else:
         label = 'keyword'   # default behavior
     #print(label)
-    terms_flags = terms['label'] == label
-    terms = terms[terms_flags]
+    terms_flags = terms_df['label'] == label
+    terms_df = terms_df[terms_flags]
     #print(keywords)
 
     output_file = open(args.output, 'w') if args.output is not None else sys.stdout
-    find_occurrences_in_all_documents(terms[terms_column], abstracts, output_file)
+    find_occurrences_in_all_documents(terms_df[terms_column], abstracts_df, output_file)
     output_file.close()
 
 
