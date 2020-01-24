@@ -5,7 +5,7 @@ import logging
 import os
 import pathlib
 import sys
-from terms import Label, TermList
+from terms import Label, TermList, Term
 from utils import setup_logger
 
 
@@ -149,7 +149,7 @@ class Win(object):
         :type terms: list[Term]
         """
         terms = sorted(terms, key=lambda t: t.order)
-        self.lines = [w.term for w in terms if w.label == self.label]
+        self.lines = [w.string for w in terms if w.label == self.label]
 
 
 def init_argparser():
@@ -254,7 +254,7 @@ def init_curses():
 
 
 def do_classify(label, terms, review, evaluated_term, sort_word_key,
-                related_items_count, windows):
+                related_items_count):
     """
     Handle the term classification process of the evaluated_term
 
@@ -265,24 +265,22 @@ def do_classify(label, terms, review, evaluated_term, sort_word_key,
     :param review: label under review
     :type review: Label
     :param evaluated_term: term to classify
-    :type evaluated_term: str
+    :type evaluated_term: Term
     :param sort_word_key: actual term used for the related terms
     :type sort_word_key: str
     :param related_items_count: actual number of related terms
     :type related_items_count: int
-    :param windows: dict of the windows
-    :type windows: dict[str, Win]
-    :return: the new sort_word_key and the new number of related terms
-    :rtype: (str, int)
+    :return: the remaining terms to classify, the new related_item_count and sort_word_key
+    :rtype: (TermList, int, str)
     """
-    windows[label.label_name].lines.append(evaluated_term)
-    refresh_label_windows(evaluated_term, label, windows)
+    # windows[label.label_name].lines.append(evaluated_term.string)
+    # refresh_label_windows(evaluated_term.string, label, windows)
 
-    terms.classify_term(evaluated_term, label,
+    terms.classify_term(evaluated_term.string, label,
                         terms.get_last_classified_order() + 1, sort_word_key)
 
     if related_items_count <= 0:
-        sort_word_key = evaluated_term
+        sort_word_key = evaluated_term.string
 
     containing, not_containing = terms.return_related_items(sort_word_key,
                                                             label=review)
@@ -290,11 +288,13 @@ def do_classify(label, terms, review, evaluated_term, sort_word_key,
     if related_items_count <= 0:
         related_items_count = len(containing) + 1
 
-    windows['__WORDS'].lines = containing
-    windows['__WORDS'].lines.extend(not_containing)
-    windows['__WORDS'].display_lines(rev=False, highlight_word=sort_word_key)
+    to_classify = containing + not_containing
+
+    # windows['__WORDS'].lines = to_classify.get_strings()
+    # windows['__WORDS'].display_lines(rev=False, highlight_word=sort_word_key)
     related_items_count -= 1
-    return related_items_count, sort_word_key
+    # next_evaluated = to_classify.items[0]
+    return to_classify, related_items_count, sort_word_key
 
 
 def refresh_label_windows(term_to_highlight, label, windows):
@@ -320,76 +320,76 @@ def refresh_label_windows(term_to_highlight, label, windows):
             windows[win].display_lines(rev=True)
 
 
-def undo(terms, review, sort_word_key, related_items_count, windows, logger,
+def undo(terms, to_classify, review, sort_word_key, related_items_count, logger,
          profiler):
     """
     Handle the undo of a term
 
     :param terms: the list of terms
     :type terms: TermList
+    :param to_classify: terms not classified
+    :type to_classify: TermList
     :param review: label under review
     :type review: Label
     :param sort_word_key: actual term used for the related terms
     :type sort_word_key: str
     :param related_items_count: actual number of related terms
     :type related_items_count: int
-    :param windows: dict of the windows
-    :type windows: dict[str, Win]
     :param logger: debug logger
     :type logger: logging.Logger
     :param profiler: profiling logger
     :type profiler: logging.Logger
-    :return: the new sort_word_key and the new number of related terms
-    :rtype: (str, int)
+    :return: the remaining terms to classify, the new number of related terms and the new sort_word_key
+    :rtype: (TermList, int, str)
     """
     last_word = terms.get_last_classified_term()
     if last_word is None:
-        return related_items_count, sort_word_key
+        return to_classify, related_items_count, sort_word_key
 
-    group = last_word.label
+    label = last_word.label
     related = last_word.related
-    logger.debug("Undo: {} group {} order {}".format(last_word.term,
-                                                     group,
+    logger.debug("Undo: {} group {} order {}".format(last_word.string,
+                                                     label,
                                                      last_word.order))
     # un-mark last_word
-    terms.classify_term(last_word.term, review, -1)
+    terms.classify_term(last_word.string, review, -1)
     # remove last_word from the window that actually contains it
-    try:
-        win = windows[group.label_name]
-        win.lines.remove(last_word.term)
-        prev_last_word = terms.get_last_classified_term()
-        if prev_last_word is not None:
-            refresh_label_windows(prev_last_word.term, prev_last_word.label,
-                                  windows)
-        else:
-            refresh_label_windows('', Label.NONE, windows)
-    except KeyError:
-        pass  # if here the word is not in a window so nothing to do
+    # try:
+    #     classified = terms.get_from_label(label)
+    #     win = windows[label.label_name]
+    #     win.lines = classified.get_strings()
+    #     prev_last_word = terms.get_last_classified_term()
+    #     if prev_last_word is not None:
+    #         refresh_label_windows(prev_last_word.string, prev_last_word.label,
+    #                               windows)
+    #     else:
+    #         refresh_label_windows('', Label.NONE, windows)
+    # except KeyError:
+    #     pass  # if here the word is not in a window so nothing to do
 
     # handle related word
     if related == sort_word_key:
         related_items_count += 1
-        rwl = [last_word.term]
-        rwl.extend(windows['__WORDS'].lines)
-        windows['__WORDS'].lines = rwl
+        to_classify.items.insert(0, last_word)
+        # windows['__WORDS'].lines = to_classify.get_strings()
     else:
         sort_word_key = related
         containing, not_containing = terms.return_related_items(sort_word_key,
                                                                 label=review)
         related_items_count = len(containing)
-        windows['__WORDS'].lines = containing
-        windows['__WORDS'].lines.extend(not_containing)
-        windows['__WORDS'].display_lines(rev=False,
-                                         highlight_word=sort_word_key)
+        to_classify = containing + not_containing
+        # windows['__WORDS'].lines = lines.get_strings()
+        # windows['__WORDS'].display_lines(rev=False,
+        #                                  highlight_word=sort_word_key)
 
     if sort_word_key == '':
         # if sort_word_key is empty there's no related item: fix the
         # related_items_count to the correct value of 0
         related_items_count = 0
 
-    profiler.info("WORD '{}' UNDONE".format(last_word.term))
+    profiler.info("WORD '{}' UNDONE".format(last_word.string))
 
-    return related_items_count, sort_word_key
+    return to_classify, related_items_count, sort_word_key
 
 
 def create_windows(win_width, rows, review):
@@ -410,8 +410,8 @@ def create_windows(win_width, rows, review):
                    Label.NOT_RELEVANT, Label.POSTPONED]
     for i, cls in enumerate(win_classes):
         windows[cls.label_name] = Win(cls, title=cls.label_name.capitalize(),
-                                      rows=rows, cols=win_width, y=(rows + 1) * i,
-                                      x=0, show_title=True)
+                                      rows=rows, cols=win_width,
+                                      y=(rows + 1) * i, x=0, show_title=True)
 
     title = 'Input label: {}'
     if review == Label.NONE:
@@ -474,8 +474,8 @@ def curses_main(scr, terms, args, review, last_reviews, logger=None,
         if win == review.label_name:
             # in review mode we must add to the window associated with the label
             # review only the items in confirmed (if any)
-            conf_word = [w for w in terms.items if w.label == review and w.order >= 0]
-            windows[win].assign_lines(conf_word)
+            conf_word = terms.get_from_label(review, order_set=True)
+            windows[win].assign_lines(conf_word.items)
         else:
             windows[win].assign_lines(terms.items)
 
@@ -487,25 +487,23 @@ def curses_main(scr, terms, args, review, last_reviews, logger=None,
         sort_word_key = ''
         if review != Label.NONE:
             # review mode
-            lines = []
-            for w in terms.items:
-                if w.label == review and w.order < 0:
-                    lines.append(w.term)
+            to_classify = terms.get_from_label(review, order_set=True)
+            to_classify.remove(confirmed)
         else:
-            lines = [w.term for w in terms.items if not w.is_classified()]
+            to_classify = terms.get_not_classified()
     else:
-        refresh_label_windows(last_word.term, last_word.label, windows)
+        refresh_label_windows(last_word.string, last_word.label, windows)
         sort_word_key = last_word.related
         if sort_word_key == '':
-            sort_word_key = last_word.term
+            sort_word_key = last_word.string
 
         containing, not_containing = terms.return_related_items(sort_word_key,
                                                                 label=review)
         related_items_count = len(containing)
-        lines = containing
-        lines.extend(not_containing)
+        to_classify = containing + not_containing
 
-    windows['__WORDS'].lines = lines
+    windows['__WORDS'].lines = to_classify.get_strings()
+    windows['__WORDS'].display_lines(rev=False, highlight_word=sort_word_key)
     windows['__STATS'].lines = get_stats_strings(terms, related_items_count)
     windows['__STATS'].display_lines(rev=False)
     classifing_keys = [Label.KEYWORD.key,
@@ -513,16 +511,14 @@ def curses_main(scr, terms, args, review, last_reviews, logger=None,
                        Label.NOISE.key,
                        Label.RELEVANT.key]
     while True:
-        if len(windows['__WORDS'].lines) <= 0:
-            evaluated_word = ''
+        if len(to_classify) <= 0:
+            evaluated_word = None
         else:
-            evaluated_word = windows['__WORDS'].lines[0]
+            evaluated_word = to_classify.items[0]
 
         if related_items_count <= 0:
             sort_word_key = ''
 
-        windows['__WORDS'].display_lines(rev=False,
-                                         highlight_word=sort_word_key)
         c = chr(stdscr.getch())
         c = c.lower()
         if c not in ['w', 'q', 'u'] and evaluated_word == '':
@@ -530,36 +526,46 @@ def curses_main(scr, terms, args, review, last_reviews, logger=None,
             # quit the others will do nothing
             continue
 
-        if c in classifing_keys:
+        try:
             label = Label.get_from_key(c)
-            profiler.info("WORD '{}' AS '{}'".format(evaluated_word,
+        except ValueError:
+            # the user did not press a key associated with a label
+            label = None
+
+        if c in classifing_keys:
+            profiler.info("WORD '{}' AS '{}'".format(evaluated_word.string,
                                                      label.label_name))
-            related_items_count, sort_word_key = do_classify(label, terms,
-                                                             review,
-                                                             evaluated_word,
-                                                             sort_word_key,
-                                                             related_items_count,
-                                                             windows)
+            ret_val = do_classify(label, terms, review, evaluated_word,
+                                  sort_word_key, related_items_count)
+            to_classify, related_items_count, sort_word_key = ret_val
+            last_word = evaluated_word
         elif c == 'p':
             profiler.info("WORD '{}' POSTPONED".format(evaluated_word))
             # classification: POSTPONED
-            terms.classify_term(evaluated_word, Label.POSTPONED,
+            terms.classify_term(evaluated_word.string, Label.POSTPONED,
                                 terms.get_last_classified_order() + 1,
                                 sort_word_key)
-            windows['__WORDS'].lines = windows['__WORDS'].lines[1:]
-            windows[Label.POSTPONED.label_name].lines.append(evaluated_word)
-            refresh_label_windows(evaluated_word, Label.POSTPONED, windows)
             related_items_count -= 1
+            if related_items_count > 0:
+                cont, not_cont = terms.return_related_items(sort_word_key, review)
+                to_classify = cont + not_cont
+            else:
+                to_classify = terms.get_from_label(review)
+
+            last_word = evaluated_word
         elif c == 'w':
             # write to file
             terms.to_tsv(datafile)
         elif c == 'u':
             # undo last operation
-            related_items_count, sort_word_key = undo(terms, review,
-                                                      sort_word_key,
-                                                      related_items_count,
-                                                      windows, logger, profiler)
-
+            ret_val = undo(terms, to_classify, review, sort_word_key,
+                           related_items_count, logger, profiler)
+            to_classify, related_items_count, sort_word_key = ret_val
+            last_word = terms.get_last_classified_term()
+            if last_word is None:
+                label = Label.NONE
+            else:
+                label = last_word.label
         elif c == 'q':
             # quit
             break
@@ -567,11 +573,52 @@ def curses_main(scr, terms, args, review, last_reviews, logger=None,
             # no recognized key: doing nothing (and avoiding useless autosave)
             continue
 
-        windows['__STATS'].lines = get_stats_strings(terms, related_items_count)
-        windows['__STATS'].display_lines(rev=False)
+        if label is not None:
+            # update windows
+            update_windows(windows, terms, to_classify, last_word,
+                           related_items_count, sort_word_key)
 
         if not args.dry_run and not args.no_auto_save:
+            # auto-save
             terms.to_tsv(datafile)
+
+
+def update_windows(windows, terms, to_classify, term_to_highlight,
+                   related_items_count, sort_word_key):
+    """
+    Handle the update of all the windows
+
+    :param windows: dict of the windows
+    :type windows: dict[str, Win]
+    :param terms: list of the Term
+    :type terms: TermList
+    :param to_classify: terms not yet classified
+    :type to_classify: TermList
+    :param term_to_highlight: term to hightlight as the last classified term
+    :type term_to_highlight: Term
+    :param related_items_count: number of related items
+    :type related_items_count: int
+    :param sort_word_key: words used for the related item highlighting
+    :type sort_word_key: str
+    """
+    windows['__WORDS'].lines = to_classify.get_strings()
+    windows['__WORDS'].display_lines(rev=False,
+                                     highlight_word=sort_word_key)
+    for win in windows:
+        if win in ['__WORDS', '__STATS']:
+            continue
+
+        cls = terms.get_from_label(Label.get_from_name(win))
+        windows[win].lines = cls.get_strings()
+
+    if term_to_highlight is not None:
+        refresh_label_windows(term_to_highlight.string, term_to_highlight.label,
+                              windows)
+    else:
+        refresh_label_windows('', Label.NONE, windows)
+
+    windows['__STATS'].lines = get_stats_strings(terms, related_items_count)
+    windows['__STATS'].display_lines(rev=False)
 
 
 def main():
