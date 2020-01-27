@@ -253,8 +253,8 @@ def init_curses():
     return stdscr
 
 
-def do_classify(label, terms, review, evaluated_term, sort_word_key,
-                related_items_count):
+def classify(label, terms, review, evaluated_term, sort_word_key,
+             related_items_count):
     """
     Handle the term classification process of the evaluated_term
 
@@ -533,26 +533,14 @@ def curses_main(scr, terms, args, review, last_reviews, logger=None,
             label = None
 
         if c in classifing_keys:
-            profiler.info("WORD '{}' AS '{}'".format(evaluated_word.string,
-                                                     label.label_name))
-            ret_val = do_classify(label, terms, review, evaluated_word,
-                                  sort_word_key, related_items_count)
-            to_classify, related_items_count, sort_word_key = ret_val
-            last_word = evaluated_word
-        elif c == 'p':
-            profiler.info("WORD '{}' POSTPONED".format(evaluated_word))
-            # classification: POSTPONED
-            terms.classify_term(evaluated_word.string, Label.POSTPONED,
-                                terms.get_last_classified_order() + 1,
-                                sort_word_key)
-            related_items_count -= 1
-            if related_items_count > 0:
-                cont, not_cont = terms.return_related_items(sort_word_key, review)
-                to_classify = cont + not_cont
-            else:
-                to_classify = terms.get_from_label(review)
+            ret_val = do_classify(terms, evaluated_word, label, review,
+                                  sort_word_key, related_items_count, profiler)
+            last_word, related_items_count, sort_word_key, to_classify = ret_val
 
-            last_word = evaluated_word
+        elif c == 'p':
+            ret_val = do_postpone(terms, evaluated_word, review,
+                                  sort_word_key, related_items_count, profiler)
+            last_word, related_items_count, to_classify = ret_val
         elif c == 'w':
             # write to file
             terms.to_tsv(datafile)
@@ -581,6 +569,32 @@ def curses_main(scr, terms, args, review, last_reviews, logger=None,
         if not args.dry_run and not args.no_auto_save:
             # auto-save
             terms.to_tsv(datafile)
+
+
+def do_postpone(terms, word, review, sort_key, related_count, profiler):
+    profiler.info("WORD '{}' POSTPONED".format(word))
+    # classification: POSTPONED
+    terms.classify_term(word.string, Label.POSTPONED,
+                        terms.get_last_classified_order() + 1,
+                        sort_key)
+
+    related_count -= 1
+    if related_count > 0:
+        cont, not_cont = terms.return_related_items(sort_key, review)
+        to_classify = cont + not_cont
+    else:
+        to_classify = terms.get_from_label(review)
+
+    return word, related_count, to_classify
+
+
+def do_classify(terms, word, label, review, sort_key, related_count, profiler):
+    profiler.info("WORD '{}' AS '{}'".format(word.string, label.label_name))
+
+    ret_val = classify(label, terms, review, word, sort_key, related_count)
+    to_classify, related_count, sort_key = ret_val
+
+    return word, related_count, sort_key, to_classify
 
 
 def update_windows(windows, terms, to_classify, term_to_highlight,
