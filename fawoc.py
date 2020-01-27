@@ -493,10 +493,8 @@ def curses_main(scr, terms, args, review, last_reviews, logger=None,
         related_items_count = len(containing)
         to_classify = containing + not_containing
 
-    windows['__WORDS'].lines = to_classify.get_strings()
-    windows['__WORDS'].display_lines(rev=False, highlight_word=sort_word_key)
-    windows['__STATS'].lines = get_stats_strings(terms, related_items_count)
-    windows['__STATS'].display_lines(rev=False)
+    update_words_window(windows['__WORDS'], to_classify, sort_word_key)
+    update_stats_window(windows['__STATS'], terms, related_items_count)
     classifing_keys = [Label.KEYWORD.key,
                        Label.NOT_RELEVANT.key,
                        Label.NOISE.key,
@@ -562,6 +560,16 @@ def curses_main(scr, terms, args, review, last_reviews, logger=None,
             terms.to_tsv(datafile)
 
 
+def update_stats_window(window, terms, related_count):
+    window.lines = get_stats_strings(terms, related_count)
+    window.display_lines(rev=False)
+
+
+def update_words_window(window, to_classify, sort_key):
+    window.lines = to_classify.get_strings()
+    window.display_lines(rev=False, highlight_word=sort_key)
+
+
 def setup_term_windows(terms, windows, review):
     for win in windows:
         if win in ['__WORDS', '__STATS']:
@@ -620,9 +628,8 @@ def update_windows(windows, terms, to_classify, term_to_highlight,
     :param sort_word_key: words used for the related item highlighting
     :type sort_word_key: str
     """
-    windows['__WORDS'].lines = to_classify.get_strings()
-    windows['__WORDS'].display_lines(rev=False,
-                                     highlight_word=sort_word_key)
+    update_words_window(windows['__WORDS'], to_classify, sort_word_key)
+
     for win in windows:
         if win in ['__WORDS', '__STATS']:
             continue
@@ -636,8 +643,7 @@ def update_windows(windows, terms, to_classify, term_to_highlight,
     else:
         refresh_label_windows('', Label.NONE, windows)
 
-    windows['__STATS'].lines = get_stats_strings(terms, related_items_count)
-    windows['__STATS'].display_lines(rev=False)
+    update_stats_window(windows['__STATS'], terms, related_items_count)
 
 
 def main():
