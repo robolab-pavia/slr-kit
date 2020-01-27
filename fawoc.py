@@ -467,17 +467,8 @@ def curses_main(scr, terms, args, review, last_reviews, logger=None,
 
     curses.ungetch(' ')
     _ = stdscr.getch()
-    for win in windows:
-        if win in ['__WORDS', '__STATS']:
-            continue
 
-        if win == review.label_name:
-            # in review mode we must add to the window associated with the label
-            # review only the items in confirmed (if any)
-            conf_word = terms.get_from_label(review, order_set=True)
-            windows[win].assign_lines(conf_word.items)
-        else:
-            windows[win].assign_lines(terms.items)
+    setup_term_windows(terms, windows, review)
 
     last_word = terms.get_last_classified_term()
 
@@ -569,6 +560,20 @@ def curses_main(scr, terms, args, review, last_reviews, logger=None,
         if not args.dry_run and not args.no_auto_save:
             # auto-save
             terms.to_tsv(datafile)
+
+
+def setup_term_windows(terms, windows, review):
+    for win in windows:
+        if win in ['__WORDS', '__STATS']:
+            continue
+
+        if win == review.label_name:
+            # in review mode we must add to the window associated with the label
+            # review only the items in confirmed (if any)
+            conf_word = terms.get_from_label(review, order_set=True)
+            windows[win].assign_lines(conf_word.items)
+        else:
+            windows[win].assign_lines(terms.items)
 
 
 def do_postpone(terms, word, review, sort_key, related_count, profiler):
