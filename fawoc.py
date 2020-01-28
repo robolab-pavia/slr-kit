@@ -5,11 +5,46 @@ import logging
 import os
 import pathlib
 import sys
-from terms import Label, TermList, Term
-from utils import setup_logger
+from typing import cast
 
+from prompt_toolkit.lexers import Lexer
+
+from terms import Label, TermList, Term
+from utils import setup_logger, substring_index
 
 DEBUG = False
+
+
+class TermLexer(Lexer):
+    def __init__(self):
+        self._word = ''
+
+    @property
+    def word(self) -> str:
+        return self._word
+
+    @word.setter
+    def word(self, word: str):
+        self._word = word
+
+    def lex_document(self, document):
+        lines = []
+        for line in document.lines:
+            fmt = []
+            prev = 0
+            for begin, end in substring_index(line, self.word):
+                if begin > prev:
+                    fmt.append(('', line[prev:begin]))
+
+                fmt.append(('#ff0000 bold', line[begin:end]))
+                prev = end
+
+            if prev < len(line) - 1:
+                fmt.append(('', line[prev:]))
+
+            lines.append(fmt)
+
+        return lambda lineno: lines[lineno]
 
 
 class Win(object):
