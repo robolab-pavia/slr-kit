@@ -30,6 +30,7 @@ class TermLexer(Lexer):
         self._word = ''
         self._color = 'ffffff'
         self._inv = 0
+        self._whole_line = False
 
     @property
     def word(self) -> str:
@@ -49,20 +50,43 @@ class TermLexer(Lexer):
         self._color = color
         self._inv += 1
 
+    @property
+    def whole_line(self) -> bool:
+        """
+        If the lexer must highlight only the whole line == to word
+
+        If True only a line equal to word is highlighted. If False the lexer
+        will highlight word in all the lines that contains it
+        :return: if the lexer must highlight only the whole line == to word
+        :rtype: bool
+        """
+        return self._whole_line
+
+    @whole_line.setter
+    def whole_line(self, whole: bool):
+        self._whole_line = whole
+        self._inv += 1
+
     def lex_document(self, document):
         lines = []
         for line in document.lines:
             fmt = []
             prev = 0
-            for begin, end in substring_index(line, self.word):
-                if begin > prev:
-                    fmt.append(('', line[prev:begin]))
+            if self.whole_line:
+                if line == self.word:
+                    fmt.append((f'#{self.color} bold', line))
+                else:
+                    fmt.append(('', line))
+            else:
+                for begin, end in substring_index(line, self.word):
+                    if begin > prev:
+                        fmt.append(('', line[prev:begin]))
 
-                fmt.append((f'#{self.color} bold', line[begin:end]))
-                prev = end
+                    fmt.append((f'#{self.color} bold', line[begin:end]))
+                    prev = end
 
-            if prev < len(line) - 1:
-                fmt.append(('', line[prev:]))
+                if prev < len(line) - 1:
+                    fmt.append(('', line[prev:]))
 
             lines.append(fmt)
 
@@ -78,7 +102,7 @@ class PtWin(Float):
     :type label: Label or None
     :type title: str
     :type show_title: bool
-    :type lexer: Lexer
+    :type lexer: TermLexer
     :type height: Dimension
     :type width: Dimension
     :type buffer: Buffer
@@ -158,7 +182,7 @@ class PtWin(Float):
         self.terms = [w for w in terms if w.label == self.label]
         self.terms = sorted(self.terms, key=lambda t: t.order)
 
-    def display_lines(self, rev=True, highlight_word='', only_the_word=False,
+    def display_lines(self, rev=True, highlight_word='', whole_line=False,
                       color='ff0000'):
         """
         Display the terms associated to the window
@@ -167,8 +191,8 @@ class PtWin(Float):
         :type rev: bool
         :param highlight_word: the word to highlight. Default: empty string
         :type highlight_word: str
-        :param only_the_word: if True only highlight_word is highlighted.
-        :type only_the_word: bool
+        :param whole_line: if True only a line == highlight_word is highlighted.
+        :type whole_line: bool
         :param color: hex code for the highlight color. Default red (ff0000)
         :type color: str
         """
@@ -178,8 +202,7 @@ class PtWin(Float):
 
         self.lexer.word = highlight_word
         self.lexer.color = color
-        # Useless text change to force the lexer
-        self.text = ''
+        self.lexer.whole_line = whole_line
         self.text = '\n'.join([w.string for w in terms])
 
 
@@ -323,7 +346,7 @@ class Gui:
             if key == label.label_name:
                 win.display_lines(rev=True,
                                   highlight_word=term_to_highlight,
-                                  only_the_word=True,
+                                  whole_line=True,
                                   color='ffff00')
             else:
                 win.display_lines(rev=True)
