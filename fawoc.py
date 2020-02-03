@@ -976,20 +976,17 @@ def quit_kb(event: KeyPressEvent):
     event.app.exit()
 
 
-def curses_main(scr, terms, args, review, last_reviews, logger=None,
-                profiler=None):
+def curses_main(terms, args, review, last_reviews, logger=None, profiler=None):
     """
     Main loop
 
-    :param scr: main window (the entire screen). It is passed by curses
-    :type scr: _curses.window
     :param terms: list of terms
     :type terms: TermList
     :param args: command line arguments
     :type args: argparse.Namespace
     :param review: label to review if any
     :type review: Label
-    :param last_reviews: last reviews performed. key: abs path of the csv; value: reviewed label name
+    :param last_reviews: last reviews performed. key: csv abs path; val: reviewed label name
     :type last_reviews: dict[str, str]
     :param logger: debug logger. Default: None
     :type logger: logging.Logger or None
@@ -1009,22 +1006,17 @@ def curses_main(scr, terms, args, review, last_reviews, logger=None,
                 w.order = -1
                 w.related = ''
 
-    stdscr = init_curses()
     win_width = 40
     rows = 8
+    terms_rows = 28
 
-    # define windows
-    windows = create_windows(win_width, rows, review)
-
-    curses.ungetch(' ')
-    _ = stdscr.getch()
-
-    setup_term_windows(terms, windows, review)
+    gui = Gui(win_width, terms_rows, rows, review)
+    gui.assign_labeled_terms(terms, review)
 
     last_word = terms.get_last_classified_term()
 
     if last_word is None:
-        refresh_label_windows('', Label.NONE, windows)
+        gui.refresh_label_windows('', Label.NONE)
         related_items_count = 0
         sort_word_key = ''
         if review != Label.NONE:
@@ -1034,7 +1026,7 @@ def curses_main(scr, terms, args, review, last_reviews, logger=None,
         else:
             to_classify = terms.get_not_classified()
     else:
-        refresh_label_windows(last_word.string, last_word.label, windows)
+        gui.refresh_label_windows(last_word.string, last_word.label)
         sort_word_key = last_word.related
         if sort_word_key == '':
             sort_word_key = last_word.string
@@ -1044,71 +1036,25 @@ def curses_main(scr, terms, args, review, last_reviews, logger=None,
         related_items_count = len(containing)
         to_classify = containing + not_containing
 
-    update_words_window(windows['__WORDS'], to_classify, sort_word_key)
-    update_stats_window(windows['__STATS'], terms, related_items_count)
+    gui.set_terms(to_classify, sort_word_key)
+    gui.set_stats(terms, related_items_count)
     classifing_keys = [Label.KEYWORD.key,
                        Label.NOT_RELEVANT.key,
                        Label.NOISE.key,
                        Label.RELEVANT.key]
-    while True:
-        if len(to_classify) <= 0:
-            evaluated_word = None
-        else:
-            evaluated_word = to_classify.items[0]
 
-        if related_items_count <= 0:
-            sort_word_key = ''
+    app = Fawoc(args, terms, to_classify, review, related_items_count,
+                sort_word_key, last_word, gui, profiler, logger)
+    app.add_key_binding(classifing_keys, classify_kb)
+    app.add_key_binding(['p'], postpone_kb)
+    app.add_key_binding(['u'], undo_kb)
+    app.add_key_binding(['w'], save_kb)
+    app.add_key_binding(['q'], quit_kb)
+    app.run()
 
-        c = chr(stdscr.getch())
-        c = c.lower()
-        if c not in ['w', 'q', 'u'] and evaluated_word == '':
-            # no terms to classify. the only working keys are write, undo and
-            # quit the others will do nothing
-            continue
-
-        try:
-            label = Label.get_from_key(c)
-        except ValueError:
-            # the user did not press a key associated with a label
-            label = None
-
-        if c in classifing_keys:
-            ret_val = do_classify(terms, evaluated_word, label, review,
-                                  sort_word_key, related_items_count, profiler)
-            last_word, related_items_count, sort_word_key, to_classify = ret_val
-
-        elif c == 'p':
-            ret_val = do_postpone(terms, evaluated_word, review,
-                                  sort_word_key, related_items_count, profiler)
-            last_word, related_items_count, to_classify = ret_val
-        elif c == 'w':
-            # write to file
-            terms.to_tsv(datafile)
-        elif c == 'u':
-            # undo last operation
-            ret_val = undo(terms, to_classify, review, sort_word_key,
-                           related_items_count, logger, profiler)
-            to_classify, related_items_count, sort_word_key = ret_val
-            last_word = terms.get_last_classified_term()
-            if last_word is None:
-                label = Label.NONE
-            else:
-                label = last_word.label
-        elif c == 'q':
-            # quit
-            break
-        else:
-            # no recognized key: doing nothing (and avoiding useless autosave)
-            continue
-
-        if label is not None:
-            # update windows
-            update_windows(windows, terms, to_classify, last_word,
-                           related_items_count, sort_word_key)
-
-        if not args.dry_run and not args.no_auto_save:
-            # auto-save
-            terms.to_tsv(datafile)
+    if not args.dry_run and not args.no_auto_save:
+        # auto-save
+        app.terms.to_tsv(datafile)
 
 
 def update_stats_window(window, terms, related_count):
@@ -1258,13 +1204,12 @@ def main():
 
     profiler_logger.info("INPUT LABEL: {}".format(label))
 
-    curses.wrapper(curses_main, terms, args, review, last_reviews,
-                   logger=debug_logger, profiler=profiler_logger)
+    curses_main(terms, args, review, last_reviews, logger=debug_logger,
+                profiler=profiler_logger)
 
     profiler_logger.info("CLASSIFIED: {}".format(terms.count_classified()))
     profiler_logger.info("DATAFILE '{}'".format(datafile_path))
     profiler_logger.info("*** PROGRAM TERMINATED ***")
-    curses.endwin()
 
     if review != Label.NONE:
         # ending review mode we must save some info
