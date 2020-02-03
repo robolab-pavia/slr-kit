@@ -28,6 +28,7 @@ class TermLexer(Lexer):
 
     def __init__(self):
         self._word = ''
+        self._color = 'ffffff'
         self._inv = 0
 
     @property
@@ -39,6 +40,15 @@ class TermLexer(Lexer):
         self._word = word
         self._inv += 1
 
+    @property
+    def color(self) -> str:
+        return self._color
+
+    @color.setter
+    def color(self, color: str):
+        self._color = color
+        self._inv += 1
+
     def lex_document(self, document):
         lines = []
         for line in document.lines:
@@ -48,7 +58,7 @@ class TermLexer(Lexer):
                 if begin > prev:
                     fmt.append(('', line[prev:begin]))
 
-                fmt.append(('#ff0000 bold', line[begin:end]))
+                fmt.append((f'#{self.color} bold', line[begin:end]))
                 prev = end
 
             if prev < len(line) - 1:
@@ -149,7 +159,7 @@ class PtWin(Float):
         self.terms = sorted(self.terms, key=lambda t: t.order)
 
     def display_lines(self, rev=True, highlight_word='', only_the_word=False,
-                      color_pair=1):
+                      color='ff0000'):
         """
         Display the terms associated to the window
 
@@ -159,14 +169,15 @@ class PtWin(Float):
         :type highlight_word: str
         :param only_the_word: if True only highlight_word is highlighted.
         :type only_the_word: bool
-        :param color_pair: the curses color pair to use to hightlight. Default 1
-        :type color_pair: int
+        :param color: hex code for the highlight color. Default red (ff0000)
+        :type color: str
         """
         terms = iter(self.terms)
         if rev:
             terms = reversed(self.terms)
 
         self.lexer.word = highlight_word
+        self.lexer.color = color
         # Useless text change to force the lexer
         self.text = ''
         self.text = '\n'.join([w.string for w in terms])
@@ -313,14 +324,13 @@ class Gui:
                 win.display_lines(rev=True,
                                   highlight_word=term_to_highlight,
                                   only_the_word=True,
-                                  color_pair=2)
+                                  color='ffff00')
             else:
                 win.display_lines(rev=True)
 
     def set_stats(self, terms, related_count):
         stats = get_stats_strings(terms, related_count)
         self._windows['__STATS'].text = '\n'.join(stats)
-        # self._windows['__STATS'].display_lines()
 
     def set_terms(self, to_classify: TermList, sort_key):
         self._windows['__WORDS'].assign_lines(to_classify.items)
