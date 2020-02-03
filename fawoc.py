@@ -731,7 +731,7 @@ def fawoc_main(terms, args, review, last_reviews, logger=None, profiler=None):
     else:
         gui.refresh_label_windows(last_word.string, last_word.label)
         sort_word_key = last_word.related
-        if sort_word_key == '':
+        if sort_word_key == '' and last_word.label != Label.POSTPONED:
             sort_word_key = last_word.string
 
         containing, not_containing = terms.return_related_items(sort_word_key,
