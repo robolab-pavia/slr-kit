@@ -626,6 +626,7 @@ def get_stats_strings(terms, related_items_count=0):
     stats_strings = []
     n_completed = terms.count_classified()
     n_keywords = terms.count_by_label(Label.KEYWORD)
+    n_relevant = terms.count_by_label(Label.RELEVANT)
     n_noise = terms.count_by_label(Label.NOISE)
     n_not_relevant = terms.count_by_label(Label.NOT_RELEVANT)
     n_later = terms.count_by_label(Label.POSTPONED)
@@ -635,6 +636,9 @@ def get_stats_strings(terms, related_items_count=0):
                                                                 avg))
     avg = avg_or_zero(n_keywords, n_completed)
     stats_strings.append('Keywords:     {:7} ({:6.2f}%)'.format(n_keywords,
+                                                                avg))
+    avg = avg_or_zero(n_relevant, n_completed)
+    stats_strings.append('Relevant:     {:7} ({:6.2f}%)'.format(n_relevant,
                                                                 avg))
     avg = avg_or_zero(n_noise, n_completed)
     stats_strings.append('Noise:        {:7} ({:6.2f}%)'.format(n_noise, avg))
