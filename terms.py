@@ -189,6 +189,15 @@ class TermList(object):
         """
         self.items.sort(key=lambda t: t.order, reverse=not ascending)
 
+    def sort_by_index(self, ascending=True):
+        """
+        Sorts the TermList by index in place
+
+        :param ascending: if True, sort in ascending order.
+        :type ascending: bool
+        """
+        self.items.sort(key=lambda t: t.index, reverse=not ascending)
+
     def get_from_label(self, label, order_set=None):
         """
         Gets a new TermList with all the Terms with the specified labels
