@@ -642,7 +642,7 @@ def quit_kb(event: KeyPressEvent):
     event.app.exit()
 
 
-def curses_main(terms, args, review, last_reviews, logger=None, profiler=None):
+def fawoc_main(terms, args, review, last_reviews, logger=None, profiler=None):
     """
     Main loop
 
@@ -784,8 +784,8 @@ def main():
 
     profiler_logger.info("INPUT LABEL: {}".format(label))
 
-    curses_main(terms, args, review, last_reviews, logger=debug_logger,
-                profiler=profiler_logger)
+    fawoc_main(terms, args, review, last_reviews, logger=debug_logger,
+               profiler=profiler_logger)
 
     profiler_logger.info("CLASSIFIED: {}".format(terms.count_classified()))
     profiler_logger.info("DATAFILE '{}'".format(datafile_path))
