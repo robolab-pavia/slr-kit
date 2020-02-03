@@ -11,7 +11,8 @@ from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.document import Document
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.key_binding.key_processor import KeyPressEvent
-from prompt_toolkit.layout import Dimension, Float, FloatContainer, Window, Layout
+from prompt_toolkit.layout import Dimension, Window, Layout
+from prompt_toolkit.layout.containers import Container, VSplit, HSplit
 from prompt_toolkit.layout.controls import BufferControl
 from prompt_toolkit.lexers import Lexer
 from prompt_toolkit.widgets import TextArea, Frame
@@ -93,7 +94,7 @@ class TermLexer(Lexer):
         return lambda lineno: lines[lineno]
 
 
-class Win(Float):
+class Win:
     """
     Window that shows terms
 
@@ -137,8 +138,8 @@ class Win(Float):
         self.title = title
         self.show_title = show_title
         self.lexer = TermLexer()
-        self.height = Dimension(min=rows, max=rows)
-        self.width = Dimension(min=cols, max=cols)
+        self.height = Dimension(preferred=rows, max=rows)
+        self.width = Dimension(preferred=cols, max=cols)
         # we must re-create a text-area using the basic components
         # we must do this to have control on the lexer. Otherwise prompt-toolkit
         # will cache the output of the lexer resulting in wrong highlighting
@@ -148,10 +149,13 @@ class Win(Float):
         self.window = Window(content=self.control, height=self.height,
                              width=self.width)
         self.terms = None
-        frame = Frame(cast('Container', self.window))
-        super().__init__(cast('Container', frame), left=self.x, top=self.y)
+        self.frame = Frame(cast('Container', self.window))
+        # super().__init__(cast('Container', self.frame), left=self.x, top=self.y)
         if self.show_title:
-            frame.title = title
+            self.frame.title = title
+
+    def __pt_container__(self) -> Container:
+        return self.frame.__pt_container__()
 
     @property
     def text(self) -> str:
@@ -206,7 +210,7 @@ class Win(Float):
         self.text = '\n'.join([w.string for w in terms])
 
 
-class StrWin(Float):
+class StrWin:
     """
     Window that shows strings
 
@@ -231,13 +235,16 @@ class StrWin(Float):
         """
         self.x = x
         self.y = y
-        self.height = Dimension(min=rows, max=rows)
-        self.width = Dimension(min=cols, max=cols)
+        self.height = Dimension(preferred=rows, max=rows)
+        self.width = Dimension(preferred=cols, max=cols)
         self.textarea = TextArea(height=self.height, width=self.width,
                                  read_only=True)
         self.strings = None
-        frame = Frame(cast('Container', self.textarea))
-        super().__init__(cast('Container', frame), left=self.x, top=self.y)
+        self.frame = Frame(cast('Container', self.textarea))
+        # super().__init__(cast('Container', frame), left=self.x, top=self.y)
+
+    def __pt_container__(self) -> Container:
+        return self.frame.__pt_container__()
 
     def assign_lines(self, lines):
         """
@@ -288,8 +295,17 @@ class Gui:
         self._stats_win = None
         self._create_windows(width, term_rows, rows, review)
         self._review = review
-        self._body = FloatContainer(content=Window(),
-                                    floats=list(self._windows.values()))
+        self._body = VSplit(
+            [
+                HSplit([cast('Container', w) for w in self._windows.values()]),
+                HSplit([
+                    cast('Container', self._stats_win),
+                    cast('Container', self._word_win)
+                ])
+            ]
+        )
+        # self._body = FloatContainer(content=Window(),
+        #                             floats=list(self._windows.values()))
 
     @property
     def body(self):
@@ -409,10 +425,12 @@ class Fawoc(Application):
     """
     :type terms: TermList
     """
+
     def __init__(self, args, terms, to_classify, review, related, sort_key,
                  last_word, gui, profiler, logger):
         self.__keybindings = KeyBindings()
-        super().__init__(layout=Layout(gui.body), key_bindings=self.__keybindings,
+        super().__init__(layout=Layout(gui.body),
+                         key_bindings=self.__keybindings,
                          full_screen=True)
         self.args = args
         self.gui = gui
