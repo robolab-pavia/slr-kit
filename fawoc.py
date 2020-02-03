@@ -1,36 +1,121 @@
 import argparse
-import curses
 import json
 import logging
 import os
 import pathlib
 import sys
-from terms import Label, TermList
-from utils import setup_logger
+from typing import cast, Callable, Hashable
 
+from prompt_toolkit import Application
+from prompt_toolkit.buffer import Buffer
+from prompt_toolkit.document import Document
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.key_binding.key_processor import KeyPressEvent
+from prompt_toolkit.layout import Dimension, Window, Layout
+from prompt_toolkit.layout.containers import Container, VSplit, HSplit
+from prompt_toolkit.layout.controls import BufferControl
+from prompt_toolkit.lexers import Lexer
+from prompt_toolkit.widgets import TextArea, Frame
+
+from terms import Label, TermList, Term
+from utils import setup_logger, substring_index
 
 DEBUG = False
 
 
-class Win(object):
-    """
-    Contains the list of lines to display.
+class TermLexer(Lexer):
+    def invalidation_hash(self) -> Hashable:
+        return self._inv
 
+    def __init__(self):
+        self._word = ''
+        self._color = 'ffffff'
+        self._inv = 0
+        self._whole_line = False
+
+    @property
+    def word(self) -> str:
+        return self._word
+
+    @word.setter
+    def word(self, word: str):
+        self._word = word
+        self._inv += 1
+
+    @property
+    def color(self) -> str:
+        return self._color
+
+    @color.setter
+    def color(self, color: str):
+        self._color = color
+        self._inv += 1
+
+    @property
+    def whole_line(self) -> bool:
+        """
+        If the lexer must highlight only the whole line == to word
+
+        If True only a line equal to word is highlighted. If False the lexer
+        will highlight word in all the lines that contains it
+        :return: if the lexer must highlight only the whole line == to word
+        :rtype: bool
+        """
+        return self._whole_line
+
+    @whole_line.setter
+    def whole_line(self, whole: bool):
+        self._whole_line = whole
+        self._inv += 1
+
+    def lex_document(self, document):
+        lines = []
+        for line in document.lines:
+            fmt = []
+            prev = 0
+            if self.whole_line:
+                if line == self.word:
+                    fmt.append((f'#{self.color} bold', line))
+                else:
+                    fmt.append(('', line))
+            else:
+                for begin, end in substring_index(line, self.word):
+                    if begin > prev:
+                        fmt.append(('', line[prev:begin]))
+
+                    fmt.append((f'#{self.color} bold', line[begin:end]))
+                    prev = end
+
+                if prev < len(line) - 1:
+                    fmt.append(('', line[prev:]))
+
+            lines.append(fmt)
+
+        return lambda lineno: lines[lineno]
+
+
+class Win:
+    """
+    Window that shows terms
+
+    :type x: int
+    :type y: int
     :type label: Label or None
     :type title: str
-    :type rows: int
-    :type cols: int
-    :type y: int
-    :type x: int
-    :type win_title: _curses.window or None
-    :type win_handler: _curses.window
-    :type lines: list[str]
+    :type show_title: bool
+    :type lexer: TermLexer
+    :type height: Dimension
+    :type width: Dimension
+    :type buffer: Buffer
+    :type control: BufferControl
+    :type window: Window
+    :type terms: list[Term] or None
     """
 
     def __init__(self, label, title='', rows=3, cols=30, y=0, x=0,
                  show_title=False):
         """
-        Creates a window
+        Creates a window that shows terms
 
         :param label: label associated to the windows
         :type label: Label or None
@@ -44,112 +129,463 @@ class Win(object):
         :type y: int
         :param x: x coordinate
         :type x: int
-        :param show_title: if True the window must show its title. Default: False
+        :param show_title: if True the window shows its title. Default: False
         :type show_title: bool
         """
+        self.x = x
+        self.y = y
         self.label = label
         self.title = title
-        self.rows = rows
-        self.cols = cols
-        self.x = x
-        if show_title:
-            self.y = y + 1
-            self.win_title = curses.newwin(1, self.cols, y, self.x)
-            self.win_title.addstr(' {}'.format(self.title))
-        else:
-            self.y = y
-            self.win_title = None
+        self.show_title = show_title
+        self.lexer = TermLexer()
+        self.height = Dimension(preferred=rows, max=rows)
+        self.width = Dimension(preferred=cols, max=cols)
+        # we must re-create a text-area using the basic components
+        # we must do this to have control on the lexer. Otherwise prompt-toolkit
+        # will cache the output of the lexer resulting in wrong highlighting
+        self.buffer = Buffer(read_only=True, document=Document('', 0))
+        self.control = BufferControl(buffer=self.buffer,
+                                     lexer=self.lexer)
+        self.window = Window(content=self.control, height=self.height,
+                             width=self.width)
+        self.terms = None
+        self.frame = Frame(cast('Container', self.window))
+        # super().__init__(cast('Container', self.frame), left=self.x, top=self.y)
+        if self.show_title:
+            self.frame.title = title
 
-        self.win_handler = curses.newwin(self.rows, self.cols, self.y, self.x)
-        self.win_handler.border()
-        self.win_handler.refresh()
-        self.lines = []
+    def __pt_container__(self) -> Container:
+        return self.frame.__pt_container__()
 
-    def display_lines(self, rev=True, highlight_word='', only_the_word=False,
-                      color_pair=1):
+    @property
+    def text(self) -> str:
         """
-        Display the lines associated to the window
+        Text shown in the window
 
-        :param rev: if True, display lines in reversed order. Default: True
-        :type rev: bool
-        :param highlight_word: the word to highlight. Default: empty string
-        :type highlight_word: str
-        :param only_the_word: if True only highlight_word is highlighted.
-        :type only_the_word: bool
-        :param color_pair: the curses color pair to use to hightlight. Default 1
-        :type color_pair: int
+        :return: the text shown in the window
         """
-        if rev:
-            word_list = reversed(self.lines)
-        else:
-            word_list = self.lines
+        return self.buffer.text
 
-        i = 0
-        for w in word_list:
-            if i >= self.rows - 2:
-                break
-
-            self._display_line(w, highlight_word, only_the_word, i, color_pair)
-            i += 1
-
-        while i < self.rows - 2:
-            self.win_handler.addstr(i + 1, 1, ' ' * (self.cols - 2))
-            i += 1
-
-        self.win_handler.border()
-        self.win_handler.refresh()
-        if self.win_title is not None:
-            self.win_title.refresh()
-
-    def _display_line(self, line, highlight_word, only_word, line_index,
-                      color_pair):
+    @text.setter
+    def text(self, value: str):
         """
-        Display a single line in a window taking care of the word highlighting
+        Sets the text to be shown
 
-        :param line: the line to display
-        :type line: str
-        :param highlight_word: the word to highlight
-        :type highlight_word: str
-        :param only_word: if True, highlight only highlight_word
-        :type only_word: bool
-        :param line_index: index of the line to display
-        :type line_index: int
-        :param color_pair: color pair for highlight
-        :type color_pair: int
+        :param value: the new text to be shown
+        :type value: str
         """
-        trunc_w = line[:self.cols - 2]
-        l_trunc_w = len(trunc_w)
-        pad = ' ' * (self.cols - 2 - l_trunc_w)
-        flag = line != highlight_word and only_word
-        if highlight_word == '' or flag:
-            self.win_handler.addstr(line_index + 1, 1, trunc_w + pad)
-        elif line == highlight_word:
-            self.win_handler.addstr(line_index + 1, 1, trunc_w + pad,
-                                    curses.color_pair(color_pair))
-        else:
-            tok = line.split(highlight_word)
-            tok_len = len(tok)
-            if tok_len == 1:
-                # no highlight_word found
-                self.win_handler.addstr(line_index + 1, 1, trunc_w + pad)
-            else:
-                self.win_handler.addstr(line_index + 1, 1, '')
-                for i, t in enumerate(tok):
-                    self.win_handler.addstr(t)
-                    if i < tok_len - 1:
-                        self.win_handler.addstr(highlight_word,
-                                                curses.color_pair(color_pair))
-
-                self.win_handler.addstr(line_index + 1, l_trunc_w + 1, pad)
+        self.buffer.set_document(Document(value, 0), bypass_readonly=True)
 
     def assign_lines(self, terms):
         """
         Assign the terms in terms with the same label as the window
+
         :param terms: the terms list
         :type terms: list[Term]
         """
-        terms = sorted(terms, key=lambda t: t.order)
-        self.lines = [w.term for w in terms if w.label == self.label]
+        self.terms = [w for w in terms if w.label == self.label]
+        self.terms = sorted(self.terms, key=lambda t: t.order)
+
+    def display_lines(self, rev=True, highlight_word='', whole_line=False,
+                      color='ff0000'):
+        """
+        Display the terms associated to the window
+
+        :param rev: if True, display terms in reversed order. Default: True
+        :type rev: bool
+        :param highlight_word: the word to highlight. Default: empty string
+        :type highlight_word: str
+        :param whole_line: if True only a line == highlight_word is highlighted.
+        :type whole_line: bool
+        :param color: hex code for the highlight color. Default red (ff0000)
+        :type color: str
+        """
+        terms = iter(self.terms)
+        if rev:
+            terms = reversed(self.terms)
+
+        self.lexer.word = highlight_word
+        self.lexer.color = color
+        self.lexer.whole_line = whole_line
+        self.text = '\n'.join([w.string for w in terms])
+
+
+class StrWin:
+    """
+    Window that shows strings
+
+    :type x: int
+    :type y: int
+    :type height: Dimension
+    :type width: Dimension
+    """
+
+    def __init__(self, rows=3, cols=30, y=0, x=0):
+        """
+        Creates a window that shows strings
+
+        :param rows: number of rows
+        :type rows: int
+        :param cols: number of columns
+        :type cols: int
+        :param y: y coordinate
+        :type y: int
+        :param x: x coordinate
+        :type x: int
+        """
+        self.x = x
+        self.y = y
+        self.height = Dimension(preferred=rows, max=rows)
+        self.width = Dimension(preferred=cols, max=cols)
+        self.textarea = TextArea(height=self.height, width=self.width,
+                                 read_only=True)
+        self.strings = None
+        self.frame = Frame(cast('Container', self.textarea))
+        # super().__init__(cast('Container', frame), left=self.x, top=self.y)
+
+    def __pt_container__(self) -> Container:
+        return self.frame.__pt_container__()
+
+    def assign_lines(self, lines):
+        """
+        Assign the lines to the window
+
+        :param lines: the lines to show
+        :type lines: list[str]
+        """
+        self.strings = lines
+
+    @property
+    def text(self):
+        """
+        Gets the text shown in the windows
+
+        :return: the text shown in the windows
+        :rtype: str
+        """
+        return self.textarea.text
+
+    @text.setter
+    def text(self, text):
+        """
+        Sets the text to be shown
+
+        :param text: the text to be shown
+        :type text: str
+        """
+        self.textarea.text = text
+
+
+class Gui:
+    def __init__(self, width, term_rows, rows, review):
+        """
+        The Gui of the application
+
+        :param width: width of each windows
+        :type width: int
+        :param term_rows: number of row of the term window
+        :type term_rows: int
+        :param rows: number of row of all the other windows
+        :type rows: int
+        :param review: label to review
+        :type review: Label
+        """
+        self._windows = dict()
+        self._word_win = None
+        self._stats_win = None
+        self._create_windows(width, term_rows, rows, review)
+        self._review = review
+        self._body = VSplit(
+            [
+                HSplit([cast('Container', w) for w in self._windows.values()]),
+                HSplit([
+                    cast('Container', self._stats_win),
+                    cast('Container', self._word_win)
+                ])
+            ]
+        )
+        # self._body = FloatContainer(content=Window(),
+        #                             floats=list(self._windows.values()))
+
+    @property
+    def body(self):
+        return self._body
+
+    def _create_windows(self, win_width, term_rows, rows, review):
+        """
+        Creates all the windows
+
+        :param win_width: number of columns of each windows
+        :type win_width: int
+        :param term_rows: number of row of the term window
+        :type term_rows: int
+        :param rows: number of row of each windows
+        :type rows: int
+        :param review: label to review
+        :type review: Label
+        """
+        windows = dict()
+        win_classes = [Label.KEYWORD, Label.RELEVANT, Label.NOISE,
+                       Label.NOT_RELEVANT, Label.POSTPONED]
+        for i, cls in enumerate(win_classes):
+            title = cls.label_name.capitalize()
+            self._windows[cls.label_name] = Win(cls, title=title,
+                                                rows=rows, cols=win_width,
+                                                y=(rows + 2) * i, x=0,
+                                                show_title=True)
+
+        title = 'Input label: {}'
+        if review == Label.NONE:
+            title = title.format('None')
+        else:
+            title = title.format(review.label_name.capitalize())
+
+        self._word_win = Win(Label.NONE, title=title, rows=term_rows,
+                             cols=win_width, y=10, x=win_width + 2,
+                             show_title=True)
+        self._stats_win = StrWin(rows=8, cols=win_width, y=0,
+                                 x=win_width + 2)
+
+    def refresh_label_windows(self, term_to_highlight, label):
+        """
+        Refresh the windows associated with a label
+
+        :param term_to_highlight: the term to highlight
+        :type term_to_highlight: str
+        :param label: label of the window that has to highlight the term
+        :type label: Label
+        """
+        for key, win in self._windows.items():
+            if key == label.label_name:
+                win.display_lines(rev=True,
+                                  highlight_word=term_to_highlight,
+                                  whole_line=True,
+                                  color='ffff00')
+            else:
+                win.display_lines(rev=True)
+
+    def set_stats(self, terms, related_count):
+        stats = get_stats_strings(terms, related_count)
+        self._stats_win.text = '\n'.join(stats)
+
+    def set_terms(self, to_classify: TermList, sort_key):
+        self._word_win.assign_lines(to_classify.items)
+        self._word_win.display_lines(rev=False, highlight_word=sort_key)
+
+    def update_windows(self, terms, to_classify, term_to_highlight,
+                       related_items_count, sort_word_key):
+        """
+        Handle the update of all the windows
+
+        :param terms: list of the Term
+        :type terms: TermList
+        :param to_classify: terms not yet classified
+        :type to_classify: TermList
+        :param term_to_highlight: term to hightlight as the last classified term
+        :type term_to_highlight: Term
+        :param related_items_count: number of related items
+        :type related_items_count: int
+        :param sort_word_key: words used for the related item highlighting
+        :type sort_word_key: str
+        """
+        self.set_terms(to_classify, sort_word_key)
+
+        for win in self._windows:
+            cls = terms.get_from_label(Label.get_from_name(win))
+            self._windows[win].assign_lines(cls.items)
+
+        if term_to_highlight is not None:
+            self.refresh_label_windows(term_to_highlight.string,
+                                       term_to_highlight.label)
+        else:
+            self.refresh_label_windows('', Label.NONE)
+
+        self.set_stats(terms, related_items_count)
+
+    def assign_labeled_terms(self, terms, review):
+        """
+        Assigns the labeled terms to the correct windows
+
+        :param terms: the term list
+        :type terms: TermList
+        :param review: the label to review
+        :type review: Label
+        """
+        for win in self._windows:
+            if win == review.label_name:
+                # in review mode we must add to the window associated with the label
+                # review only the items in confirmed (if any)
+                conf_word = terms.get_from_label(review, order_set=True)
+                self._windows[win].assign_lines(conf_word.items)
+            else:
+                self._windows[win].assign_lines(terms.items)
+
+
+class Fawoc(Application):
+    """
+    :type terms: TermList
+    """
+
+    def __init__(self, args, terms, to_classify, review, related, sort_key,
+                 last_word, gui, profiler, logger):
+        self.__keybindings = KeyBindings()
+        super().__init__(layout=Layout(gui.body),
+                         key_bindings=self.__keybindings,
+                         full_screen=True)
+        self.args = args
+        self.gui = gui
+        self.terms = terms
+        self.to_classify = to_classify
+        # self.evaluated_word = None
+        self._get_next_word()
+        self.review = review
+        self.related_count = related
+        self.sort_word_key = sort_key
+        self.last_word = last_word
+        self.profiler = profiler
+        self.logger = logger
+
+    def add_key_binding(self, keys, handler: Callable[[KeyPressEvent], None]):
+        """
+        Adds keybinding to Fawoc.
+
+        If any elements in keys is a single letter the function add the same
+        handler to the letter and to the case-swapped letter
+
+        :param keys: list of keys to be bound
+        :type keys: list[str]
+        :param handler: function to be call
+        :type handler: Callable[[KeyPressEvent], None]
+        """
+        for k in keys:
+            if len(k) == 1:
+                if k.islower():
+                    other = k.upper()
+                else:
+                    other = k.upper()
+
+                self.__keybindings.add(other)(handler)
+
+            self.__keybindings.add(k)(handler)
+
+    def do_classify(self, label):
+        if self.evaluated_word is None:
+            return
+
+        self.profiler.info("WORD '{}' AS '{}'".format(self.evaluated_word.string,
+                                                      label.label_name))
+
+        self.terms.classify_term(self.evaluated_word.string, label,
+                                 self.terms.get_last_classified_order() + 1,
+                                 self.sort_word_key)
+
+        if self.related_count <= 0:
+            self.sort_word_key = self.evaluated_word.string
+
+        ret = self.terms.return_related_items(self.sort_word_key,
+                                              label=self.review)
+        containing, not_containing = ret
+
+        if self.related_count <= 0:
+            self.related_count = len(containing) + 1
+
+        self.to_classify = containing + not_containing
+        self.related_count -= 1
+        self.last_word = self.evaluated_word
+
+        self.gui.update_windows(self.terms, self.to_classify, self.last_word,
+                                self.related_count, self.sort_word_key)
+
+        if not self.args.dry_run and not self.args.no_auto_save:
+            self.save_terms()
+
+        self._get_next_word()
+
+    def do_postpone(self):
+        if self.evaluated_word is None:
+            return
+
+        self.profiler.info("WORD '{}' POSTPONED".format(self.evaluated_word))
+        # classification: POSTPONED
+        self.terms.classify_term(self.evaluated_word.string, Label.POSTPONED,
+                                 self.terms.get_last_classified_order() + 1,
+                                 self.sort_word_key)
+
+        self.related_count -= 1
+        if self.related_count > 0:
+            cont, not_cont = self.terms.return_related_items(self.sort_word_key,
+                                                             self.review)
+            self.to_classify = cont + not_cont
+        else:
+            self.to_classify = self.terms.get_from_label(self.review)
+
+        self.last_word = self.evaluated_word
+
+        self.gui.update_windows(self.terms, self.to_classify, self.last_word,
+                                self.related_count, self.sort_word_key)
+
+        if not self.args.dry_run and not self.args.no_auto_save:
+            self.save_terms()
+
+        self._get_next_word()
+
+    def _get_next_word(self):
+        if len(self.to_classify) <= 0:
+            self.evaluated_word = None
+        else:
+            self.evaluated_word = self.to_classify.items[0]
+
+    def undo(self):
+        """
+        Handle the undo of a term
+        """
+        self.last_word = self.terms.get_last_classified_term()
+        if self.last_word is None:
+            return
+
+        label = self.last_word.label
+        related = self.last_word.related
+        msg = 'Undo: {} group {} order {}'.format(self.last_word.string, label,
+                                                  self.last_word.order)
+        self.logger.debug(msg)
+        # un-mark self.last_word
+        self.terms.classify_term(self.last_word.string, self.review, -1)
+
+        # handle related word
+        if related == self.sort_word_key:
+            self.related_count += 1
+            self.to_classify.items.insert(0, self.last_word)
+        elif self.sort_word_key == self.last_word.string:
+            # the sort_word_key is the word undone: reset the related machinery
+            self.sort_word_key = ''
+            self.related_count = 0
+            self.to_classify.sort_by_index()
+            self.to_classify.items.insert(0, self.last_word)
+        else:
+            self.sort_word_key = related
+            ret = self.terms.return_related_items(self.sort_word_key,
+                                                  label=self.review)
+            containing, not_containing = ret
+            self.related_count = len(containing)
+            self.to_classify = containing + not_containing
+
+        if self.sort_word_key == '':
+            # if self.sort_word_key is empty there's no related item: fix the
+            # related_items_count to the correct value of 0
+            self.related_count = 0
+
+        self.profiler.info("WORD '{}' UNDONE".format(self.last_word.string))
+        self.last_word = self.terms.get_last_classified_term()
+        self.gui.update_windows(self.terms, self.to_classify, self.last_word,
+                                self.related_count, self.sort_word_key)
+
+        if not self.args.dry_run and not self.args.no_auto_save:
+            self.save_terms()
+
+        self._get_next_word()
+
+    def save_terms(self):
+        self.terms.to_tsv(self.args.datafile)
 
 
 def init_argparser():
@@ -204,6 +640,7 @@ def get_stats_strings(terms, related_items_count=0):
     stats_strings = []
     n_completed = terms.count_classified()
     n_keywords = terms.count_by_label(Label.KEYWORD)
+    n_relevant = terms.count_by_label(Label.RELEVANT)
     n_noise = terms.count_by_label(Label.NOISE)
     n_not_relevant = terms.count_by_label(Label.NOT_RELEVANT)
     n_later = terms.count_by_label(Label.POSTPONED)
@@ -213,6 +650,9 @@ def get_stats_strings(terms, related_items_count=0):
                                                                 avg))
     avg = avg_or_zero(n_keywords, n_completed)
     stats_strings.append('Keywords:     {:7} ({:6.2f}%)'.format(n_keywords,
+                                                                avg))
+    avg = avg_or_zero(n_relevant, n_completed)
+    stats_strings.append('Relevant:     {:7} ({:6.2f}%)'.format(n_relevant,
                                                                 avg))
     avg = avg_or_zero(n_noise, n_completed)
     stats_strings.append('Noise:        {:7} ({:6.2f}%)'.format(n_noise, avg))
@@ -232,213 +672,38 @@ def get_stats_strings(terms, related_items_count=0):
     return stats_strings
 
 
-def init_curses():
-    """
-    Initialize curses
-
-    :return: the screen object
-    :rtype: _curses.window
-    """
-    # create stdscr
-    stdscr = curses.initscr()
-    stdscr.clear()
-
-    # allow echo, set colors
-    curses.noecho()
-    curses.start_color()
-    curses.use_default_colors()
-    curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
-    curses.init_pair(2, curses.COLOR_YELLOW, curses.COLOR_BLACK)
-
-    return stdscr
+def classify_kb(event: KeyPressEvent):
+    label = Label.get_from_key(event.data)
+    cast('Fawoc', event.app).do_classify(label)
 
 
-def do_classify(label, terms, review, evaluated_term, sort_word_key,
-                related_items_count, windows):
-    """
-    Handle the term classification process of the evaluated_term
-
-    :param label: label to be assigned to the evaluated_term
-    :type label: Label
-    :param terms: the list of terms
-    :type terms: TermList
-    :param review: label under review
-    :type review: Label
-    :param evaluated_term: term to classify
-    :type evaluated_term: str
-    :param sort_word_key: actual term used for the related terms
-    :type sort_word_key: str
-    :param related_items_count: actual number of related terms
-    :type related_items_count: int
-    :param windows: dict of the windows
-    :type windows: dict[str, Win]
-    :return: the new sort_word_key and the new number of related terms
-    :rtype: (str, int)
-    """
-    windows[label.label_name].lines.append(evaluated_term)
-    refresh_label_windows(evaluated_term, label, windows)
-
-    terms.classify_term(evaluated_term, label,
-                        terms.get_last_classified_order() + 1, sort_word_key)
-
-    if related_items_count <= 0:
-        sort_word_key = evaluated_term
-
-    containing, not_containing = terms.return_related_items(sort_word_key,
-                                                            label=review)
-
-    if related_items_count <= 0:
-        related_items_count = len(containing) + 1
-
-    windows['__WORDS'].lines = containing
-    windows['__WORDS'].lines.extend(not_containing)
-    windows['__WORDS'].display_lines(rev=False, highlight_word=sort_word_key)
-    related_items_count -= 1
-    return related_items_count, sort_word_key
+def postpone_kb(event: KeyPressEvent):
+    cast('Fawoc', event.app).do_postpone()
 
 
-def refresh_label_windows(term_to_highlight, label, windows):
-    """
-    Refresh the windows associated with a label
-
-    :param term_to_highlight: the term to highlight
-    :type term_to_highlight: str
-    :param label: label of the window that has to highlight the term
-    :type label: Label
-    :param windows: dict of the windows
-    :type windows: dict[str, Win]
-    """
-    for win in windows:
-        if win in ['__WORDS', '__STATS']:
-            continue
-        if win == label.label_name:
-            windows[win].display_lines(rev=True,
-                                       highlight_word=term_to_highlight,
-                                       only_the_word=True,
-                                       color_pair=2)
-        else:
-            windows[win].display_lines(rev=True)
+def undo_kb(event: KeyPressEvent):
+    cast('Fawoc', event.app).undo()
 
 
-def undo(terms, review, sort_word_key, related_items_count, windows, logger,
-         profiler):
-    """
-    Handle the undo of a term
-
-    :param terms: the list of terms
-    :type terms: TermList
-    :param review: label under review
-    :type review: Label
-    :param sort_word_key: actual term used for the related terms
-    :type sort_word_key: str
-    :param related_items_count: actual number of related terms
-    :type related_items_count: int
-    :param windows: dict of the windows
-    :type windows: dict[str, Win]
-    :param logger: debug logger
-    :type logger: logging.Logger
-    :param profiler: profiling logger
-    :type profiler: logging.Logger
-    :return: the new sort_word_key and the new number of related terms
-    :rtype: (str, int)
-    """
-    last_word = terms.get_last_classified_term()
-    if last_word is None:
-        return related_items_count, sort_word_key
-
-    group = last_word.label
-    related = last_word.related
-    logger.debug("Undo: {} group {} order {}".format(last_word.term,
-                                                     group,
-                                                     last_word.order))
-    # un-mark last_word
-    terms.classify_term(last_word.term, review, -1)
-    # remove last_word from the window that actually contains it
-    try:
-        win = windows[group.label_name]
-        win.lines.remove(last_word.term)
-        prev_last_word = terms.get_last_classified_term()
-        if prev_last_word is not None:
-            refresh_label_windows(prev_last_word.term, prev_last_word.label,
-                                  windows)
-        else:
-            refresh_label_windows('', Label.NONE, windows)
-    except KeyError:
-        pass  # if here the word is not in a window so nothing to do
-
-    # handle related word
-    if related == sort_word_key:
-        related_items_count += 1
-        rwl = [last_word.term]
-        rwl.extend(windows['__WORDS'].lines)
-        windows['__WORDS'].lines = rwl
-    else:
-        sort_word_key = related
-        containing, not_containing = terms.return_related_items(sort_word_key,
-                                                                label=review)
-        related_items_count = len(containing)
-        windows['__WORDS'].lines = containing
-        windows['__WORDS'].lines.extend(not_containing)
-        windows['__WORDS'].display_lines(rev=False,
-                                         highlight_word=sort_word_key)
-
-    if sort_word_key == '':
-        # if sort_word_key is empty there's no related item: fix the
-        # related_items_count to the correct value of 0
-        related_items_count = 0
-
-    profiler.info("WORD '{}' UNDONE".format(last_word.term))
-
-    return related_items_count, sort_word_key
+def save_kb(event: KeyPressEvent):
+    cast('Fawoc', event.app).save_terms()
 
 
-def create_windows(win_width, rows, review):
-    """
-    Creates all the windows
-
-    :param win_width: number of columns of each windows
-    :type win_width: int
-    :param rows: number of row of each windows
-    :type rows: int
-    :param review: label to review
-    :type review: Label
-    :return: the dict of the windows
-    :rtype: dict[str, _curses.window]
-    """
-    windows = dict()
-    win_classes = [Label.KEYWORD, Label.RELEVANT, Label.NOISE,
-                   Label.NOT_RELEVANT, Label.POSTPONED]
-    for i, cls in enumerate(win_classes):
-        windows[cls.label_name] = Win(cls, title=cls.label_name.capitalize(),
-                                      rows=rows, cols=win_width, y=(rows + 1) * i,
-                                      x=0, show_title=True)
-
-    title = 'Input label: {}'
-    if review == Label.NONE:
-        title = title.format('None')
-    else:
-        title = title.format(review.label_name.capitalize())
-
-    windows['__WORDS'] = Win(None, title=title, rows=27, cols=win_width, y=9,
-                             x=win_width, show_title=True)
-    windows['__STATS'] = Win(None, rows=9, cols=win_width, y=0, x=win_width)
-    return windows
+def quit_kb(event: KeyPressEvent):
+    event.app.exit()
 
 
-def curses_main(scr, terms, args, review, last_reviews, logger=None,
-                profiler=None):
+def fawoc_main(terms, args, review, last_reviews, logger=None, profiler=None):
     """
     Main loop
 
-    :param scr: main window (the entire screen). It is passed by curses
-    :type scr: _curses.window
     :param terms: list of terms
     :type terms: TermList
     :param args: command line arguments
     :type args: argparse.Namespace
     :param review: label to review if any
     :type review: Label
-    :param last_reviews: last reviews performed. key: abs path of the csv; value: reviewed label name
+    :param last_reviews: last reviews performed. key: csv abs path; val: reviewed label name
     :type last_reviews: dict[str, str]
     :param logger: debug logger. Default: None
     :type logger: logging.Logger or None
@@ -458,120 +723,51 @@ def curses_main(scr, terms, args, review, last_reviews, logger=None,
                 w.order = -1
                 w.related = ''
 
-    stdscr = init_curses()
     win_width = 40
     rows = 8
+    terms_rows = 28
 
-    # define windows
-    windows = create_windows(win_width, rows, review)
-
-    curses.ungetch(' ')
-    _ = stdscr.getch()
-    for win in windows:
-        if win in ['__WORDS', '__STATS']:
-            continue
-
-        if win == review.label_name:
-            # in review mode we must add to the window associated with the label
-            # review only the items in confirmed (if any)
-            conf_word = [w for w in terms.items if w.label == review and w.order >= 0]
-            windows[win].assign_lines(conf_word)
-        else:
-            windows[win].assign_lines(terms.items)
+    gui = Gui(win_width, terms_rows, rows, review)
+    gui.assign_labeled_terms(terms, review)
 
     last_word = terms.get_last_classified_term()
 
     if last_word is None:
-        refresh_label_windows('', Label.NONE, windows)
+        gui.refresh_label_windows('', Label.NONE)
         related_items_count = 0
         sort_word_key = ''
         if review != Label.NONE:
             # review mode
-            lines = []
-            for w in terms.items:
-                if w.label == review and w.order < 0:
-                    lines.append(w.term)
+            to_classify = terms.get_from_label(review, order_set=True)
+            to_classify.remove(confirmed)
         else:
-            lines = [w.term for w in terms.items if not w.is_classified()]
+            to_classify = terms.get_not_classified()
     else:
-        refresh_label_windows(last_word.term, last_word.label, windows)
+        gui.refresh_label_windows(last_word.string, last_word.label)
         sort_word_key = last_word.related
-        if sort_word_key == '':
-            sort_word_key = last_word.term
+        if sort_word_key == '' and last_word.label != Label.POSTPONED:
+            sort_word_key = last_word.string
 
         containing, not_containing = terms.return_related_items(sort_word_key,
                                                                 label=review)
         related_items_count = len(containing)
-        lines = containing
-        lines.extend(not_containing)
+        to_classify = containing + not_containing
 
-    windows['__WORDS'].lines = lines
-    windows['__STATS'].lines = get_stats_strings(terms, related_items_count)
-    windows['__STATS'].display_lines(rev=False)
+    gui.set_terms(to_classify, sort_word_key)
+    gui.set_stats(terms, related_items_count)
     classifing_keys = [Label.KEYWORD.key,
                        Label.NOT_RELEVANT.key,
                        Label.NOISE.key,
                        Label.RELEVANT.key]
-    while True:
-        if len(windows['__WORDS'].lines) <= 0:
-            evaluated_word = ''
-        else:
-            evaluated_word = windows['__WORDS'].lines[0]
 
-        if related_items_count <= 0:
-            sort_word_key = ''
-
-        windows['__WORDS'].display_lines(rev=False,
-                                         highlight_word=sort_word_key)
-        c = chr(stdscr.getch())
-        c = c.lower()
-        if c not in ['w', 'q', 'u'] and evaluated_word == '':
-            # no terms to classify. the only working keys are write, undo and
-            # quit the others will do nothing
-            continue
-
-        if c in classifing_keys:
-            label = Label.get_from_key(c)
-            profiler.info("WORD '{}' AS '{}'".format(evaluated_word,
-                                                     label.label_name))
-            related_items_count, sort_word_key = do_classify(label, terms,
-                                                             review,
-                                                             evaluated_word,
-                                                             sort_word_key,
-                                                             related_items_count,
-                                                             windows)
-        elif c == 'p':
-            profiler.info("WORD '{}' POSTPONED".format(evaluated_word))
-            # classification: POSTPONED
-            terms.classify_term(evaluated_word, Label.POSTPONED,
-                                terms.get_last_classified_order() + 1,
-                                sort_word_key)
-            windows['__WORDS'].lines = windows['__WORDS'].lines[1:]
-            windows[Label.POSTPONED.label_name].lines.append(evaluated_word)
-            refresh_label_windows(evaluated_word, Label.POSTPONED, windows)
-            related_items_count -= 1
-        elif c == 'w':
-            # write to file
-            terms.to_tsv(datafile)
-        elif c == 'u':
-            # undo last operation
-            related_items_count, sort_word_key = undo(terms, review,
-                                                      sort_word_key,
-                                                      related_items_count,
-                                                      windows, logger, profiler)
-
-        elif c == 'q':
-            # quit
-            break
-        else:
-            # no recognized key: doing nothing (and avoiding useless autosave)
-            continue
-
-        windows['__STATS'].lines = get_stats_strings(terms, related_items_count)
-        windows['__STATS'].display_lines(rev=False)
-
-        if not args.dry_run and not args.no_auto_save:
-            terms.to_tsv(datafile)
+    app = Fawoc(args, terms, to_classify, review, related_items_count,
+                sort_word_key, last_word, gui, profiler, logger)
+    app.add_key_binding(classifing_keys, classify_kb)
+    app.add_key_binding(['p'], postpone_kb)
+    app.add_key_binding(['u'], undo_kb)
+    app.add_key_binding(['w'], save_kb)
+    app.add_key_binding(['q'], quit_kb)
+    app.run()
 
 
 def main():
@@ -635,13 +831,12 @@ def main():
 
     profiler_logger.info("INPUT LABEL: {}".format(label))
 
-    curses.wrapper(curses_main, terms, args, review, last_reviews,
-                   logger=debug_logger, profiler=profiler_logger)
+    fawoc_main(terms, args, review, last_reviews, logger=debug_logger,
+               profiler=profiler_logger)
 
     profiler_logger.info("CLASSIFIED: {}".format(terms.count_classified()))
     profiler_logger.info("DATAFILE '{}'".format(datafile_path))
     profiler_logger.info("*** PROGRAM TERMINATED ***")
-    curses.endwin()
 
     if review != Label.NONE:
         # ending review mode we must save some info

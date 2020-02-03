@@ -38,6 +38,7 @@ class Label(enum.Enum):
         :type key: str
         :return: the Label associated with key
         :rtype: Label
+        :raise ValueError: if key is not a valid key
         """
         for label in Label:
             if label.key == key:
@@ -54,6 +55,7 @@ class Label(enum.Enum):
         :type name: str
         :return: the Label associated with name
         :rtype: Label
+        :raise ValueError: if name is not a valid name
         """
         for label in Label:
             if label.label_name == name:
@@ -79,7 +81,7 @@ class Label(enum.Enum):
 @dataclass
 class Term:
     index: int
-    term: str
+    string: str
     count: int
     label: Label
     order: int
@@ -111,6 +113,143 @@ class TermList(object):
         self.items = items
         self.csv_header = None
 
+    def __len__(self):
+        return len(self.items)
+
+    def __add__(self, other):
+        """
+        Concatenate two TermList
+
+        If other is not a TermList this method returns NotImplemented
+
+        :param other: the other TermList
+        :type other: TermList
+        :return: the new TermList or NotImplemented
+        :rtype: TermList or NotImplementedType
+        """
+        if not isinstance(other, TermList):
+            return NotImplemented
+
+        items = []
+        items.extend(self.items)
+        items.extend(other.items)
+        return TermList(items)
+
+    def get_strings(self):
+        """
+        Returns the string of each Term
+
+        :return: the string of each Term as a list
+        :rtype: list[str]
+        """
+        strings = []
+        for t in self.items:
+            strings.append(t.string)
+
+        return strings
+
+    def remove(self, strings):
+        """
+        Removes the terms with the specified strings in place
+
+        :param strings: list of string to look for
+        :type strings: list[str]
+        """
+        idx = []
+        for i, t in enumerate(list(self.items)):
+            if t.string in strings:
+                idx.append(i)
+
+        for i in reversed(idx):
+            del self.items[i]
+
+    def get(self, string):
+        """
+        Finds the Term containing string
+
+        If no Term t satisfies the condition t.string == string than None is
+        returned.
+        :param string: the string to be searched
+        :type string: str
+        :return: the Term found or None
+        :rtype: Term or None
+        """
+        for t in self.items:
+            if t.string == string:
+                return t
+
+        return None
+
+    def sort_by_order(self, ascending=True):
+        """
+        Sorts the TermList by order in place
+
+        :param ascending: if True, sort in ascending order.
+        :type ascending: bool
+        """
+        self.items.sort(key=lambda t: t.order, reverse=not ascending)
+
+    def sort_by_index(self, ascending=True):
+        """
+        Sorts the TermList by index in place
+
+        :param ascending: if True, sort in ascending order.
+        :type ascending: bool
+        """
+        self.items.sort(key=lambda t: t.index, reverse=not ascending)
+
+    def get_from_label(self, label, order_set=None):
+        """
+        Gets a new TermList with all the Terms with the specified labels
+
+        The parameter order_set is use to filter by order. If it is None (the
+        default) no filtering on the order is perform.
+        If order_set is True than only the terms with order >= 0 are selected.
+        If order_set is False than only the terms with order < 0 are selected.
+        :param label: the label to search
+        :type label: Label or list[Label] or tuple[Label]
+        :param order_set: also filters by order
+        :type order_set: bool or None
+        :return: a TermList containing the Terms classified with the labels
+        :rtype: TermList
+        """
+        if isinstance(label, Label):
+            label = [label]
+        elif not isinstance(label, (list, tuple)):
+            raise TypeError('label has wrong type {}'.format(type(label)))
+
+        items = []
+        for t in self.items:
+            if t.label in label:
+                if order_set is None:
+                    items.append(t)
+                elif order_set and t.order >= 0:
+                    items.append(t)
+                elif not order_set and t.order < 0:
+                    items.append(t)
+
+        return TermList(items)
+
+    def get_not_classified(self):
+        """
+        Gets a new TermList with all the Terms not classified
+
+        :return: a TermList containing the Terms not classified
+        :rtype: TermList
+        """
+        items = [t for t in self.items if not t.is_classified()]
+        return TermList(items)
+
+    def get_classified(self):
+        """
+        Gets a new TermList with all the Terms already classified
+
+        :return: a TermList containing the Terms classified
+        :rtype: TermList
+        """
+        items = [t for t in self.items if t.is_classified()]
+        return TermList(items)
+
     def from_tsv(self, infile):
         """
         Gets the terms from a tsv file
@@ -124,7 +263,7 @@ class TermList(object):
             csv_reader = csv.DictReader(csv_file, delimiter='\t')
             header = csv_reader.fieldnames
             items = []
-            for row in csv_reader:
+            for i, row in enumerate(csv_reader):
                 try:
                     order_value = row['order']
                     if order_value == '':
@@ -146,8 +285,8 @@ class TermList(object):
                     raise
 
                 item = Term(
-                    index=0,
-                    term=row['keyword'],
+                    index=i,
+                    string=row['keyword'],
                     count=row['count'],
                     label=label,
                     order=order,
@@ -162,6 +301,7 @@ class TermList(object):
             header.append('order')
 
         self.csv_header = header
+        items.sort(key=lambda t: t.order)
         self.items = items
         return header, items
 
@@ -172,6 +312,7 @@ class TermList(object):
         :param outfile: path to the tsv file to write the terms
         :type outfile: str
         """
+        items = sorted(self.items, key=lambda t: t.index)
         # with open(outfile, mode='w') as out:
         path = str(Path(outfile).resolve().parent)
         with tempfile.NamedTemporaryFile('w', dir=path,
@@ -181,13 +322,13 @@ class TermList(object):
                                     delimiter='\t', quotechar='"',
                                     quoting=csv.QUOTE_MINIMAL)
             writer.writeheader()
-            for w in self.items:
+            for w in items:
                 if w.order >= 0:
                     order = str(w.order)
                 else:
                     order = ''
 
-                item = {'keyword': w.term,
+                item = {'keyword': w.string,
                         'count': w.count,
                         'label': w.label.label_name,
                         'order': order,
@@ -234,7 +375,7 @@ class TermList(object):
         This method adds label, classification order and related term to the
         Term in self.items that represents the string term.
         term is the string representation of the Term that will be classified.
-        The method searches a Term t in self.items such that t.term == term.
+        The method searches a Term t in self.items such that t.string == term.
         order must be an int. An int less than 0 indicates no classification
         order.
         related is a string indicating the active related term at the moment of
@@ -252,11 +393,13 @@ class TermList(object):
         :return: self
         :rtype: TermList
         """
-        for w in self.items:
-            if w.term == term:
+        for i, w in enumerate(self.items):
+            if w.string == term:
                 w.label = label
                 w.order = order
                 w.related = related
+                del self.items[i]
+                self.items.append(w)
                 break
 
         return self
@@ -265,9 +408,9 @@ class TermList(object):
         """
         Searches related items in self and returns the resulting partition
 
-        This method splits self.items in two list: the first one with all the
-        strings that contains the substring key; the second one with all the
-        strings that not contain key.
+        This method splits self.items in two TermList: the first one with all
+        the Terms that contains the substring key; the second one with all the
+        Terms that not contain key.
         Only the terms with the specified label are considered.
         The method returns two lists of strings.
         :param key: the substring to find in the terms in self.items
@@ -275,7 +418,7 @@ class TermList(object):
         :param label: label to consider
         :type label: Label
         :return: the partition of the items in self based on key
-        :rtype: (list[str], list[str])
+        :rtype: (TermList, TermList)
         """
         containing = []
         not_containing = []
@@ -283,12 +426,12 @@ class TermList(object):
             if w.label != label or w.order >= 0:
                 continue
 
-            if self._str_contains(w.term, key):
-                containing.append(w.term)
+            if self.is_related(w.string, key):
+                containing.append(w)
             else:
-                not_containing.append(w.term)
+                not_containing.append(w)
 
-        return containing, not_containing
+        return TermList(containing), TermList(not_containing)
 
     def count_classified(self):
         """
@@ -297,7 +440,7 @@ class TermList(object):
         :return: the number of classified terms
         :rtype: int
         """
-        return len([item for item in self.items if item.is_classified()])
+        return len(self.get_classified())
 
     def count_by_label(self, label):
         """
@@ -308,10 +451,23 @@ class TermList(object):
         :return: the number of terms classified as label
         :rtype: int
         """
-        return len([w for w in self.items if w.label == label])
+        return len(self.get_from_label(label))
+
+    def get_labels(self):
+        """
+        Gets a set of all the labels in self
+
+        :return: the set of all the labels in self
+        :rtype: set[Label]
+        """
+        labels = set()
+        for t in self.items:
+            labels.add(t.label)
+
+        return labels
 
     @staticmethod
-    def _str_contains(string, substring):
+    def is_related(string, substring):
         """
         Tells if string contains substring
 
