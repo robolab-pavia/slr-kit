@@ -755,10 +755,6 @@ def fawoc_main(terms, args, review, last_reviews, logger=None, profiler=None):
     app.add_key_binding(['q'], quit_kb)
     app.run()
 
-    if not args.dry_run and not args.no_auto_save:
-        # auto-save
-        app.terms.to_tsv(datafile)
-
 
 def main():
     """
