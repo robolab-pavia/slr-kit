@@ -955,6 +955,27 @@ def create_windows(win_width, rows, review):
     return windows
 
 
+def classify_kb(event: KeyPressEvent):
+    label = Label.get_from_key(event.data)
+    cast('Fawoc', event.app).do_classify(label)
+
+
+def postpone_kb(event: KeyPressEvent):
+    cast('Fawoc', event.app).do_postpone()
+
+
+def undo_kb(event: KeyPressEvent):
+    cast('Fawoc', event.app).undo()
+
+
+def save_kb(event: KeyPressEvent):
+    cast('Fawoc', event.app).save_terms()
+
+
+def quit_kb(event: KeyPressEvent):
+    event.app.exit()
+
+
 def curses_main(scr, terms, args, review, last_reviews, logger=None,
                 profiler=None):
     """
