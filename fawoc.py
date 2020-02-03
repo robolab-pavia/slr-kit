@@ -283,7 +283,10 @@ class Gui:
         :param review: label to review
         :type review: Label
         """
-        self._windows = self._create_windows(width, term_rows, rows, review)
+        self._windows = dict()
+        self._word_win = None
+        self._stats_win = None
+        self._create_windows(width, term_rows, rows, review)
         self._review = review
         self._body = FloatContainer(content=Window(),
                                     floats=list(self._windows.values()))
@@ -292,8 +295,7 @@ class Gui:
     def body(self):
         return self._body
 
-    @staticmethod
-    def _create_windows(win_width, term_rows, rows, review):
+    def _create_windows(self, win_width, term_rows, rows, review):
         """
         Creates all the windows
 
@@ -305,18 +307,16 @@ class Gui:
         :type rows: int
         :param review: label to review
         :type review: Label
-        :return: the dict of the windows
-        :rtype: dict[str, Win or StrWin]
         """
         windows = dict()
         win_classes = [Label.KEYWORD, Label.RELEVANT, Label.NOISE,
                        Label.NOT_RELEVANT, Label.POSTPONED]
         for i, cls in enumerate(win_classes):
             title = cls.label_name.capitalize()
-            windows[cls.label_name] = Win(cls, title=title,
-                                          rows=rows, cols=win_width,
-                                          y=(rows + 2) * i, x=0,
-                                          show_title=True)
+            self._windows[cls.label_name] = Win(cls, title=title,
+                                                rows=rows, cols=win_width,
+                                                y=(rows + 2) * i, x=0,
+                                                show_title=True)
 
         title = 'Input label: {}'
         if review == Label.NONE:
@@ -324,12 +324,11 @@ class Gui:
         else:
             title = title.format(review.label_name.capitalize())
 
-        windows['__WORDS'] = Win(Label.NONE, title=title, rows=term_rows,
-                                 cols=win_width, y=10, x=win_width + 2,
-                                 show_title=True)
-        windows['__STATS'] = StrWin(rows=8, cols=win_width, y=0,
-                                    x=win_width + 2)
-        return windows
+        self._word_win = Win(Label.NONE, title=title, rows=term_rows,
+                             cols=win_width, y=10, x=win_width + 2,
+                             show_title=True)
+        self._stats_win = StrWin(rows=8, cols=win_width, y=0,
+                                 x=win_width + 2)
 
     def refresh_label_windows(self, term_to_highlight, label):
         """
@@ -341,8 +340,6 @@ class Gui:
         :type label: Label
         """
         for key, win in self._windows.items():
-            if key in ['__WORDS', '__STATS']:
-                continue
             if key == label.label_name:
                 win.display_lines(rev=True,
                                   highlight_word=term_to_highlight,
@@ -353,12 +350,11 @@ class Gui:
 
     def set_stats(self, terms, related_count):
         stats = get_stats_strings(terms, related_count)
-        self._windows['__STATS'].text = '\n'.join(stats)
+        self._stats_win.text = '\n'.join(stats)
 
     def set_terms(self, to_classify: TermList, sort_key):
-        self._windows['__WORDS'].assign_lines(to_classify.items)
-        self._windows['__WORDS'].display_lines(rev=False,
-                                               highlight_word=sort_key)
+        self._word_win.assign_lines(to_classify.items)
+        self._word_win.display_lines(rev=False, highlight_word=sort_key)
 
     def update_windows(self, terms, to_classify, term_to_highlight,
                        related_items_count, sort_word_key):
@@ -379,9 +375,6 @@ class Gui:
         self.set_terms(to_classify, sort_word_key)
 
         for win in self._windows:
-            if win in ['__WORDS', '__STATS']:
-                continue
-
             cls = terms.get_from_label(Label.get_from_name(win))
             self._windows[win].assign_lines(cls.items)
 
@@ -403,9 +396,6 @@ class Gui:
         :type review: Label
         """
         for win in self._windows:
-            if win in ['__WORDS', '__STATS']:
-                continue
-
             if win == review.label_name:
                 # in review mode we must add to the window associated with the label
                 # review only the items in confirmed (if any)
