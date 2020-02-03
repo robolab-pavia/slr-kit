@@ -10,7 +10,7 @@ from typing import cast, Callable, Hashable
 from prompt_toolkit.document import Document
 from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.layout.controls import BufferControl
-from prompt_toolkit.layout import Dimension, Float, Window
+from prompt_toolkit.layout import Dimension, Float, FloatContainer, Window
 from prompt_toolkit.lexers import Lexer
 from prompt_toolkit.widgets import TextArea, Frame
 
@@ -231,6 +231,153 @@ class PtStrWin(Float):
         :type text: str
         """
         self.textarea.text = text
+
+
+class Gui:
+    def __init__(self, width, term_rows, rows, review):
+        """
+        The Gui of the application
+
+        :param width: width of each windows
+        :type width: int
+        :param term_rows: number of row of the term window
+        :type term_rows: int
+        :param rows: number of row of all the other windows
+        :type rows: int
+        :param review: label to review
+        :type review: Label
+        """
+        self._windows = self._create_windows(width, term_rows, rows, review)
+        self._review = review
+        self._body = FloatContainer(content=Window(),
+                                    floats=list(self._windows.values()))
+
+    @property
+    def body(self):
+        return self._body
+
+    @staticmethod
+    def _create_windows(win_width, term_rows, rows, review):
+        """
+        Creates all the windows
+
+        :param win_width: number of columns of each windows
+        :type win_width: int
+        :param term_rows: number of row of the term window
+        :type term_rows: int
+        :param rows: number of row of each windows
+        :type rows: int
+        :param review: label to review
+        :type review: Label
+        :return: the dict of the windows
+        :rtype: dict[str, PtWin or PtStrWin]
+        """
+        windows = dict()
+        win_classes = [Label.KEYWORD, Label.RELEVANT, Label.NOISE,
+                       Label.NOT_RELEVANT, Label.POSTPONED]
+        for i, cls in enumerate(win_classes):
+            title = cls.label_name.capitalize()
+            windows[cls.label_name] = PtWin(cls, title=title,
+                                            rows=rows, cols=win_width,
+                                            y=(rows + 2) * i, x=0,
+                                            show_title=True)
+
+        title = 'Input label: {}'
+        if review == Label.NONE:
+            title = title.format('None')
+        else:
+            title = title.format(review.label_name.capitalize())
+
+        windows['__WORDS'] = PtWin(Label.NONE, title=title, rows=term_rows,
+                                   cols=win_width, y=10, x=win_width + 2,
+                                   show_title=True)
+        windows['__STATS'] = PtStrWin(rows=8, cols=win_width, y=0,
+                                      x=win_width + 2)
+        return windows
+
+    def refresh_label_windows(self, term_to_highlight, label):
+        """
+        Refresh the windows associated with a label
+
+        :param term_to_highlight: the term to highlight
+        :type term_to_highlight: str
+        :param label: label of the window that has to highlight the term
+        :type label: Label
+        """
+        for key, win in self._windows.items():
+            if key in ['__WORDS', '__STATS']:
+                continue
+            if key == label.label_name:
+                win.display_lines(rev=True,
+                                  highlight_word=term_to_highlight,
+                                  only_the_word=True,
+                                  color_pair=2)
+            else:
+                win.display_lines(rev=True)
+
+    def set_stats(self, terms, related_count):
+        stats = get_stats_strings(terms, related_count)
+        self._windows['__STATS'].text = '\n'.join(stats)
+        # self._windows['__STATS'].display_lines()
+
+    def set_terms(self, to_classify: TermList, sort_key):
+        self._windows['__WORDS'].assign_lines(to_classify.items)
+        self._windows['__WORDS'].display_lines(rev=False,
+                                               highlight_word=sort_key)
+
+    def update_windows(self, terms, to_classify, term_to_highlight,
+                       related_items_count, sort_word_key):
+        """
+        Handle the update of all the windows
+
+        :param terms: list of the Term
+        :type terms: TermList
+        :param to_classify: terms not yet classified
+        :type to_classify: TermList
+        :param term_to_highlight: term to hightlight as the last classified term
+        :type term_to_highlight: Term
+        :param related_items_count: number of related items
+        :type related_items_count: int
+        :param sort_word_key: words used for the related item highlighting
+        :type sort_word_key: str
+        """
+        self.set_terms(to_classify, sort_word_key)
+
+        for win in self._windows:
+            if win in ['__WORDS', '__STATS']:
+                continue
+
+            cls = terms.get_from_label(Label.get_from_name(win))
+            self._windows[win].assign_lines(cls.items)
+
+        if term_to_highlight is not None:
+            self.refresh_label_windows(term_to_highlight.string,
+                                       term_to_highlight.label)
+        else:
+            self.refresh_label_windows('', Label.NONE)
+
+        self.set_stats(terms, related_items_count)
+
+    def assign_labeled_terms(self, terms, review):
+        """
+        Assigns the labeled terms to the correct windows
+
+        :param terms: the term list
+        :type terms: TermList
+        :param review: the label to review
+        :type review: Label
+        """
+        for win in self._windows:
+            if win in ['__WORDS', '__STATS']:
+                continue
+
+            if win == review.label_name:
+                # in review mode we must add to the window associated with the label
+                # review only the items in confirmed (if any)
+                conf_word = terms.get_from_label(review, order_set=True)
+                self._windows[win].assign_lines(conf_word.items)
+            else:
+                self._windows[win].assign_lines(terms.items)
 
 
 class Win(object):
