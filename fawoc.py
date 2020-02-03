@@ -500,7 +500,7 @@ class Fawoc(Application):
         """
         self.last_word = self.terms.get_last_classified_term()
         if self.last_word is None:
-            return self.to_classify, self.related_count, self.sort_word_key
+            return
 
         label = self.last_word.label
         related = self.last_word.related
