@@ -7,12 +7,15 @@ import pathlib
 import sys
 from typing import cast, Callable, Hashable
 
+from prompt_toolkit import Application
 from prompt_toolkit.document import Document
 from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.layout.controls import BufferControl
-from prompt_toolkit.layout import Dimension, Float, FloatContainer, Window
+from prompt_toolkit.layout import Dimension, Float, FloatContainer, Window, Layout
 from prompt_toolkit.lexers import Lexer
 from prompt_toolkit.widgets import TextArea, Frame
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.key_binding.key_processor import KeyPressEvent
 
 from terms import Label, TermList, Term
 from utils import setup_logger, substring_index
@@ -378,6 +381,165 @@ class Gui:
                 self._windows[win].assign_lines(conf_word.items)
             else:
                 self._windows[win].assign_lines(terms.items)
+
+
+class Fawoc(Application):
+    """
+    :type terms: TermList
+    """
+    def __init__(self, args, terms, to_classify, review, related, sort_key,
+                 last_word, gui, profiler, logger):
+        self.__keybindings = KeyBindings()
+        super().__init__(layout=Layout(gui.body), key_bindings=self.__keybindings,
+                         full_screen=True)
+        self.args = args
+        self.gui = gui
+        self.terms = terms
+        self.to_classify = to_classify
+        # self.evaluated_word = None
+        self._get_next_word()
+        self.review = review
+        self.related_count = related
+        self.sort_word_key = sort_key
+        self.last_word = last_word
+        self.profiler = profiler
+        self.logger = logger
+
+    def add_key_binding(self, keys, handler: Callable[[KeyPressEvent], None]):
+        """
+        Adds keybinding to Fawoc.
+
+        If any elements in keys is a single letter the function add the same
+        handler to the letter and to the case-swapped letter
+
+        :param keys: list of keys to be bound
+        :type keys: list[str]
+        :param handler: function to be call
+        :type handler: Callable[[KeyPressEvent], None]
+        """
+        for k in keys:
+            if len(k) == 1:
+                if k.islower():
+                    other = k.upper()
+                else:
+                    other = k.upper()
+
+                self.__keybindings.add(other)(handler)
+
+            self.__keybindings.add(k)(handler)
+
+    def do_classify(self, label):
+        if self.evaluated_word is None:
+            return
+
+        self.profiler.info("WORD '{}' AS '{}'".format(self.evaluated_word.string,
+                                                      label.label_name))
+
+        self.terms.classify_term(self.evaluated_word.string, label,
+                                 self.terms.get_last_classified_order() + 1,
+                                 self.sort_word_key)
+
+        if self.related_count <= 0:
+            self.sort_word_key = self.evaluated_word.string
+
+        ret = self.terms.return_related_items(self.sort_word_key,
+                                              label=self.review)
+        containing, not_containing = ret
+
+        if self.related_count <= 0:
+            self.related_count = len(containing) + 1
+
+        self.to_classify = containing + not_containing
+        self.related_count -= 1
+        self.last_word = self.evaluated_word
+
+        self.gui.update_windows(self.terms, self.to_classify, self.last_word,
+                                self.related_count, self.sort_word_key)
+
+        if not self.args.dry_run and not self.args.no_auto_save:
+            self.save_terms()
+
+        self._get_next_word()
+
+    def do_postpone(self):
+        if self.evaluated_word is None:
+            return
+
+        self.profiler.info("WORD '{}' POSTPONED".format(self.evaluated_word))
+        # classification: POSTPONED
+        self.terms.classify_term(self.evaluated_word.string, Label.POSTPONED,
+                                 self.terms.get_last_classified_order() + 1,
+                                 self.sort_word_key)
+
+        self.related_count -= 1
+        if self.related_count > 0:
+            cont, not_cont = self.terms.return_related_items(self.sort_word_key,
+                                                             self.review)
+            self.to_classify = cont + not_cont
+        else:
+            self.to_classify = self.terms.get_from_label(self.review)
+
+        self.last_word = self.evaluated_word
+
+        self.gui.update_windows(self.terms, self.to_classify, self.last_word,
+                                self.related_count, self.sort_word_key)
+
+        if not self.args.dry_run and not self.args.no_auto_save:
+            self.save_terms()
+
+        self._get_next_word()
+
+    def _get_next_word(self):
+        if len(self.to_classify) <= 0:
+            self.evaluated_word = None
+        else:
+            self.evaluated_word = self.to_classify.items[0]
+
+    def undo(self):
+        """
+        Handle the undo of a term
+        """
+        self.last_word = self.terms.get_last_classified_term()
+        if self.last_word is None:
+            return self.to_classify, self.related_count, self.sort_word_key
+
+        label = self.last_word.label
+        related = self.last_word.related
+        msg = 'Undo: {} group {} order {}'.format(self.last_word.string, label,
+                                                  self.last_word.order)
+        self.logger.debug(msg)
+        # un-mark self.last_word
+        self.terms.classify_term(self.last_word.string, self.review, -1)
+
+        # handle related word
+        if related == self.sort_word_key:
+            self.related_count += 1
+            self.to_classify.items.insert(0, self.last_word)
+        else:
+            self.sort_word_key = related
+            ret = self.terms.return_related_items(self.sort_word_key,
+                                                  label=self.review)
+            containing, not_containing = ret
+            self.related_count = len(containing)
+            self.to_classify = containing + not_containing
+
+        if self.sort_word_key == '':
+            # if self.sort_word_key is empty there's no related item: fix the
+            # related_items_count to the correct value of 0
+            self.related_count = 0
+
+        self.profiler.info("WORD '{}' UNDONE".format(self.last_word.string))
+        self.last_word = self.terms.get_last_classified_term()
+        self.gui.update_windows(self.terms, self.to_classify, self.last_word,
+                                self.related_count, self.sort_word_key)
+
+        if not self.args.dry_run and not self.args.no_auto_save:
+            self.save_terms()
+
+        self._get_next_word()
+
+    def save_terms(self):
+        self.terms.to_tsv(self.args.datafile)
 
 
 class Win(object):
