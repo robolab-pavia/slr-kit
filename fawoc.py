@@ -547,6 +547,12 @@ class Fawoc(Application):
         if related == self.sort_word_key:
             self.related_count += 1
             self.to_classify.items.insert(0, self.last_word)
+        elif self.sort_word_key == self.last_word.string:
+            # the sort_word_key is the word undone: reset the related machinery
+            self.sort_word_key = ''
+            self.related_count = 0
+            self.to_classify.sort_by_index()
+            self.to_classify.items.insert(0, self.last_word)
         else:
             self.sort_word_key = related
             ret = self.terms.return_related_items(self.sort_word_key,
