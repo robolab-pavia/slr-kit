@@ -7,7 +7,12 @@ import pathlib
 import sys
 from typing import cast, Callable, Hashable
 
+from prompt_toolkit.document import Document
+from prompt_toolkit.buffer import Buffer
+from prompt_toolkit.layout.controls import BufferControl
+from prompt_toolkit.layout import Dimension, Float, Window
 from prompt_toolkit.lexers import Lexer
+from prompt_toolkit.widgets import Frame
 
 from terms import Label, TermList, Term
 from utils import setup_logger, substring_index
@@ -50,6 +55,119 @@ class TermLexer(Lexer):
             lines.append(fmt)
 
         return lambda lineno: lines[lineno]
+
+
+class PtWin(Float):
+    """
+    Window that shows terms
+
+    :type x: int
+    :type y: int
+    :type label: Label or None
+    :type title: str
+    :type show_title: bool
+    :type lexer: Lexer
+    :type height: Dimension
+    :type width: Dimension
+    :type buffer: Buffer
+    :type control: BufferControl
+    :type window: Window
+    :type terms: list[Term] or None
+    """
+
+    def __init__(self, label, title='', rows=3, cols=30, y=0, x=0,
+                 show_title=False):
+        """
+        Creates a window that shows terms
+
+        :param label: label associated to the windows
+        :type label: Label or None
+        :param title: title of window. Default: empty string
+        :type title: str
+        :param rows: number of rows
+        :type rows: int
+        :param cols: number of columns
+        :type cols: int
+        :param y: y coordinate
+        :type y: int
+        :param x: x coordinate
+        :type x: int
+        :param show_title: if True the window shows its title. Default: False
+        :type show_title: bool
+        """
+        self.x = x
+        self.y = y
+        self.label = label
+        self.title = title
+        self.show_title = show_title
+        self.lexer = TermLexer()
+        self.height = Dimension(min=rows, max=rows)
+        self.width = Dimension(min=cols, max=cols)
+        # we must re-create a text-area using the basic components
+        # we must do this to have control on the lexer. Otherwise prompt-toolkit
+        # will cache the output of the lexer resulting in wrong highlighting
+        self.buffer = Buffer(read_only=True, document=Document('', 0))
+        self.control = BufferControl(buffer=self.buffer,
+                                     lexer=self.lexer)
+        self.window = Window(content=self.control, height=self.height,
+                             width=self.width)
+        self.terms = None
+        frame = Frame(cast('Container', self.window))
+        super().__init__(cast('Container', frame), left=self.x, top=self.y)
+        if self.show_title:
+            frame.title = title
+
+    @property
+    def text(self) -> str:
+        """
+        Text shown in the window
+
+        :return: the text shown in the window
+        """
+        return self.buffer.text
+
+    @text.setter
+    def text(self, value: str):
+        """
+        Sets the text to be shown
+
+        :param value: the new text to be shown
+        :type value: str
+        """
+        self.buffer.set_document(Document(value, 0), bypass_readonly=True)
+
+    def assign_lines(self, terms):
+        """
+        Assign the terms in terms with the same label as the window
+
+        :param terms: the terms list
+        :type terms: list[Term]
+        """
+        self.terms = [w for w in terms if w.label == self.label]
+        self.terms = sorted(self.terms, key=lambda t: t.order)
+
+    def display_lines(self, rev=True, highlight_word='', only_the_word=False,
+                      color_pair=1):
+        """
+        Display the terms associated to the window
+
+        :param rev: if True, display terms in reversed order. Default: True
+        :type rev: bool
+        :param highlight_word: the word to highlight. Default: empty string
+        :type highlight_word: str
+        :param only_the_word: if True only highlight_word is highlighted.
+        :type only_the_word: bool
+        :param color_pair: the curses color pair to use to hightlight. Default 1
+        :type color_pair: int
+        """
+        terms = iter(self.terms)
+        if rev:
+            terms = reversed(self.terms)
+
+        self.lexer.word = highlight_word
+        # Useless text change to force the lexer
+        self.text = ''
+        self.text = '\n'.join([w.string for w in terms])
 
 
 class Win(object):
