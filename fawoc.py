@@ -93,7 +93,7 @@ class TermLexer(Lexer):
         return lambda lineno: lines[lineno]
 
 
-class PtWin(Float):
+class Win(Float):
     """
     Window that shows terms
 
@@ -206,7 +206,7 @@ class PtWin(Float):
         self.text = '\n'.join([w.string for w in terms])
 
 
-class PtStrWin(Float):
+class StrWin(Float):
     """
     Window that shows strings
 
@@ -306,17 +306,17 @@ class Gui:
         :param review: label to review
         :type review: Label
         :return: the dict of the windows
-        :rtype: dict[str, PtWin or PtStrWin]
+        :rtype: dict[str, Win or StrWin]
         """
         windows = dict()
         win_classes = [Label.KEYWORD, Label.RELEVANT, Label.NOISE,
                        Label.NOT_RELEVANT, Label.POSTPONED]
         for i, cls in enumerate(win_classes):
             title = cls.label_name.capitalize()
-            windows[cls.label_name] = PtWin(cls, title=title,
-                                            rows=rows, cols=win_width,
-                                            y=(rows + 2) * i, x=0,
-                                            show_title=True)
+            windows[cls.label_name] = Win(cls, title=title,
+                                          rows=rows, cols=win_width,
+                                          y=(rows + 2) * i, x=0,
+                                          show_title=True)
 
         title = 'Input label: {}'
         if review == Label.NONE:
@@ -324,11 +324,11 @@ class Gui:
         else:
             title = title.format(review.label_name.capitalize())
 
-        windows['__WORDS'] = PtWin(Label.NONE, title=title, rows=term_rows,
-                                   cols=win_width, y=10, x=win_width + 2,
-                                   show_title=True)
-        windows['__STATS'] = PtStrWin(rows=8, cols=win_width, y=0,
-                                      x=win_width + 2)
+        windows['__WORDS'] = Win(Label.NONE, title=title, rows=term_rows,
+                                 cols=win_width, y=10, x=win_width + 2,
+                                 show_title=True)
+        windows['__STATS'] = StrWin(rows=8, cols=win_width, y=0,
+                                    x=win_width + 2)
         return windows
 
     def refresh_label_windows(self, term_to_highlight, label):
