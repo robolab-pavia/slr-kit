@@ -12,7 +12,7 @@ from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.layout.controls import BufferControl
 from prompt_toolkit.layout import Dimension, Float, Window
 from prompt_toolkit.lexers import Lexer
-from prompt_toolkit.widgets import Frame
+from prompt_toolkit.widgets import TextArea, Frame
 
 from terms import Label, TermList, Term
 from utils import setup_logger, substring_index
@@ -168,6 +168,69 @@ class PtWin(Float):
         # Useless text change to force the lexer
         self.text = ''
         self.text = '\n'.join([w.string for w in terms])
+
+
+class PtStrWin(Float):
+    """
+    Window that shows strings
+
+    :type x: int
+    :type y: int
+    :type height: Dimension
+    :type width: Dimension
+    """
+
+    def __init__(self, rows=3, cols=30, y=0, x=0):
+        """
+        Creates a window that shows strings
+
+        :param rows: number of rows
+        :type rows: int
+        :param cols: number of columns
+        :type cols: int
+        :param y: y coordinate
+        :type y: int
+        :param x: x coordinate
+        :type x: int
+        """
+        self.x = x
+        self.y = y
+        self.height = Dimension(min=rows, max=rows)
+        self.width = Dimension(min=cols, max=cols)
+        self.textarea = TextArea(height=self.height, width=self.width,
+                                 read_only=True)
+        self.strings = None
+        frame = Frame(cast('Container', self.textarea))
+        super().__init__(cast('Container', frame), left=self.x, top=self.y)
+
+    def assign_lines(self, lines):
+        """
+        Assign the lines to the window
+
+        :param lines: the lines to show
+        :type lines: list[str]
+        """
+        self.strings = lines
+
+    @property
+    def text(self):
+        """
+        Gets the text shown in the windows
+
+        :return: the text shown in the windows
+        :rtype: str
+        """
+        return self.textarea.text
+
+    @text.setter
+    def text(self, text):
+        """
+        Sets the text to be shown
+
+        :param text: the text to be shown
+        :type text: str
+        """
+        self.textarea.text = text
 
 
 class Win(object):
