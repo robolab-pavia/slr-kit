@@ -5,7 +5,7 @@ import logging
 import os
 import pathlib
 import sys
-from typing import cast
+from typing import cast, Callable, Hashable
 
 from prompt_toolkit.lexers import Lexer
 
@@ -16,8 +16,12 @@ DEBUG = False
 
 
 class TermLexer(Lexer):
+    def invalidation_hash(self) -> Hashable:
+        return self._inv
+
     def __init__(self):
         self._word = ''
+        self._inv = 0
 
     @property
     def word(self) -> str:
@@ -26,6 +30,7 @@ class TermLexer(Lexer):
     @word.setter
     def word(self, word: str):
         self._word = word
+        self._inv += 1
 
     def lex_document(self, document):
         lines = []
