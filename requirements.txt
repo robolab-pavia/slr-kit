@@ -1,0 +1,6 @@
+nltk
+numpy
+pandas
+prompt-toolkit
+RISparser
+sklearn
