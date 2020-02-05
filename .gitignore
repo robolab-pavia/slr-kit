@@ -214,6 +214,7 @@ pip-selfcheck.json
 *.[ct]sv
 *.orig
 *.txt
+!requirements.txt
 *.json
 .~lock*#
 *.ris
