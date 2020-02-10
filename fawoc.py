@@ -110,10 +110,11 @@ class Win:
     :type control: BufferControl
     :type window: Window
     :type terms: list[Term] or None
+    :type count: TextArea or None
     """
 
     def __init__(self, label, title='', rows=3, cols=30, y=0, x=0,
-                 show_title=False):
+                 show_title=False, show_count=False):
         """
         Creates a window that shows terms
 
@@ -138,18 +139,34 @@ class Win:
         self.title = title
         self.show_title = show_title
         self.lexer = TermLexer()
-        self.height = Dimension(preferred=rows, max=rows)
-        self.width = Dimension(preferred=cols, max=cols)
+
         # we must re-create a text-area using the basic components
         # we must do this to have control on the lexer. Otherwise prompt-toolkit
         # will cache the output of the lexer resulting in wrong highlighting
         self.buffer = Buffer(read_only=True, document=Document('', 0))
         self.control = BufferControl(buffer=self.buffer,
                                      lexer=self.lexer)
+        count_width = 6
+        if show_count:
+            cols -= count_width
+            if cols < 0:
+                raise ValueError('cols is too small')
+
+        self.height = Dimension(preferred=rows, max=rows)
+        self.width = Dimension(preferred=cols, max=cols)
         self.window = Window(content=self.control, height=self.height,
                              width=self.width)
+        split = [
+            cast('Container', self.window),
+        ]
+        if show_count:
+            self.count = TextArea(width=count_width)
+            split.append(cast('Container', self.count))
+        else:
+            self.count = None
+
         self.terms = None
-        self.frame = Frame(cast('Container', self.window))
+        self.frame = Frame(cast('Container', VSplit(split, padding_char='|')))
         # super().__init__(cast('Container', self.frame), left=self.x, top=self.y)
         if self.show_title:
             self.frame.title = title
@@ -201,13 +218,18 @@ class Win:
         :type color: str
         """
         terms = iter(self.terms)
+        counts = iter(self.terms)
         if rev:
             terms = reversed(self.terms)
+            counts = reversed(self.terms)
 
         self.lexer.word = highlight_word
         self.lexer.color = color
         self.lexer.whole_line = whole_line
         self.text = '\n'.join([w.string for w in terms])
+        if self.count is not None:
+            self.count.text = '\n'.join([str(w.count) for w in counts])
+            pass
 
 
 class StrWin:
@@ -342,7 +364,7 @@ class Gui:
 
         self._word_win = Win(Label.NONE, title=title, rows=term_rows,
                              cols=win_width, y=10, x=win_width + 2,
-                             show_title=True)
+                             show_title=True, show_count=True)
         self._stats_win = StrWin(rows=8, cols=win_width, y=0,
                                  x=win_width + 2)
 
