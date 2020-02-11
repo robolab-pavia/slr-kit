@@ -4,3 +4,4 @@ pandas
 prompt-toolkit
 RISparser
 sklearn
+regex
