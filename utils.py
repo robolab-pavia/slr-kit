@@ -11,16 +11,19 @@ def load_df(filename, required_columns=None):
     Optionally, it checks the presence of some required columns
     and exits in case of missing columns.
 
-    :filename: name of the input file
-    :type name: str
-    :required_columns: list of names of required columns
-    :rtype: pandas dataframe
+    :param filename: name of the input file
+    :type filename: str
+    :param required_columns: list of names of required columns
+    :type required_columns: list[str] or None
+    :return: the loaded dataframe
+    :rtype: pd.DataFrame
     """
     import pandas as pd
     input_df = pd.read_csv(filename, delimiter='\t')
     input_df.fillna('', inplace=True)
     for col_name in required_columns:
         assert_column(filename, input_df, col_name)
+
     return input_df
 
 
@@ -29,14 +32,15 @@ def load_dtj(infile):
     Load the document-terms JSON file format.
 
     :param infile: name of the input file
-    :type name: str
+    :type infile: str
     :return: the list of parsed rows
-    :rtype: list of dicts
+    :rtype: list[dict]
     """
     dtj = []
     with open(infile) as input_file:
         for line in input_file:
             dtj.append(json.loads(line))
+
     return dtj
 
 
@@ -50,14 +54,15 @@ def assert_column(infile, dataframe, column_name):
     absence of the necessary column.
 
     :param infile: name of the input file
-    :type name: str
+    :type infile: str
     :param dataframe: dataframe containing the required column
-    :type name: pandas dataframe or any dict-accessible variable
+    :type dataframe: pd.DataFrame or dict
     :param column_name: name of the required column
-    :type name: str
+    :type column_name: str
     """
     if column_name not in dataframe:
-        print('File "{}" must contain the "{}" column.'.format(infile, column_name))
+        print('File "{}" must contain the "{}" column.'.format(infile,
+                                                               column_name))
         sys.exit(1)
 
 
