@@ -33,7 +33,8 @@ def main():
     debug_logger = setup_logger('debug_logger', 'slr-kit.log',
                                 level=logging.DEBUG)
 
-    dataset = pandas.read_csv(args.datafile, delimiter='\t')
+    # na_filter=False avoids NaN if the abstract is missing
+    dataset = pandas.read_csv(args.datafile, delimiter='\t', na_filter=False)
     acrodf = extract_acronyms(dataset)
     acrodf = acrodf.sort_values(by=['Acronym'])
     #print(acrodf)
