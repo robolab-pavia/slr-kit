@@ -1,4 +1,3 @@
-import pandas as pd
 import logging
 import string
 import json
@@ -17,6 +16,7 @@ def load_df(filename, required_columns=None):
     :required_columns: list of names of required columns
     :rtype: pandas dataframe
     """
+    import pandas as pd
     input_df = pd.read_csv(filename, delimiter='\t')
     input_df.fillna('', inplace=True)
     for col_name in required_columns:
