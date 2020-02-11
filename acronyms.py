@@ -18,7 +18,7 @@ def init_argparser():
 
 def extract_acronyms(dataset):
     acro = {}
-    for abstract in dataset['abstract1']:
+    for abstract in dataset['abstract']:
         #print(abstract)
         pairs = extract_abbreviation_definition_pairs(doc_text=abstract)
         acro.update(pairs)
