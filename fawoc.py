@@ -13,7 +13,7 @@ from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.key_binding.key_processor import KeyPressEvent
 from prompt_toolkit.layout import Dimension, Window, Layout
 from prompt_toolkit.layout.containers import Container, VSplit, HSplit
-from prompt_toolkit.layout.controls import BufferControl
+from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
 from prompt_toolkit.lexers import Lexer
 from prompt_toolkit.widgets import TextArea, Frame
 
@@ -110,7 +110,7 @@ class Win:
     :type control: BufferControl
     :type window: Window
     :type terms: list[Term] or None
-    :type count: TextArea or None
+    :type count: FormattedTextControl or None
     """
 
     def __init__(self, label, title='', rows=3, cols=30, y=0, x=0,
@@ -160,14 +160,14 @@ class Win:
             cast('Container', self.window),
         ]
         if show_count:
-            self.count = TextArea(width=count_width)
-            split.append(cast('Container', self.count))
+            self.count = FormattedTextControl()
+            split.append(cast('Container', Window(self.count,
+                                                  width=count_width)))
         else:
             self.count = None
 
         self.terms = None
-        self.frame = Frame(cast('Container', VSplit(split, padding_char='|')))
-        # super().__init__(cast('Container', self.frame), left=self.x, top=self.y)
+        self.frame = Frame(cast('Container', VSplit(split)))
         if self.show_title:
             self.frame.title = title
 
