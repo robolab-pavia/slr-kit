@@ -503,16 +503,21 @@ class Fawoc:
 
         if self.related_count <= 0:
             self.sort_word_key = self.evaluated_word.string
+        elif self.related_count == 1:
+            # last related word has been classified: reset the related machinery
+            self.sort_word_key = ''
 
         ret = self.terms.return_related_items(self.sort_word_key,
                                               label=self.review)
         containing, not_containing = ret
 
         if self.related_count <= 0:
-            self.related_count = len(containing) + 1
+            # the sort_word_key has been changed: reload the related count
+            self.related_count = len(containing)
+        else:
+            self.related_count -= 1
 
         self.to_classify = containing + not_containing
-        self.related_count -= 1
         self.last_word = self.evaluated_word
 
         self.gui.update_windows(self.terms, self.to_classify, self.last_word,
@@ -540,6 +545,9 @@ class Fawoc:
             self.to_classify = cont + not_cont
         else:
             self.to_classify = self.terms.get_from_label(self.review)
+            # reset related machinery
+            self.related_count = 0
+            self.sort_word_key = ''
 
         self.last_word = self.evaluated_word
 
