@@ -431,7 +431,11 @@ class TermList(object):
             else:
                 not_containing.append(w)
 
-        return TermList(containing), TermList(not_containing)
+        co = TermList(containing)
+        nc = TermList(not_containing)
+        co.sort_by_index()
+        nc.sort_by_index()
+        return co, nc
 
     def count_classified(self):
         """

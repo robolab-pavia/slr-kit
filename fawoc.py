@@ -443,17 +443,17 @@ class Gui:
                 self._windows[win].assign_lines(terms.items)
 
 
-class Fawoc(Application):
+class Fawoc:
     """
     :type terms: TermList
     """
 
     def __init__(self, args, terms, to_classify, review, related, sort_key,
                  last_word, gui, profiler, logger):
-        self.__keybindings = KeyBindings()
-        super().__init__(layout=Layout(gui.body),
-                         key_bindings=self.__keybindings,
-                         full_screen=True)
+        self.keybindings = KeyBindings()
+        self.app = Application(layout=Layout(gui.body),
+                               key_bindings=self.keybindings,
+                               full_screen=True)
         self.args = args
         self.gui = gui
         self.terms = terms
@@ -486,9 +486,9 @@ class Fawoc(Application):
                 else:
                     other = k.upper()
 
-                self.__keybindings.add(other)(handler)
+                self.keybindings.add(other)(handler)
 
-            self.__keybindings.add(k)(handler)
+            self.keybindings.add(k)(handler)
 
     def do_classify(self, label):
         if self.evaluated_word is None:
@@ -503,16 +503,21 @@ class Fawoc(Application):
 
         if self.related_count <= 0:
             self.sort_word_key = self.evaluated_word.string
+        elif self.related_count == 1:
+            # last related word has been classified: reset the related machinery
+            self.sort_word_key = ''
 
         ret = self.terms.return_related_items(self.sort_word_key,
                                               label=self.review)
         containing, not_containing = ret
 
         if self.related_count <= 0:
-            self.related_count = len(containing) + 1
+            # the sort_word_key has been changed: reload the related count
+            self.related_count = len(containing)
+        else:
+            self.related_count -= 1
 
         self.to_classify = containing + not_containing
-        self.related_count -= 1
         self.last_word = self.evaluated_word
 
         self.gui.update_windows(self.terms, self.to_classify, self.last_word,
@@ -540,6 +545,9 @@ class Fawoc(Application):
             self.to_classify = cont + not_cont
         else:
             self.to_classify = self.terms.get_from_label(self.review)
+            # reset related machinery
+            self.related_count = 0
+            self.sort_word_key = ''
 
         self.last_word = self.evaluated_word
 
@@ -694,21 +702,21 @@ def get_stats_strings(terms, related_items_count=0):
     return stats_strings
 
 
-def classify_kb(event: KeyPressEvent):
+def classify_kb(event: KeyPressEvent, fawoc: Fawoc):
     label = Label.get_from_key(event.data)
-    cast('Fawoc', event.app).do_classify(label)
+    fawoc.do_classify(label)
 
 
-def postpone_kb(event: KeyPressEvent):
-    cast('Fawoc', event.app).do_postpone()
+def postpone_kb(event: KeyPressEvent, fawoc: Fawoc):
+    fawoc.do_postpone()
 
 
-def undo_kb(event: KeyPressEvent):
-    cast('Fawoc', event.app).undo()
+def undo_kb(event: KeyPressEvent, fawoc: Fawoc):
+    fawoc.undo()
 
 
-def save_kb(event: KeyPressEvent):
-    cast('Fawoc', event.app).save_terms()
+def save_kb(event: KeyPressEvent, fawoc: Fawoc):
+    fawoc.save_terms()
 
 
 def quit_kb(event: KeyPressEvent):
@@ -782,14 +790,14 @@ def fawoc_main(terms, args, review, last_reviews, logger=None, profiler=None):
                        Label.NOISE.key,
                        Label.RELEVANT.key]
 
-    app = Fawoc(args, terms, to_classify, review, related_items_count,
-                sort_word_key, last_word, gui, profiler, logger)
-    app.add_key_binding(classifing_keys, classify_kb)
-    app.add_key_binding(['p'], postpone_kb)
-    app.add_key_binding(['u'], undo_kb)
-    app.add_key_binding(['w'], save_kb)
-    app.add_key_binding(['q'], quit_kb)
-    app.run()
+    fawoc = Fawoc(args, terms, to_classify, review, related_items_count,
+                  sort_word_key, last_word, gui, profiler, logger)
+    fawoc.add_key_binding(classifing_keys, lambda e: classify_kb(e, fawoc))
+    fawoc.add_key_binding(['p'], lambda e: postpone_kb(e, fawoc))
+    fawoc.add_key_binding(['u'], lambda e: undo_kb(e, fawoc))
+    fawoc.add_key_binding(['w'], lambda e: save_kb(e, fawoc))
+    fawoc.add_key_binding(['q'], quit_kb)
+    fawoc.app.run()
 
 
 def main():
