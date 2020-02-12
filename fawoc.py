@@ -110,11 +110,11 @@ class Win:
     :type control: BufferControl
     :type window: Window
     :type terms: list[Term] or None
-    :type count: FormattedTextControl or None
+    :type attr: FormattedTextControl or None
     """
 
     def __init__(self, label, title='', rows=3, cols=30, y=0, x=0,
-                 show_title=False, show_count=False):
+                 show_title=False, show_count=False, show_label=False):
         """
         Creates a window that shows terms
 
@@ -133,6 +133,9 @@ class Win:
         :param show_title: if True the window shows its title. Default: False
         :type show_title: bool
         """
+        if show_count and show_label:
+            raise ValueError('show_count and show_label cannot be both set')
+
         self.x = x
         self.y = y
         self.label = label
@@ -146,11 +149,20 @@ class Win:
         self.buffer = Buffer(read_only=True, document=Document('', 0))
         self.control = BufferControl(buffer=self.buffer,
                                      lexer=self.lexer)
-        count_width = 6
+
         if show_count:
-            cols -= count_width
-            if cols < 0:
-                raise ValueError('cols is too small')
+            attr_width = 6
+            self.attr_name = 'count'
+        elif show_label:
+            attr_width = 10
+            self.attr_name = 'label'
+        else:
+            attr_width = 0
+            self.attr_name = ''
+
+        cols -= attr_width
+        if cols <= 0:
+            raise ValueError('cols is too small')
 
         self.height = Dimension(preferred=rows, max=rows)
         self.width = Dimension(preferred=cols, max=cols)
@@ -159,12 +171,12 @@ class Win:
         split = [
             cast('Container', self.window),
         ]
-        if show_count:
-            self.count = FormattedTextControl()
-            split.append(cast('Container', Window(self.count,
-                                                  width=count_width)))
+        if show_count or show_label:
+            self.attr = FormattedTextControl()
+            split.append(cast('Container', Window(self.attr,
+                                                  width=attr_width)))
         else:
-            self.count = None
+            self.attr = None
 
         self.terms = None
         self.frame = Frame(cast('Container', VSplit(split)))
@@ -218,18 +230,24 @@ class Win:
         :type color: str
         """
         terms = iter(self.terms)
-        counts = iter(self.terms)
         if rev:
             terms = reversed(self.terms)
-            counts = reversed(self.terms)
 
         self.lexer.word = highlight_word
         self.lexer.color = color
         self.lexer.whole_line = whole_line
-        self.text = '\n'.join([w.string for w in terms])
-        if self.count is not None:
-            self.count.text = '\n'.join([str(w.count) for w in counts])
-            pass
+        text = []
+        attr = []
+        for w in terms:
+            text.append(w.string)
+            if self.attr_name == 'count':
+                attr.append(w.count)
+            else:
+                attr.append(w.label.label_name)
+
+        self.text = '\n'.join(text)
+        if self.attr is not None:
+            self.attr.text = '\n'.join(attr)
 
 
 class StrWin:
@@ -346,7 +364,6 @@ class Gui:
         :param review: label to review
         :type review: Label
         """
-        windows = dict()
         win_classes = [Label.KEYWORD, Label.RELEVANT, Label.NOISE,
                        Label.NOT_RELEVANT, Label.POSTPONED]
         for i, cls in enumerate(win_classes):
