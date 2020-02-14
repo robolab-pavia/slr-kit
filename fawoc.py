@@ -32,6 +32,16 @@ class TermLexer(Lexer):
         self._color = 'ffffff'
         self._inv = 0
         self._whole_line = False
+        self._show_header = False
+
+    @property
+    def show_header(self) -> bool:
+        return self._show_header
+
+    @show_header.setter
+    def show_header(self, show_header: bool):
+        self._show_header = show_header
+        self._handle_inv()
 
     @property
     def word(self) -> str:
@@ -40,7 +50,7 @@ class TermLexer(Lexer):
     @word.setter
     def word(self, word: str):
         self._word = word
-        self._inv += 1
+        self._handle_inv()
 
     @property
     def color(self) -> str:
@@ -49,7 +59,13 @@ class TermLexer(Lexer):
     @color.setter
     def color(self, color: str):
         self._color = color
+        self._handle_inv()
+
+    def _handle_inv(self):
         self._inv += 1
+        # avoid overflow problems
+        if self._inv > 10 * 1000 * 1000:
+            self._inv = 0
 
     @property
     def whole_line(self) -> bool:
@@ -70,8 +86,12 @@ class TermLexer(Lexer):
 
     def lex_document(self, document):
         lines = []
-        for line in document.lines:
+        for i, line in enumerate(document.lines):
             fmt = []
+            if i == 0 and self.show_header:
+                lines.append([('underline', line)])
+                continue
+
             prev = 0
             if self.whole_line:
                 if line == self.word:
@@ -98,8 +118,6 @@ class Win:
     """
     Window that shows terms
 
-    :type x: int
-    :type y: int
     :type label: Label or None
     :type title: str
     :type show_title: bool
@@ -113,8 +131,8 @@ class Win:
     :type attr: FormattedTextControl or None
     """
 
-    def __init__(self, label, title='', rows=3, cols=30, y=0, x=0,
-                 show_title=False, show_count=False, show_label=False):
+    def __init__(self, label, title='', rows=3, cols=30, show_title=False,
+                 show_count=False, show_label=False, show_header=False):
         """
         Creates a window that shows terms
 
@@ -126,18 +144,14 @@ class Win:
         :type rows: int
         :param cols: number of columns
         :type cols: int
-        :param y: y coordinate
-        :type y: int
-        :param x: x coordinate
-        :type x: int
         :param show_title: if True the window shows its title. Default: False
         :type show_title: bool
+        :param show_header: if the header must be shown
+        :type show_header: bool
         """
         if show_count and show_label:
             raise ValueError('show_count and show_label cannot be both set')
 
-        self.x = x
-        self.y = y
         self.label = label
         self.title = title
         self.show_title = show_title
@@ -178,6 +192,7 @@ class Win:
         else:
             self.attr = None
 
+        self.show_header = show_header
         self.terms = None
         self.frame = Frame(cast('Container', VSplit(split)))
         if self.show_title:
@@ -204,6 +219,20 @@ class Win:
         :type value: str
         """
         self.buffer.set_document(Document(value, 0), bypass_readonly=True)
+
+    def assign_terms(self, terms, classified=False):
+        """
+        Assigns the terms to the window
+
+        :param terms: terms to assign
+        :type terms: TermList
+        :param classified: if True, only the classified terms are assigned
+        :type classified: bool
+        """
+        if classified:
+            self.terms = terms.get_classified().items
+        else:
+            self.terms = terms.get_not_classified().items
 
     def assign_lines(self, terms):
         """
@@ -236,31 +265,35 @@ class Win:
         self.lexer.word = highlight_word
         self.lexer.color = color
         self.lexer.whole_line = whole_line
-        text = []
-        attr = []
+        self.lexer.show_header = self.show_header
+        if self.show_header:
+            text = ['Term']
+            attr = [('underline', f'{self.attr_name.title()}\n')]
+        else:
+            text = []
+            attr = []
+
         for w in terms:
             text.append(w.string)
             if self.attr_name == 'count':
-                attr.append(w.count)
+                attr.append(('', f'{w.count}\n'))
             else:
-                attr.append(w.label.label_name)
+                attr.append(('', f'{w.label.label_name}\n'))
 
         self.text = '\n'.join(text)
         if self.attr is not None:
-            self.attr.text = '\n'.join(attr)
+            self.attr.text = attr
 
 
 class StrWin:
     """
     Window that shows strings
 
-    :type x: int
-    :type y: int
     :type height: Dimension
     :type width: Dimension
     """
 
-    def __init__(self, rows=3, cols=30, y=0, x=0):
+    def __init__(self, rows=3, cols=30):
         """
         Creates a window that shows strings
 
@@ -268,13 +301,7 @@ class StrWin:
         :type rows: int
         :param cols: number of columns
         :type cols: int
-        :param y: y coordinate
-        :type y: int
-        :param x: x coordinate
-        :type x: int
         """
-        self.x = x
-        self.y = y
         self.height = Dimension(preferred=rows, max=rows)
         self.width = Dimension(preferred=cols, max=cols)
         self.textarea = TextArea(height=self.height, width=self.width,
@@ -317,6 +344,13 @@ class StrWin:
 
 
 class Gui:
+    """
+    :type _word_win: Win or None
+    :type _stats_win: StrWin or None
+    :type _class_win: Win or None
+    :type _post_win: Win or None
+    """
+
     def __init__(self, width, term_rows, rows, review):
         """
         The Gui of the application
@@ -330,14 +364,18 @@ class Gui:
         :param review: label to review
         :type review: Label
         """
-        self._windows = dict()
+        self._class_win = None
+        self._post_win = None
         self._word_win = None
         self._stats_win = None
         self._create_windows(width, term_rows, rows, review)
         self._review = review
         self._body = VSplit(
             [
-                HSplit([cast('Container', w) for w in self._windows.values()]),
+                HSplit([
+                    cast('Container', self._class_win),
+                    cast('Container', self._post_win),
+                ]),
                 HSplit([
                     cast('Container', self._stats_win),
                     cast('Container', self._word_win)
@@ -364,14 +402,14 @@ class Gui:
         :param review: label to review
         :type review: Label
         """
-        win_classes = [Label.KEYWORD, Label.RELEVANT, Label.NOISE,
-                       Label.NOT_RELEVANT, Label.POSTPONED]
-        for i, cls in enumerate(win_classes):
-            title = cls.label_name.capitalize()
-            self._windows[cls.label_name] = Win(cls, title=title,
-                                                rows=rows, cols=win_width,
-                                                y=(rows + 2) * i, x=0,
-                                                show_title=True)
+        self._class_win = Win(Label.NONE, title='Classified terms',
+                              rows=term_rows, cols=win_width,
+                              show_title=True, show_label=True,
+                              show_header=True)
+        title = Label.POSTPONED.label_name.capitalize()
+        self._post_win = Win(Label.POSTPONED, title=title, rows=rows,
+                             cols=win_width,
+                             show_title=True)
 
         title = 'Input label: {}'
         if review == Label.NONE:
@@ -380,10 +418,9 @@ class Gui:
             title = title.format(review.label_name.capitalize())
 
         self._word_win = Win(Label.NONE, title=title, rows=term_rows,
-                             cols=win_width, y=10, x=win_width + 2,
-                             show_title=True, show_count=True)
-        self._stats_win = StrWin(rows=8, cols=win_width, y=0,
-                                 x=win_width + 2)
+                             cols=win_width, show_title=True, show_count=True,
+                             show_header=True)
+        self._stats_win = StrWin(rows=rows, cols=win_width)
 
     def refresh_label_windows(self, term_to_highlight, label):
         """
@@ -394,21 +431,24 @@ class Gui:
         :param label: label of the window that has to highlight the term
         :type label: Label
         """
-        for key, win in self._windows.items():
-            if key == label.label_name:
-                win.display_lines(rev=True,
-                                  highlight_word=term_to_highlight,
-                                  whole_line=True,
-                                  color='ffff00')
-            else:
-                win.display_lines(rev=True)
+        if label == Label.POSTPONED:
+            self._post_win.display_lines(rev=True,
+                                         highlight_word=term_to_highlight,
+                                         whole_line=True, color='ffff00')
+            self._class_win.display_lines(rev=True)
+        else:
+            self._class_win.display_lines(rev=True,
+                                          highlight_word=term_to_highlight,
+                                          whole_line=True,
+                                          color='ffff00')
+            self._post_win.display_lines(rev=True)
 
     def set_stats(self, terms, related_count):
         stats = get_stats_strings(terms, related_count)
         self._stats_win.text = '\n'.join(stats)
 
     def set_terms(self, to_classify: TermList, sort_key):
-        self._word_win.assign_lines(to_classify.items)
+        self._word_win.assign_terms(to_classify)
         self._word_win.display_lines(rev=False, highlight_word=sort_key)
 
     def update_windows(self, terms, to_classify, term_to_highlight,
@@ -428,10 +468,11 @@ class Gui:
         :type sort_word_key: str
         """
         self.set_terms(to_classify, sort_word_key)
-
-        for win in self._windows:
-            cls = terms.get_from_label(Label.get_from_name(win))
-            self._windows[win].assign_lines(cls.items)
+        label = Label.POSTPONED
+        post = terms.get_from_label(label)
+        self._post_win.assign_terms(post, classified=True)
+        classified = terms.get_classified() - post
+        self._class_win.assign_terms(classified, classified=True)
 
         if term_to_highlight is not None:
             self.refresh_label_windows(term_to_highlight.string,
@@ -450,14 +491,15 @@ class Gui:
         :param review: the label to review
         :type review: Label
         """
-        for win in self._windows:
-            if win == review.label_name:
-                # in review mode we must add to the window associated with the label
-                # review only the items in confirmed (if any)
-                conf_word = terms.get_from_label(review, order_set=True)
-                self._windows[win].assign_lines(conf_word.items)
-            else:
-                self._windows[win].assign_lines(terms.items)
+        if review == Label.POSTPONED:
+            # reviewing the postponed label: we must take only the confirmed
+            # postponed items
+            post = terms.get_from_label(review, order_set=True)
+        else:
+            post = terms.get_from_label(Label.POSTPONED)
+
+        self._post_win.assign_terms(post, classified=True)
+        self._class_win.assign_terms(terms - post, classified=True)
 
 
 class Fawoc:
@@ -501,7 +543,7 @@ class Fawoc:
                 if k.islower():
                     other = k.upper()
                 else:
-                    other = k.upper()
+                    other = k.lower()
 
                 self.keybindings.add(other)(handler)
 
@@ -720,7 +762,7 @@ def get_stats_strings(terms, related_items_count=0):
 
 
 def classify_kb(event: KeyPressEvent, fawoc: Fawoc):
-    label = Label.get_from_key(event.data)
+    label = Label.get_from_key(event.data.lower())
     fawoc.do_classify(label)
 
 
