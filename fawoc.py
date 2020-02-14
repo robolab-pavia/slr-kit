@@ -205,6 +205,20 @@ class Win:
         """
         self.buffer.set_document(Document(value, 0), bypass_readonly=True)
 
+    def assign_terms(self, terms, classified=False):
+        """
+        Assigns the terms to the window
+
+        :param terms: terms to assign
+        :type terms: TermList
+        :param classified: if True, only the classified terms are assigned
+        :type classified: bool
+        """
+        if classified:
+            self.terms = terms.get_classified().items
+        else:
+            self.terms = terms.get_not_classified().items
+
     def assign_lines(self, terms):
         """
         Assign the terms in terms with the same label as the window
