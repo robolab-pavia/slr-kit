@@ -32,6 +32,16 @@ class TermLexer(Lexer):
         self._color = 'ffffff'
         self._inv = 0
         self._whole_line = False
+        self._show_header = False
+
+    @property
+    def show_header(self) -> bool:
+        return self._show_header
+
+    @show_header.setter
+    def show_header(self, show_header: bool):
+        self._show_header = show_header
+        self._handle_inv()
 
     @property
     def word(self) -> str:
@@ -40,7 +50,7 @@ class TermLexer(Lexer):
     @word.setter
     def word(self, word: str):
         self._word = word
-        self._inv += 1
+        self._handle_inv()
 
     @property
     def color(self) -> str:
@@ -49,7 +59,13 @@ class TermLexer(Lexer):
     @color.setter
     def color(self, color: str):
         self._color = color
+        self._handle_inv()
+
+    def _handle_inv(self):
         self._inv += 1
+        # avoid overflow problems
+        if self._inv > 10 * 1000 * 1000:
+            self._inv = 0
 
     @property
     def whole_line(self) -> bool:
@@ -70,8 +86,12 @@ class TermLexer(Lexer):
 
     def lex_document(self, document):
         lines = []
-        for line in document.lines:
+        for i, line in enumerate(document.lines):
             fmt = []
+            if i == 0 and self.show_header:
+                lines.append([('underline', line)])
+                continue
+
             prev = 0
             if self.whole_line:
                 if line == self.word:
@@ -112,7 +132,7 @@ class Win:
     """
 
     def __init__(self, label, title='', rows=3, cols=30, show_title=False,
-                 show_count=False, show_label=False):
+                 show_count=False, show_label=False, show_header=False):
         """
         Creates a window that shows terms
 
@@ -126,6 +146,8 @@ class Win:
         :type cols: int
         :param show_title: if True the window shows its title. Default: False
         :type show_title: bool
+        :param show_header: if the header must be shown
+        :type show_header: bool
         """
         if show_count and show_label:
             raise ValueError('show_count and show_label cannot be both set')
@@ -170,6 +192,7 @@ class Win:
         else:
             self.attr = None
 
+        self.show_header = show_header
         self.terms = None
         self.frame = Frame(cast('Container', VSplit(split)))
         if self.show_title:
@@ -242,18 +265,24 @@ class Win:
         self.lexer.word = highlight_word
         self.lexer.color = color
         self.lexer.whole_line = whole_line
-        text = []
-        attr = []
+        self.lexer.show_header = self.show_header
+        if self.show_header:
+            text = ['Term']
+            attr = [('underline', f'{self.attr_name.title()}\n')]
+        else:
+            text = []
+            attr = []
+
         for w in terms:
             text.append(w.string)
             if self.attr_name == 'count':
-                attr.append(w.count)
+                attr.append(('', f'{w.count}\n'))
             else:
-                attr.append(w.label.label_name)
+                attr.append(('', f'{w.label.label_name}\n'))
 
         self.text = '\n'.join(text)
         if self.attr is not None:
-            self.attr.text = '\n'.join(attr)
+            self.attr.text = attr
 
 
 class StrWin:
@@ -375,7 +404,8 @@ class Gui:
         """
         self._class_win = Win(Label.NONE, title='Classified terms',
                               rows=term_rows, cols=win_width,
-                              show_title=True, show_label=True)
+                              show_title=True, show_label=True,
+                              show_header=True)
         title = Label.POSTPONED.label_name.capitalize()
         self._post_win = Win(Label.POSTPONED, title=title, rows=rows,
                              cols=win_width,
@@ -388,7 +418,8 @@ class Gui:
             title = title.format(review.label_name.capitalize())
 
         self._word_win = Win(Label.NONE, title=title, rows=term_rows,
-                             cols=win_width, show_title=True, show_count=True)
+                             cols=win_width, show_title=True, show_count=True,
+                             show_header=True)
         self._stats_win = StrWin(rows=rows, cols=win_width)
 
     def refresh_label_windows(self, term_to_highlight, label):
