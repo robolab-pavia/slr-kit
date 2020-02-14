@@ -543,7 +543,7 @@ class Fawoc:
                 if k.islower():
                     other = k.upper()
                 else:
-                    other = k.upper()
+                    other = k.lower()
 
                 self.keybindings.add(other)(handler)
 
@@ -762,7 +762,7 @@ def get_stats_strings(terms, related_items_count=0):
 
 
 def classify_kb(event: KeyPressEvent, fawoc: Fawoc):
-    label = Label.get_from_key(event.data)
+    label = Label.get_from_key(event.data.lower())
     fawoc.do_classify(label)
 
 
