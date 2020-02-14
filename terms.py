@@ -97,7 +97,7 @@ class Term:
         return self.label != Label.NONE
 
 
-class TermList(object):
+class TermList:
     """
     :type items: list[Term] or None
     :type csv_header: list[str] or None
@@ -133,6 +133,23 @@ class TermList(object):
         items = []
         items.extend(self.items)
         items.extend(other.items)
+        return TermList(items)
+
+    def __sub__(self, other):
+        """
+        Gives a new TermList with the terms of self that are not in other
+
+        If other is not a TermList this method returns NotImplemented
+
+        :param other: the other TermList
+        :type other: TermList
+        :return: the new TermList or NotImplemented
+        :rtype: TermList or NotImplementedType
+        """
+        if not isinstance(other, TermList):
+            return NotImplemented
+
+        items = [w for w in self.items if w not in other.items]
         return TermList(items)
 
     def get_strings(self):
