@@ -331,6 +331,13 @@ class StrWin:
 
 
 class Gui:
+    """
+    :type _word_win: Win or None
+    :type _stats_win: StrWin or None
+    :type _class_win: Win or None
+    :type _post_win: Win or None
+    """
+
     def __init__(self, width, term_rows, rows, review):
         """
         The Gui of the application
@@ -344,14 +351,18 @@ class Gui:
         :param review: label to review
         :type review: Label
         """
-        self._windows = dict()
+        self._class_win = None
+        self._post_win = None
         self._word_win = None
         self._stats_win = None
         self._create_windows(width, term_rows, rows, review)
         self._review = review
         self._body = VSplit(
             [
-                HSplit([cast('Container', w) for w in self._windows.values()]),
+                HSplit([
+                    cast('Container', self._class_win),
+                    cast('Container', self._post_win),
+                ]),
                 HSplit([
                     cast('Container', self._stats_win),
                     cast('Container', self._word_win)
@@ -378,14 +389,13 @@ class Gui:
         :param review: label to review
         :type review: Label
         """
-        win_classes = [Label.KEYWORD, Label.RELEVANT, Label.NOISE,
-                       Label.NOT_RELEVANT, Label.POSTPONED]
-        for i, cls in enumerate(win_classes):
-            title = cls.label_name.capitalize()
-            self._windows[cls.label_name] = Win(cls, title=title,
-                                                rows=rows, cols=win_width,
-                                                y=(rows + 2) * i, x=0,
-                                                show_title=True)
+        self._class_win = Win(Label.NONE, title='Classified terms',
+                              rows=term_rows, cols=win_width,
+                              show_title=True, show_label=True)
+        title = Label.POSTPONED.label_name.capitalize()
+        self._post_win = Win(Label.POSTPONED, title=title, rows=rows,
+                             cols=win_width,
+                             show_title=True)
 
         title = 'Input label: {}'
         if review == Label.NONE:
@@ -394,10 +404,8 @@ class Gui:
             title = title.format(review.label_name.capitalize())
 
         self._word_win = Win(Label.NONE, title=title, rows=term_rows,
-                             cols=win_width, y=10, x=win_width + 2,
-                             show_title=True, show_count=True)
-        self._stats_win = StrWin(rows=8, cols=win_width, y=0,
-                                 x=win_width + 2)
+                             cols=win_width, show_title=True, show_count=True)
+        self._stats_win = StrWin(rows=rows, cols=win_width)
 
     def refresh_label_windows(self, term_to_highlight, label):
         """
@@ -408,21 +416,24 @@ class Gui:
         :param label: label of the window that has to highlight the term
         :type label: Label
         """
-        for key, win in self._windows.items():
-            if key == label.label_name:
-                win.display_lines(rev=True,
-                                  highlight_word=term_to_highlight,
-                                  whole_line=True,
-                                  color='ffff00')
-            else:
-                win.display_lines(rev=True)
+        if label == Label.POSTPONED:
+            self._post_win.display_lines(rev=True,
+                                         highlight_word=term_to_highlight,
+                                         whole_line=True, color='ffff00')
+            self._class_win.display_lines(rev=True)
+        else:
+            self._class_win.display_lines(rev=True,
+                                          highlight_word=term_to_highlight,
+                                          whole_line=True,
+                                          color='ffff00')
+            self._post_win.display_lines(rev=True)
 
     def set_stats(self, terms, related_count):
         stats = get_stats_strings(terms, related_count)
         self._stats_win.text = '\n'.join(stats)
 
     def set_terms(self, to_classify: TermList, sort_key):
-        self._word_win.assign_lines(to_classify.items)
+        self._word_win.assign_terms(to_classify)
         self._word_win.display_lines(rev=False, highlight_word=sort_key)
 
     def update_windows(self, terms, to_classify, term_to_highlight,
@@ -442,10 +453,11 @@ class Gui:
         :type sort_word_key: str
         """
         self.set_terms(to_classify, sort_word_key)
-
-        for win in self._windows:
-            cls = terms.get_from_label(Label.get_from_name(win))
-            self._windows[win].assign_lines(cls.items)
+        label = Label.POSTPONED
+        post = terms.get_from_label(label)
+        self._post_win.assign_terms(post, classified=True)
+        classified = terms.get_classified() - post
+        self._class_win.assign_terms(classified, classified=True)
 
         if term_to_highlight is not None:
             self.refresh_label_windows(term_to_highlight.string,
@@ -464,14 +476,15 @@ class Gui:
         :param review: the label to review
         :type review: Label
         """
-        for win in self._windows:
-            if win == review.label_name:
-                # in review mode we must add to the window associated with the label
-                # review only the items in confirmed (if any)
-                conf_word = terms.get_from_label(review, order_set=True)
-                self._windows[win].assign_lines(conf_word.items)
-            else:
-                self._windows[win].assign_lines(terms.items)
+        if review == Label.POSTPONED:
+            # reviewing the postponed label: we must take only the confirmed
+            # postponed items
+            post = terms.get_from_label(review, order_set=True)
+        else:
+            post = terms.get_from_label(Label.POSTPONED)
+
+        self._post_win.assign_terms(post, classified=True)
+        self._class_win.assign_terms(terms - post, classified=True)
 
 
 class Fawoc:
