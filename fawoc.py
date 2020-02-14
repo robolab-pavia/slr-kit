@@ -98,8 +98,6 @@ class Win:
     """
     Window that shows terms
 
-    :type x: int
-    :type y: int
     :type label: Label or None
     :type title: str
     :type show_title: bool
@@ -113,8 +111,8 @@ class Win:
     :type attr: FormattedTextControl or None
     """
 
-    def __init__(self, label, title='', rows=3, cols=30, y=0, x=0,
-                 show_title=False, show_count=False, show_label=False):
+    def __init__(self, label, title='', rows=3, cols=30, show_title=False,
+                 show_count=False, show_label=False):
         """
         Creates a window that shows terms
 
@@ -126,18 +124,12 @@ class Win:
         :type rows: int
         :param cols: number of columns
         :type cols: int
-        :param y: y coordinate
-        :type y: int
-        :param x: x coordinate
-        :type x: int
         :param show_title: if True the window shows its title. Default: False
         :type show_title: bool
         """
         if show_count and show_label:
             raise ValueError('show_count and show_label cannot be both set')
 
-        self.x = x
-        self.y = y
         self.label = label
         self.title = title
         self.show_title = show_title
@@ -268,13 +260,11 @@ class StrWin:
     """
     Window that shows strings
 
-    :type x: int
-    :type y: int
     :type height: Dimension
     :type width: Dimension
     """
 
-    def __init__(self, rows=3, cols=30, y=0, x=0):
+    def __init__(self, rows=3, cols=30):
         """
         Creates a window that shows strings
 
@@ -282,13 +272,7 @@ class StrWin:
         :type rows: int
         :param cols: number of columns
         :type cols: int
-        :param y: y coordinate
-        :type y: int
-        :param x: x coordinate
-        :type x: int
         """
-        self.x = x
-        self.y = y
         self.height = Dimension(preferred=rows, max=rows)
         self.width = Dimension(preferred=cols, max=cols)
         self.textarea = TextArea(height=self.height, width=self.width,
