@@ -3,5 +3,5 @@ numpy
 pandas
 prompt-toolkit
 RISparser
-sklearn
+scikit-learn
 regex
