@@ -467,8 +467,8 @@ class Gui:
         stats = get_stats_strings(terms, related_count)
         self._stats_win.text = '\n'.join(stats)
 
-    def set_terms(self, to_classify: TermList, sort_key):
-        self._word_win.assign_terms(to_classify)
+    def set_terms(self, to_classify: TermList, sort_key, classified=False):
+        self._word_win.assign_terms(to_classify, classified=classified)
         self._word_win.display_lines(rev=False, highlight_word=sort_key)
 
     def update_windows(self, terms, to_classify, term_to_highlight,
@@ -487,11 +487,20 @@ class Gui:
         :param sort_word_key: words used for the related item highlighting
         :type sort_word_key: str
         """
-        self.set_terms(to_classify, sort_word_key)
+        review = self._review != Label.NONE
+        self.set_terms(to_classify, sort_word_key,
+                       classified=review)
         label = Label.POSTPONED
         post = terms.get_from_label(label)
         self._post_win.assign_terms(post, classified=True)
         classified = terms.get_classified() - post
+        if review:
+            # TODO: if we want all the labeled terms we must un-comment the following
+            # to_rem = classified.get_from_label(self._review, order_set=False)
+            # classified = classified - to_rem
+            # TODO: if we want all the labeled terms we must delete the following
+            classified = classified.get_from_label(self._review, order_set=True)
+
         self._class_win.assign_terms(classified, classified=True)
 
         if term_to_highlight is not None:
@@ -519,7 +528,16 @@ class Gui:
             post = terms.get_from_label(Label.POSTPONED)
 
         self._post_win.assign_terms(post, classified=True)
-        self._class_win.assign_terms(terms - post, classified=True)
+
+        if review == Label.NONE:
+            self._class_win.assign_terms(terms - post, classified=True)
+        else:
+            # we must add only the classified term not postponed that are
+            # confirmed
+            t = terms - post
+            # TODO: if we want all the labeled terms we must change the following
+            conf = t.get_from_label(review, order_set=True)
+            self._class_win.assign_terms(conf, classified=True)
 
 
 class Fawoc:
@@ -847,7 +865,7 @@ def fawoc_main(terms, args, review, last_reviews, logger=None, profiler=None):
         sort_word_key = ''
         if review != Label.NONE:
             # review mode
-            to_classify = terms.get_from_label(review, order_set=True)
+            to_classify = terms.get_from_label(review, order_set=False)
             to_classify.remove(confirmed)
         else:
             to_classify = terms.get_not_classified()
@@ -862,7 +880,7 @@ def fawoc_main(terms, args, review, last_reviews, logger=None, profiler=None):
         related_items_count = len(containing)
         to_classify = containing + not_containing
 
-    gui.set_terms(to_classify, sort_word_key)
+    gui.set_terms(to_classify, sort_word_key, classified=review != Label.NONE)
     gui.set_stats(terms, related_items_count)
     classifing_keys = [Label.KEYWORD.key,
                        Label.NOT_RELEVANT.key,
