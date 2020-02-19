@@ -33,6 +33,16 @@ class TermLexer(Lexer):
         self._inv = 0
         self._whole_line = False
         self._show_header = False
+        self._highlight_first = False
+
+    @property
+    def highlight_first(self) -> bool:
+        return self._highlight_first
+
+    @highlight_first.setter
+    def highlight_first(self, highlight_first: bool):
+        self._highlight_first = highlight_first
+        self._handle_inv()
 
     @property
     def show_header(self) -> bool:
@@ -92,6 +102,10 @@ class TermLexer(Lexer):
                 lines.append([('underline', line)])
                 continue
 
+            fmt_first = ''
+            if i == 1 and self._highlight_first:
+                fmt_first = 'underline'
+
             prev = 0
             if self.whole_line:
                 if line == self.word:
@@ -101,13 +115,14 @@ class TermLexer(Lexer):
             else:
                 for begin, end in substring_index(line, self.word):
                     if begin > prev:
-                        fmt.append(('', line[prev:begin]))
+                        fmt.append((f'{fmt_first}', line[prev:begin]))
 
-                    fmt.append((f'#{self.color} bold', line[begin:end]))
+                    fmt.append((f'#{self.color} bold {fmt_first}',
+                                line[begin:end]))
                     prev = end
 
                 if prev < len(line) - 1:
-                    fmt.append(('', line[prev:]))
+                    fmt.append((f'{fmt_first}', line[prev:]))
 
             lines.append(fmt)
 
@@ -132,7 +147,8 @@ class Win:
     """
 
     def __init__(self, label, title='', rows=3, cols=30, show_title=False,
-                 show_count=False, show_label=False, show_header=False):
+                 show_count=False, show_label=False, show_header=False,
+                 highlight_first=False):
         """
         Creates a window that shows terms
 
@@ -148,7 +164,10 @@ class Win:
         :type show_title: bool
         :param show_header: if the header must be shown
         :type show_header: bool
+        :param highlight_first: if true the first word is highlighted
+        :type highlight_first: bool
         """
+        self.highlight_first = highlight_first
         if show_count and show_label:
             raise ValueError('show_count and show_label cannot be both set')
 
@@ -266,6 +285,7 @@ class Win:
         self.lexer.color = color
         self.lexer.whole_line = whole_line
         self.lexer.show_header = self.show_header
+        self.lexer.highlight_first = self.highlight_first
         if self.show_header:
             text = ['Term']
             attr = [('underline', f'{self.attr_name.title()}\n')]
@@ -419,7 +439,7 @@ class Gui:
 
         self._word_win = Win(Label.NONE, title=title, rows=term_rows,
                              cols=win_width, show_title=True, show_count=True,
-                             show_header=True)
+                             show_header=True, highlight_first=True)
         self._stats_win = StrWin(rows=rows, cols=win_width)
 
     def refresh_label_windows(self, term_to_highlight, label):
