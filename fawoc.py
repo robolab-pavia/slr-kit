@@ -300,6 +300,9 @@ class Win:
             else:
                 attr.append(('', f'{w.label.label_name}\n'))
 
+            if len(text) >= self.height.max:
+                break
+
         self.text = '\n'.join(text)
         if self.attr is not None:
             self.attr.text = attr
