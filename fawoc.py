@@ -494,15 +494,17 @@ class Gui:
         self.set_terms(to_classify, sort_word_key,
                        classified=review)
         label = Label.POSTPONED
-        post = terms.get_from_label(label)
+        if review:
+            post = terms.get_from_label(label, order_set=True)
+        else:
+            post = terms.get_from_label(label)
+
         self._post_win.assign_terms(post, classified=True)
         classified = terms.get_classified() - post
         if review:
-            # TODO: if we want all the labeled terms we must un-comment the following
-            # to_rem = classified.get_from_label(self._review, order_set=False)
-            # classified = classified - to_rem
-            # TODO: if we want all the labeled terms we must delete the following
-            classified = classified.get_from_label(self._review, order_set=True)
+            to_rem = classified.get_from_label(self._review, order_set=False)
+            classified = classified - to_rem
+            classified = TermList([w for w in classified.items if w.order >= 0])
 
         self._class_win.assign_terms(classified, classified=True)
 
@@ -523,24 +525,20 @@ class Gui:
         :param review: the label to review
         :type review: Label
         """
-        if review == Label.POSTPONED:
-            # reviewing the postponed label: we must take only the confirmed
-            # postponed items
-            post = terms.get_from_label(review, order_set=True)
-        else:
-            post = terms.get_from_label(Label.POSTPONED)
-
-        self._post_win.assign_terms(post, classified=True)
-
         if review == Label.NONE:
+            post = terms.get_from_label(Label.POSTPONED)
             self._class_win.assign_terms(terms - post, classified=True)
         else:
-            # we must add only the classified term not postponed that are
-            # confirmed
-            t = terms - post
-            # TODO: if we want all the labeled terms we must change the following
-            conf = t.get_from_label(review, order_set=True)
+            # We must take only the postponed items with the order set (the ones
+            # re-classified)
+            post = terms.get_from_label(Label.POSTPONED, order_set=True)
+            # we must add only the classified term not postponed that have
+            # the order set (the ones that are re-classified)
+            t = terms.get_classified() - terms.get_from_label(Label.POSTPONED)
+            conf = TermList([w for w in t.items if w.order >= 0])
             self._class_win.assign_terms(conf, classified=True)
+
+        self._post_win.assign_terms(post, classified=True)
 
 
 class Fawoc:
