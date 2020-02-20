@@ -276,7 +276,7 @@ class TermList:
         :return: the tsv header and the list of terms read by the file
         :rtype: (list[str], list[Term])
         """
-        with open(infile, newline='') as csv_file:
+        with open(infile, newline='', encoding='utf-8') as csv_file:
             csv_reader = csv.DictReader(csv_file, delimiter='\t')
             header = csv_reader.fieldnames
             items = []
@@ -334,6 +334,7 @@ class TermList:
         path = str(Path(outfile).resolve().parent)
         with tempfile.NamedTemporaryFile('w', dir=path,
                                          prefix='.fawoc.temp.',
+                                         encoding='utf-8',
                                          delete=False) as out:
             writer = csv.DictWriter(out, fieldnames=self.csv_header,
                                     delimiter='\t', quotechar='"',

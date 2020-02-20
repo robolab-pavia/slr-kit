@@ -78,7 +78,7 @@ class WordList(object):
         self.csv_header = None
 
     def from_csv(self, infile):
-        with open(infile, newline='') as csv_file:
+        with open(infile, newline='', encoding='utf-8') as csv_file:
             csv_reader = csv.DictReader(csv_file, delimiter=',')
             header = csv_reader.fieldnames
             items = []
@@ -113,7 +113,7 @@ class WordList(object):
         return header, items
 
     def to_csv(self, outfile):
-        with open(outfile, mode='w') as out:
+        with open(outfile, mode='w', encoding='utf-8') as out:
             writer = csv.DictWriter(out, fieldnames=self.csv_header,
                                     delimiter=',', quotechar='"',
                                     quoting=csv.QUOTE_MINIMAL)
