@@ -34,11 +34,13 @@ def main():
                                 level=logging.DEBUG)
 
     # na_filter=False avoids NaN if the abstract is missing
-    dataset = pandas.read_csv(args.datafile, delimiter='\t', na_filter=False)
+    dataset = pandas.read_csv(args.datafile, delimiter='\t', na_filter=False,
+                              encoding='utf-8')
     acrodf = extract_acronyms(dataset)
     acrodf = acrodf.sort_values(by=['Acronym'])
     #print(acrodf)
-    output_file = open(args.output, 'w') if args.output is not None else sys.stdout
+    output_file = open(args.output, 'w',
+                       encoding='utf-8') if args.output is not None else sys.stdout
     export_csv = acrodf.to_csv(output_file, index=None, header=True, sep='\t')
 
 

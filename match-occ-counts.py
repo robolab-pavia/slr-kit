@@ -26,9 +26,11 @@ def main():
 
     # load the dataset
     # TODO: read the input files from command line
-    keywords = pandas.read_csv('occ-keyword-count.csv', delimiter='\t')
+    keywords = pandas.read_csv('occ-keyword-count.csv', delimiter='\t',
+                               encoding='utf-8')
     keywords.fillna('', inplace=True)
-    nrelevant = pandas.read_csv('occ-not-relevant-count.csv', delimiter='\t')
+    nrelevant = pandas.read_csv('occ-not-relevant-count.csv', delimiter='\t',
+                                encoding='utf-8')
     nrelevant.fillna('', inplace=True)
 
     # convert the dataframe into a Series indexed by Abstract

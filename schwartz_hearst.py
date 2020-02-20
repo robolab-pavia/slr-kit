@@ -31,7 +31,7 @@ class Candidate(str):
 
 
 def yield_lines_from_file(file_path):
-    with open(file_path, 'rb') as f:
+    with open(file_path, 'rb', encoding='utf-8') as f:
         for line in f:
             try:
                 line = line.decode('utf-8')

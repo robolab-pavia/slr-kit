@@ -26,9 +26,10 @@ def main():
     parser = init_argparser()
     args = parser.parse_args()
 
-    output_file = open(args.output, 'w') if args.output is not None else sys.stdout
+    output_file = open(args.output, 'w',
+                       encoding='utf-8') if args.output is not None else sys.stdout
 
-    with open(args.input_file, 'r') as bibliography_file:
+    with open(args.input_file, 'r', encoding='utf-8') as bibliography_file:
         entries = readris(bibliography_file)
         risdf = pd.DataFrame(entries)
 

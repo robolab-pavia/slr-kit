@@ -30,7 +30,8 @@ def init_argparser():
 
 
 def save_to_file_or_stdout(filename, df):
-    output_file = open(filename, 'w') if filename is not None else sys.stdout
+    output_file = open(filename, 'w',
+                       encoding='utf-8') if filename is not None else sys.stdout
     export_csv = df.to_csv(output_file, header=True, sep='\t', index=False)
     output_file.close()
 

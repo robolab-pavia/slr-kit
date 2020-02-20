@@ -19,7 +19,7 @@ def load_df(filename, required_columns=None):
     :rtype: pd.DataFrame
     """
     import pandas as pd
-    input_df = pd.read_csv(filename, delimiter='\t')
+    input_df = pd.read_csv(filename, delimiter='\t', encoding='utf-8')
     input_df.fillna('', inplace=True)
     for col_name in required_columns:
         assert_column(filename, input_df, col_name)
@@ -37,7 +37,7 @@ def load_dtj(infile):
     :rtype: list[dict]
     """
     dtj = []
-    with open(infile) as input_file:
+    with open(infile, encoding='utf-8') as input_file:
         for line in input_file:
             dtj.append(json.loads(line))
 

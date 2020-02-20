@@ -38,7 +38,7 @@ def init_argparser():
 
 def load_stop_words(input_file, language='english'):
     stop_words_list = []
-    with open(input_file, "r") as f:
+    with open(input_file, "r", encoding='utf-8') as f:
         stop_words_list = f.read().split('\n')
     stop_words_list = [w for w in stop_words_list if w != '']
     stop_words_list = [w for w in stop_words_list if w[0] != '#']
@@ -89,7 +89,7 @@ def main():
     # TODO: write log string with values of the parameters used in the execution
 
     # load the dataset
-    dataset = pandas.read_csv(args.datafile, delimiter='\t')
+    dataset = pandas.read_csv(args.datafile, delimiter='\t', encoding='utf-8')
     dataset.fillna('', inplace=True)
     if target_column not in dataset:
         print('File "{}" must contain a column labelled as "{}".'.format(args.datafile, target_column))

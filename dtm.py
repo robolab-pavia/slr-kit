@@ -62,7 +62,8 @@ def main():
 
     # write to output, either a file or stdout (default)
     df = df.astype(int)
-    output_file = open(args.output, 'w') if args.output is not None else sys.stdout
+    output_file = open(args.output, 'w',
+                       encoding='utf-8') if args.output is not None else sys.stdout
     export_csv = df.to_csv(output_file, header=True, sep='\t')
     output_file.close()
 

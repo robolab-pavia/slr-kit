@@ -81,7 +81,8 @@ def main():
     terms_df = terms_df[terms_flags]
     #print(keywords)
 
-    output_file = open(args.output, 'w') if args.output is not None else sys.stdout
+    output_file = open(args.output, 'w',
+                       encoding='utf-8') if args.output is not None else sys.stdout
     find_occurrences_in_all_documents(terms_df[terms_column], abstracts_df, output_file)
     output_file.close()
 

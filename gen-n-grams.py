@@ -27,7 +27,8 @@ def init_argparser():
                         help='output file name')
     parser.add_argument('--n-grams', '-n', metavar='N', dest='n_grams', default=4,
                         help='maximum size of n-grams number')
-    parser.add_argument('--num-n-grams', '-m', metavar='N', dest='num_n_grams', default=5000,
+    parser.add_argument('--num-n-grams', '-m', metavar='N', dest='num_n_grams',
+                        default=5000,
                         help='number of n-grams items')
     return parser
 
@@ -114,7 +115,7 @@ def main():
     # TODO: write log string with values of the parameters used in the execution
 
     # load the dataset
-    dataset = pandas.read_csv(args.datafile, delimiter='\t')
+    dataset = pandas.read_csv(args.datafile, delimiter='\t', encoding='utf-8')
     dataset.fillna('', inplace=True)
     if target_column not in dataset:
         print('File "{}" must contain a column labelled as "{}".'.format(args.datafile, target_column))
@@ -143,7 +144,8 @@ def main():
 
     # write to output, either a file or stdout (default)
     # TODO: use pandas to_csv instead of explicit csv row output
-    output_file = open(args.output, 'w') if args.output is not None else sys.stdout
+    output_file = open(args.output, 'w',
+                       encoding='utf-8') if args.output is not None else sys.stdout
     writer = csv.writer(output_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
     writer.writerow(['keyword', 'count', 'label'])
     for item in all_terms:

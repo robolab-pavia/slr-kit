@@ -586,7 +586,7 @@ def prepare_df(args):
     :rtype: pd.DataFrame
     """
     df = pd.read_csv(args.datafile, sep='\t',
-                     usecols=usecols,
+                     usecols=usecols, encoding='utf-8',
                      converters={'authors': authors_convert})
     df.rename(columns={'secondary_title': 'pubblication',
                        'abstract1': 'abstract'}, inplace=True)

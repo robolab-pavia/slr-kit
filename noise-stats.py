@@ -29,7 +29,7 @@ def main():
     args = parser.parse_args()
 
     # load the dataset
-    df_terms = pd.read_csv(args.terms, delimiter='\t')
+    df_terms = pd.read_csv(args.terms, delimiter='\t', encoding='utf-8')
     df_terms.fillna('', inplace=True)
     assert_column(args.terms, df_terms, 'keyword')
     assert_column(args.terms, df_terms, 'label')
@@ -74,7 +74,8 @@ def main():
     #print(df)
 
     # write to output, either a file or stdout (default)
-    output_file = open(args.output, 'w') if args.output is not None else sys.stdout
+    output_file = open(args.output, 'w',
+                       encoding='utf-8') if args.output is not None else sys.stdout
     export_csv = sorted_df.to_csv(output_file, header=True, sep='\t')
 
 if __name__ == "__main__":
