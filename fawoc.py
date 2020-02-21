@@ -648,6 +648,8 @@ class Fawoc:
             t.order = last_order
             last_order += 1
             auto.append(t.string)
+            msg = f"WORD '{t.string}' labeled as {Label.AUTONOISE.label_name}"
+            self.profiler.info(msg)
             self.classified.items.append(t)
 
         ret = self.terms.return_related_items(self.sort_word_key,
