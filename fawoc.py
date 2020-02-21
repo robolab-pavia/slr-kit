@@ -907,6 +907,18 @@ def get_stats_strings(terms, related_items_count=0):
     return stats_strings
 
 
+def autonoise_kb(event: KeyPressEvent, fawoc: Fawoc):
+    """
+    Callback for the autonoise key
+
+    :param event: prompt_toolkit event associate to the key pressed
+    :type event: KeyPressEvent
+    :param fawoc: fawoc object
+    :type fawoc: Fawoc
+    """
+    fawoc.do_autonoise()
+
+
 def classify_kb(event: KeyPressEvent, fawoc: Fawoc):
     """
     Callback for the classifing keys
@@ -1008,6 +1020,7 @@ def fawoc_main(terms, args, review, last_reviews, logger=None, profiler=None):
                        Label.RELEVANT.key]
 
     fawoc.add_key_binding(classifing_keys, lambda e: classify_kb(e, fawoc))
+    fawoc.add_key_binding(['a'], lambda e: autonoise_kb(e, fawoc))
     fawoc.add_key_binding(['p'], lambda e: postpone_kb(e, fawoc))
     fawoc.add_key_binding(['u'], lambda e: undo_kb(e, fawoc))
     fawoc.add_key_binding(['w'], lambda e: save_kb(e, fawoc))
