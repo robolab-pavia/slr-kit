@@ -630,6 +630,44 @@ class Fawoc:
 
             self.keybindings.add(k)(handler)
 
+    def do_autonoise(self):
+        """
+        Classifies all the subsequent terms with the same num of word as autonoise
+        """
+        if self.evaluated_word is None:
+            return
+
+        n = len(self.evaluated_word.string.split())
+        auto = []
+        last_order = self.terms.get_last_classified_order() + 1
+        for t in self.to_classify.items:
+            if len(t.string.split()) != n:
+                break
+
+            t.label = Label.AUTONOISE
+            t.order = last_order
+            last_order += 1
+            auto.append(t.string)
+            self.classified.items.append(t)
+
+        ret = self.terms.return_related_items(self.sort_word_key,
+                                              label=self.review)
+        containing, not_containing = ret
+        self.related_count = len(containing)
+        if self.related_count == 0:
+            self.sort_word_key = ''
+
+        self.to_classify = containing + not_containing
+        self.last_word = self.classified.items[-1]
+        self.gui.update_windows(self.terms, self.to_classify, self.classified,
+                                self.postponed, self.last_word,
+                                self.related_count, self.sort_word_key)
+
+        if not self.args.dry_run and not self.args.no_auto_save:
+            self.save_terms()
+
+        self._get_next_word()
+
     def do_classify(self, label):
         """
         Classify the evaluated word
