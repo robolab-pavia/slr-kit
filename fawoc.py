@@ -630,6 +630,46 @@ class Fawoc:
 
             self.keybindings.add(k)(handler)
 
+    def do_autonoise(self):
+        """
+        Classifies all the subsequent terms with the same num of word as autonoise
+        """
+        if self.evaluated_word is None:
+            return
+
+        n = len(self.evaluated_word.string.split())
+        auto = []
+        last_order = self.terms.get_last_classified_order() + 1
+        for t in self.to_classify.items:
+            if len(t.string.split()) != n:
+                break
+
+            t.label = Label.AUTONOISE
+            t.order = last_order
+            last_order += 1
+            auto.append(t.string)
+            msg = f"WORD '{t.string}' labeled as {Label.AUTONOISE.label_name}"
+            self.profiler.info(msg)
+            self.classified.items.append(t)
+
+        ret = self.terms.return_related_items(self.sort_word_key,
+                                              label=self.review)
+        containing, not_containing = ret
+        self.related_count = len(containing)
+        if self.related_count == 0:
+            self.sort_word_key = ''
+
+        self.to_classify = containing + not_containing
+        self.last_word = self.classified.items[-1]
+        self.gui.update_windows(self.terms, self.to_classify, self.classified,
+                                self.postponed, self.last_word,
+                                self.related_count, self.sort_word_key)
+
+        if not self.args.dry_run and not self.args.no_auto_save:
+            self.save_terms()
+
+        self._get_next_word()
+
     def do_classify(self, label):
         """
         Classify the evaluated word
@@ -724,7 +764,32 @@ class Fawoc:
 
     def undo(self):
         """
-        Handle the undo of a term
+        Handles the undo process
+        """
+        self.last_word = self.terms.get_last_classified_term()
+        if self.last_word is None:
+            return
+
+        label = self.last_word.label
+        if label == Label.AUTONOISE:
+            for t in reversed(list(self.classified.items)):
+                if t.label == Label.AUTONOISE:
+                    self._undo_single()
+        else:
+            self._undo_single()
+
+        self.gui.update_windows(self.terms, self.to_classify, self.classified,
+                                self.postponed, self.last_word,
+                                self.related_count, self.sort_word_key)
+
+        if not self.args.dry_run and not self.args.no_auto_save:
+            self.save_terms()
+
+        self._get_next_word()
+
+    def _undo_single(self):
+        """
+        Handle the undo of a single term
         """
         self.last_word = self.terms.get_last_classified_term()
         if self.last_word is None:
@@ -769,14 +834,6 @@ class Fawoc:
 
         self.profiler.info("WORD '{}' UNDONE".format(self.last_word.string))
         self.last_word = self.terms.get_last_classified_term()
-        self.gui.update_windows(self.terms, self.to_classify, self.classified,
-                                self.postponed, self.last_word,
-                                self.related_count, self.sort_word_key)
-
-        if not self.args.dry_run and not self.args.no_auto_save:
-            self.save_terms()
-
-        self._get_next_word()
 
     def save_terms(self):
         """
@@ -867,6 +924,18 @@ def get_stats_strings(terms, related_items_count=0):
 
     stats_strings.append(s)
     return stats_strings
+
+
+def autonoise_kb(event: KeyPressEvent, fawoc: Fawoc):
+    """
+    Callback for the autonoise key
+
+    :param event: prompt_toolkit event associate to the key pressed
+    :type event: KeyPressEvent
+    :param fawoc: fawoc object
+    :type fawoc: Fawoc
+    """
+    fawoc.do_autonoise()
 
 
 def classify_kb(event: KeyPressEvent, fawoc: Fawoc):
@@ -970,6 +1039,7 @@ def fawoc_main(terms, args, review, last_reviews, logger=None, profiler=None):
                        Label.RELEVANT.key]
 
     fawoc.add_key_binding(classifing_keys, lambda e: classify_kb(e, fawoc))
+    fawoc.add_key_binding(['a'], lambda e: autonoise_kb(e, fawoc))
     fawoc.add_key_binding(['p'], lambda e: postpone_kb(e, fawoc))
     fawoc.add_key_binding(['u'], lambda e: undo_kb(e, fawoc))
     fawoc.add_key_binding(['w'], lambda e: save_kb(e, fawoc))
