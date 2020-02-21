@@ -331,7 +331,6 @@ class StrWin:
                                  read_only=True)
         self.strings = None
         self.frame = Frame(cast('Container', self.textarea))
-        # super().__init__(cast('Container', frame), left=self.x, top=self.y)
 
     def __pt_container__(self) -> Container:
         return self.frame.__pt_container__()
@@ -405,8 +404,6 @@ class Gui:
                 ])
             ]
         )
-        # self._body = FloatContainer(content=Window(),
-        #                             floats=list(self._windows.values()))
 
     @property
     def body(self):
