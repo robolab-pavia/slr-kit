@@ -21,6 +21,8 @@ def init_argparser():
 
     parser.add_argument('infile', action="store", type=str,
                         help="input CSV file with a computed distances matrix")
+    parser.add_argument('datafile', action="store", type=str,
+                        help="input CSV file documents data (id, title, abstract)")
     parser.add_argument('--clusters', '-n', metavar='N',
                         help='number of clusters to use (default n={})'.format(default_n_clusters))
     parser.add_argument('--output', '-o', metavar='FILENAME',
@@ -37,8 +39,12 @@ def main():
     dist_matrix = pd.read_csv(args.infile, delimiter='\t', index_col=0)
     dist_matrix.fillna('', inplace=True)
 
-    # TODO: allow the selection of the filename from command line
-    terms = load_df('term-list.csv', required_columns=['id', 'term'])
+    docs = load_df(args.datafile, required_columns=['id', 'title'])
+
+    # since abstract isn't available for some entries we have to filter them
+    # because they have been skipped in processing phases and are not present
+    # in the dataset used in clustering
+
 
     debug_logger.debug('[hierarchical clustering] Computing clusters')
 
@@ -81,11 +87,10 @@ def main():
     
     #'''
 
-    df = pd.DataFrame(dict(term=terms['term'], label=labels), index=terms['id'])
+    df = pd.DataFrame(dict(title=docs['title'], label=labels), index=dist_matrix.index)
 
-    # TODO: bug when using csv.writer under windows leads to extra blank lines between data
-    output_file = open(args.output, 'w', newline='') if args.output is not None else sys.stdout
-    export_csv = df.to_csv(output_file, header=True, sep='\t')
+    output_file = open(args.output, 'w', encoding='utf-8') if args.output is not None else sys.stdout
+    export_csv = df.to_csv(output_file, header=True, sep='\t', encoding='utf-8')
     output_file.close()
 
     debug_logger.debug('[hierarchical clustering] Terminated')
