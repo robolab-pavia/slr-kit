@@ -474,8 +474,8 @@ class Gui:
         self._word_win.assign_terms(to_classify, classified=classified)
         self._word_win.display_lines(rev=False, highlight_word=sort_key)
 
-    def update_windows(self, terms, to_classify, term_to_highlight,
-                       related_items_count, sort_word_key):
+    def update_windows(self, terms, to_classify, classified, postponed,
+                       term_to_highlight, related_items_count, sort_word_key):
         """
         Handle the update of all the windows
 
@@ -483,6 +483,10 @@ class Gui:
         :type terms: TermList
         :param to_classify: terms not yet classified
         :type to_classify: TermList
+        :param classified: list of classified terms
+        :type classified: TermList
+        :param postponed: list of postponed terms
+        :type postponed: TermList
         :param term_to_highlight: term to hightlight as the last classified term
         :type term_to_highlight: Term
         :param related_items_count: number of related items
@@ -493,18 +497,8 @@ class Gui:
         review = self._review != Label.NONE
         self.set_terms(to_classify, sort_word_key,
                        classified=review)
-        label = Label.POSTPONED
-        if review:
-            post = terms.get_from_label(label, order_set=True)
-        else:
-            post = terms.get_from_label(label)
 
-        self._post_win.assign_terms(post, classified=True)
-        classified = terms.get_classified() - post
-        if review:
-            to_rem = classified.get_from_label(self._review, order_set=False)
-            classified = classified - to_rem
-            classified = TermList([w for w in classified.items if w.order >= 0])
+        self._post_win.assign_terms(postponed, classified=True)
 
         self._class_win.assign_terms(classified, classified=True)
 
@@ -516,38 +510,37 @@ class Gui:
 
         self.set_stats(terms, related_items_count)
 
-    def assign_labeled_terms(self, terms, review):
+    def assign_labeled_terms(self, classified, postponed):
         """
         Assigns the labeled terms to the correct windows
 
-        :param terms: the term list
-        :type terms: TermList
-        :param review: the label to review
-        :type review: Label
+        :param classified: the list of classified term
+        :type classified: TermList
+        :param postponed: the list of postponed term
+        :type postponed: TermList
         """
-        if review == Label.NONE:
-            post = terms.get_from_label(Label.POSTPONED)
-            self._class_win.assign_terms(terms - post, classified=True)
-        else:
-            # We must take only the postponed items with the order set (the ones
-            # re-classified)
-            post = terms.get_from_label(Label.POSTPONED, order_set=True)
-            # we must add only the classified term not postponed that have
-            # the order set (the ones that are re-classified)
-            t = terms.get_classified() - terms.get_from_label(Label.POSTPONED)
-            conf = TermList([w for w in t.items if w.order >= 0])
-            self._class_win.assign_terms(conf, classified=True)
-
-        self._post_win.assign_terms(post, classified=True)
+        self._class_win.assign_terms(classified, classified=True)
+        self._post_win.assign_terms(postponed, classified=True)
 
 
 class Fawoc:
-    """
-    :type terms: TermList
-    """
+    def __init__(self, args, terms, review, gui, profiler, logger):
+        """
+        The fawoc application logic
 
-    def __init__(self, args, terms, to_classify, review, related, sort_key,
-                 last_word, gui, profiler, logger):
+        :param args: command line arguments
+        :type args: argparse.Namespace
+        :param terms: list of terms
+        :type terms: TermList
+        :param review: label to review
+        :type review: Label
+        :param gui: gui object of the application
+        :type gui: Gui
+        :param profiler: fawoc profiler
+        :type profiler: logging.Logger
+        :param logger: fawoc logger
+        :type logger: logging.Logger
+        """
         self.keybindings = KeyBindings()
         self.app = Application(layout=Layout(gui.body),
                                key_bindings=self.keybindings,
@@ -555,8 +548,32 @@ class Fawoc:
         self.args = args
         self.gui = gui
         self.terms = terms
-        self.to_classify = to_classify
-        # self.evaluated_word = None
+        last_word = terms.get_last_classified_term()
+        self.postponed = terms.get_from_label(Label.POSTPONED)
+        if last_word is None:
+            related = 0
+            sort_key = ''
+            if review == Label.NONE:
+                self.to_classify = terms.get_not_classified()
+            else:
+                self.to_classify = terms.get_from_label(review, order_set=False)
+        else:
+            sort_key = last_word.related
+            if sort_key == '' and last_word.label != Label.POSTPONED:
+                sort_key = last_word.string
+
+            cont, not_cont = terms.return_related_items(sort_key, label=review)
+            related = len(cont)
+            self.to_classify = cont + not_cont
+
+        cls = terms.get_classified()
+        if review != Label.NONE:
+            self.postponed = terms.get_from_label(Label.POSTPONED,
+                                                  order_set=True)
+            cls = TermList([t for t in cls.items if t.order >= 0])
+
+        self.classified = cls - self.postponed
+
         self._get_next_word()
         self.review = review
         self.related_count = related
@@ -564,6 +581,16 @@ class Fawoc:
         self.last_word = last_word
         self.profiler = profiler
         self.logger = logger
+        self.gui.assign_labeled_terms(self.classified, self.postponed)
+        if self.last_word is None:
+            self.gui.refresh_label_windows('', Label.NONE)
+        else:
+            self.gui.refresh_label_windows(self.last_word.string,
+                                           self.last_word.label)
+
+        self.gui.set_terms(self.to_classify, self.sort_word_key,
+                           classified=self.review != Label.NONE)
+        self.gui.set_stats(self.terms, self.related_count)
 
     def add_key_binding(self, keys, handler: Callable[[KeyPressEvent], None]):
         """
@@ -589,6 +616,12 @@ class Fawoc:
             self.keybindings.add(k)(handler)
 
     def do_classify(self, label):
+        """
+        Classify the evaluated word
+
+        :param label: label to use to classify the term
+        :type label: Label
+        """
         if self.evaluated_word is None:
             return
 
@@ -618,7 +651,10 @@ class Fawoc:
         self.to_classify = containing + not_containing
         self.last_word = self.evaluated_word
 
-        self.gui.update_windows(self.terms, self.to_classify, self.last_word,
+        self.classified.items.append(self.evaluated_word)
+
+        self.gui.update_windows(self.terms, self.to_classify, self.classified,
+                                self.postponed, self.last_word,
                                 self.related_count, self.sort_word_key)
 
         if not self.args.dry_run and not self.args.no_auto_save:
@@ -627,6 +663,9 @@ class Fawoc:
         self._get_next_word()
 
     def do_postpone(self):
+        """
+        Postpones the evaluated word
+        """
         if self.evaluated_word is None:
             return
 
@@ -648,8 +687,9 @@ class Fawoc:
             self.sort_word_key = ''
 
         self.last_word = self.evaluated_word
-
-        self.gui.update_windows(self.terms, self.to_classify, self.last_word,
+        self.postponed.items.append(self.evaluated_word)
+        self.gui.update_windows(self.terms, self.to_classify, self.classified,
+                                self.postponed, self.last_word,
                                 self.related_count, self.sort_word_key)
 
         if not self.args.dry_run and not self.args.no_auto_save:
@@ -676,6 +716,12 @@ class Fawoc:
         msg = 'Undo: {} group {} order {}'.format(self.last_word.string, label,
                                                   self.last_word.order)
         self.logger.debug(msg)
+
+        if label == Label.POSTPONED:
+            self.postponed.remove([self.last_word.string])
+        else:
+            self.classified.remove([self.last_word.string])
+
         # un-mark self.last_word
         self.terms.classify_term(self.last_word.string, self.review, -1)
 
@@ -704,7 +750,8 @@ class Fawoc:
 
         self.profiler.info("WORD '{}' UNDONE".format(self.last_word.string))
         self.last_word = self.terms.get_last_classified_term()
-        self.gui.update_windows(self.terms, self.to_classify, self.last_word,
+        self.gui.update_windows(self.terms, self.to_classify, self.classified,
+                                self.postponed, self.last_word,
                                 self.related_count, self.sort_word_key)
 
         if not self.args.dry_run and not self.args.no_auto_save:
@@ -839,7 +886,6 @@ def fawoc_main(terms, args, review, last_reviews, logger=None, profiler=None):
     :type profiler: logging.Logger or None
     """
     datafile = args.datafile
-    confirmed = []
     reset = False
     if review != Label.NONE:
         # review mode: check last_reviews
@@ -856,40 +902,13 @@ def fawoc_main(terms, args, review, last_reviews, logger=None, profiler=None):
     terms_rows = 28
 
     gui = Gui(win_width, terms_rows, rows, review)
-    gui.assign_labeled_terms(terms, review)
+    fawoc = Fawoc(args, terms, review, gui, profiler, logger)
 
-    last_word = terms.get_last_classified_term()
-
-    if last_word is None:
-        gui.refresh_label_windows('', Label.NONE)
-        related_items_count = 0
-        sort_word_key = ''
-        if review != Label.NONE:
-            # review mode
-            to_classify = terms.get_from_label(review, order_set=False)
-            to_classify.remove(confirmed)
-        else:
-            to_classify = terms.get_not_classified()
-    else:
-        gui.refresh_label_windows(last_word.string, last_word.label)
-        sort_word_key = last_word.related
-        if sort_word_key == '' and last_word.label != Label.POSTPONED:
-            sort_word_key = last_word.string
-
-        containing, not_containing = terms.return_related_items(sort_word_key,
-                                                                label=review)
-        related_items_count = len(containing)
-        to_classify = containing + not_containing
-
-    gui.set_terms(to_classify, sort_word_key, classified=review != Label.NONE)
-    gui.set_stats(terms, related_items_count)
     classifing_keys = [Label.KEYWORD.key,
                        Label.NOT_RELEVANT.key,
                        Label.NOISE.key,
                        Label.RELEVANT.key]
 
-    fawoc = Fawoc(args, terms, to_classify, review, related_items_count,
-                  sort_word_key, last_word, gui, profiler, logger)
     fawoc.add_key_binding(classifing_keys, lambda e: classify_kb(e, fawoc))
     fawoc.add_key_binding(['p'], lambda e: postpone_kb(e, fawoc))
     fawoc.add_key_binding(['u'], lambda e: undo_kb(e, fawoc))
