@@ -464,10 +464,28 @@ class Gui:
             self._post_win.display_lines(rev=True)
 
     def set_stats(self, terms, related_count):
+        """
+        Sets the statistics in the proper windows
+
+        :param terms: list of terms
+        :type terms: TermList
+        :param related_count: number of related terms
+        :type related_count: int
+        """
         stats = get_stats_strings(terms, related_count)
         self._stats_win.text = '\n'.join(stats)
 
-    def set_terms(self, to_classify: TermList, sort_key, classified=False):
+    def set_terms(self, to_classify, sort_key, classified=False):
+        """
+        Sets the terms to be classified in the proper window
+
+        :param to_classify: list of terms to be classified
+        :type to_classify: TermList
+        :param sort_key: string used for searching the related terms
+        :type sort_key: str
+        :param classified: if True, only the terms with a label are assigned
+        :type classified: bool
+        """
         self._word_win.assign_terms(to_classify, classified=classified)
         self._word_win.display_lines(rev=False, highlight_word=sort_key)
 
@@ -589,7 +607,7 @@ class Fawoc:
                            classified=self.review != Label.NONE)
         self.gui.set_stats(self.terms, self.related_count)
 
-    def add_key_binding(self, keys, handler: Callable[[KeyPressEvent], None]):
+    def add_key_binding(self, keys, handler):
         """
         Adds keybinding to Fawoc.
 
@@ -695,6 +713,9 @@ class Fawoc:
         self._get_next_word()
 
     def _get_next_word(self):
+        """
+        Handle the evaluated word
+        """
         if len(self.to_classify) <= 0:
             self.evaluated_word = None
         else:
@@ -757,6 +778,9 @@ class Fawoc:
         self._get_next_word()
 
     def save_terms(self):
+        """
+        Saves the terms to file
+        """
         self.terms.to_tsv(self.args.datafile)
 
 
@@ -845,23 +869,61 @@ def get_stats_strings(terms, related_items_count=0):
 
 
 def classify_kb(event: KeyPressEvent, fawoc: Fawoc):
+    """
+    Callback for the classifing keys
+
+    :param event: prompt_toolkit event associate to the key pressed
+    :type event: KeyPressEvent
+    :param fawoc: fawoc object
+    :type fawoc: Fawoc
+    """
     label = Label.get_from_key(event.data.lower())
     fawoc.do_classify(label)
 
 
 def postpone_kb(event: KeyPressEvent, fawoc: Fawoc):
+    """
+    Callback for the postpone key
+
+    :param event: prompt_toolkit event associate to the key pressed
+    :type event: KeyPressEvent
+    :param fawoc: fawoc object
+    :type fawoc: Fawoc
+    """
     fawoc.do_postpone()
 
 
 def undo_kb(event: KeyPressEvent, fawoc: Fawoc):
+    """
+    Callback for the undo key
+
+    :param event: prompt_toolkit event associate to the key pressed
+    :type event: KeyPressEvent
+    :param fawoc: fawoc object
+    :type fawoc: Fawoc
+    """
     fawoc.undo()
 
 
 def save_kb(event: KeyPressEvent, fawoc: Fawoc):
+    """
+    Callback for the save key
+
+    :param event: prompt_toolkit event associate to the key pressed
+    :type event: KeyPressEvent
+    :param fawoc: fawoc object
+    :type fawoc: Fawoc
+    """
     fawoc.save_terms()
 
 
 def quit_kb(event: KeyPressEvent):
+    """
+    Callback for the quit key
+
+    :param event: prompt_toolkit event associate to the key pressed
+    :type event: KeyPressEvent
+    """
     event.app.exit()
 
 
