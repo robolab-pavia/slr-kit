@@ -43,8 +43,11 @@ def main():
     df.fillna('', inplace=True)
     #debug_logger.debug(df.head())
 
+    # transposes dataframe to get document-terms matrix
+    df_transposed = df.T
+
     debug_logger.debug('[cosine_similarity] Calculate similarity')
-    cs = cosine_similarity(df)
+    cs = cosine_similarity(df_transposed)
     cs_pd = pd.DataFrame(cs)
 
     # write to output, either a file or stdout (default)
@@ -62,4 +65,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
