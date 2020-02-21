@@ -663,6 +663,9 @@ class Fawoc:
         self._get_next_word()
 
     def do_postpone(self):
+        """
+        Postpones the evaluated word
+        """
         if self.evaluated_word is None:
             return
 
@@ -684,8 +687,9 @@ class Fawoc:
             self.sort_word_key = ''
 
         self.last_word = self.evaluated_word
-
-        self.gui.update_windows(self.terms, self.to_classify, self.last_word,
+        self.postponed.items.append(self.evaluated_word)
+        self.gui.update_windows(self.terms, self.to_classify, self.classified,
+                                self.postponed, self.last_word,
                                 self.related_count, self.sort_word_key)
 
         if not self.args.dry_run and not self.args.no_auto_save:
