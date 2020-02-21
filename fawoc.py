@@ -474,8 +474,8 @@ class Gui:
         self._word_win.assign_terms(to_classify, classified=classified)
         self._word_win.display_lines(rev=False, highlight_word=sort_key)
 
-    def update_windows(self, terms, to_classify, term_to_highlight,
-                       related_items_count, sort_word_key):
+    def update_windows(self, terms, to_classify, classified, postponed,
+                       term_to_highlight, related_items_count, sort_word_key):
         """
         Handle the update of all the windows
 
@@ -483,6 +483,10 @@ class Gui:
         :type terms: TermList
         :param to_classify: terms not yet classified
         :type to_classify: TermList
+        :param classified: list of classified terms
+        :type classified: TermList
+        :param postponed: list of postponed terms
+        :type postponed: TermList
         :param term_to_highlight: term to hightlight as the last classified term
         :type term_to_highlight: Term
         :param related_items_count: number of related items
@@ -493,18 +497,8 @@ class Gui:
         review = self._review != Label.NONE
         self.set_terms(to_classify, sort_word_key,
                        classified=review)
-        label = Label.POSTPONED
-        if review:
-            post = terms.get_from_label(label, order_set=True)
-        else:
-            post = terms.get_from_label(label)
 
-        self._post_win.assign_terms(post, classified=True)
-        classified = terms.get_classified() - post
-        if review:
-            to_rem = classified.get_from_label(self._review, order_set=False)
-            classified = classified - to_rem
-            classified = TermList([w for w in classified.items if w.order >= 0])
+        self._post_win.assign_terms(postponed, classified=True)
 
         self._class_win.assign_terms(classified, classified=True)
 
@@ -516,29 +510,17 @@ class Gui:
 
         self.set_stats(terms, related_items_count)
 
-    def assign_labeled_terms(self, terms, review):
+    def assign_labeled_terms(self, classified, postponed):
         """
         Assigns the labeled terms to the correct windows
 
-        :param terms: the term list
-        :type terms: TermList
-        :param review: the label to review
-        :type review: Label
+        :param classified: the list of classified term
+        :type classified: TermList
+        :param postponed: the list of postponed term
+        :type postponed: TermList
         """
-        if review == Label.NONE:
-            post = terms.get_from_label(Label.POSTPONED)
-            self._class_win.assign_terms(terms - post, classified=True)
-        else:
-            # We must take only the postponed items with the order set (the ones
-            # re-classified)
-            post = terms.get_from_label(Label.POSTPONED, order_set=True)
-            # we must add only the classified term not postponed that have
-            # the order set (the ones that are re-classified)
-            t = terms.get_classified() - terms.get_from_label(Label.POSTPONED)
-            conf = TermList([w for w in t.items if w.order >= 0])
-            self._class_win.assign_terms(conf, classified=True)
-
-        self._post_win.assign_terms(post, classified=True)
+        self._class_win.assign_terms(classified, classified=True)
+        self._post_win.assign_terms(postponed, classified=True)
 
 
 class Fawoc:
