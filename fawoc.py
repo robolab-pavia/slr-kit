@@ -616,6 +616,12 @@ class Fawoc:
             self.keybindings.add(k)(handler)
 
     def do_classify(self, label):
+        """
+        Classify the evaluated word
+
+        :param label: label to use to classify the term
+        :type label: Label
+        """
         if self.evaluated_word is None:
             return
 
@@ -645,7 +651,10 @@ class Fawoc:
         self.to_classify = containing + not_containing
         self.last_word = self.evaluated_word
 
-        self.gui.update_windows(self.terms, self.to_classify, self.last_word,
+        self.classified.items.append(self.evaluated_word)
+
+        self.gui.update_windows(self.terms, self.to_classify, self.classified,
+                                self.postponed, self.last_word,
                                 self.related_count, self.sort_word_key)
 
         if not self.args.dry_run and not self.args.no_auto_save:
