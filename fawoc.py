@@ -684,7 +684,8 @@ class Fawoc:
         if self.evaluated_word is None:
             return
 
-        self.profiler.info("WORD '{}' POSTPONED".format(self.evaluated_word))
+        msg = "WORD '{}' POSTPONED".format(self.evaluated_word.string)
+        self.profiler.info(msg)
         # classification: POSTPONED
         self.terms.classify_term(self.evaluated_word.string, Label.POSTPONED,
                                  self.terms.get_last_classified_order() + 1,
