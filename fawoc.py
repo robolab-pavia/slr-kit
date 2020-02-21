@@ -716,6 +716,12 @@ class Fawoc:
         msg = 'Undo: {} group {} order {}'.format(self.last_word.string, label,
                                                   self.last_word.order)
         self.logger.debug(msg)
+
+        if label == Label.POSTPONED:
+            self.postponed.remove([self.last_word.string])
+        else:
+            self.classified.remove([self.last_word.string])
+
         # un-mark self.last_word
         self.terms.classify_term(self.last_word.string, self.review, -1)
 
@@ -744,7 +750,8 @@ class Fawoc:
 
         self.profiler.info("WORD '{}' UNDONE".format(self.last_word.string))
         self.last_word = self.terms.get_last_classified_term()
-        self.gui.update_windows(self.terms, self.to_classify, self.last_word,
+        self.gui.update_windows(self.terms, self.to_classify, self.classified,
+                                self.postponed, self.last_word,
                                 self.related_count, self.sort_word_key)
 
         if not self.args.dry_run and not self.args.no_auto_save:
