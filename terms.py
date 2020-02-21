@@ -28,6 +28,7 @@ class Label(enum.Enum):
     RELEVANT = ('relevant', 'r')
     NOT_RELEVANT = ('not-relevant', 'x')
     POSTPONED = ('postponed', 'p')
+    AUTONOISE = ('autonoise', 'a')
 
     @staticmethod
     def get_from_key(key):
