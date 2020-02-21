@@ -764,7 +764,32 @@ class Fawoc:
 
     def undo(self):
         """
-        Handle the undo of a term
+        Handles the undo process
+        """
+        self.last_word = self.terms.get_last_classified_term()
+        if self.last_word is None:
+            return
+
+        label = self.last_word.label
+        if label == Label.AUTONOISE:
+            for t in reversed(list(self.classified.items)):
+                if t.label == Label.AUTONOISE:
+                    self._undo_single()
+        else:
+            self._undo_single()
+
+        self.gui.update_windows(self.terms, self.to_classify, self.classified,
+                                self.postponed, self.last_word,
+                                self.related_count, self.sort_word_key)
+
+        if not self.args.dry_run and not self.args.no_auto_save:
+            self.save_terms()
+
+        self._get_next_word()
+
+    def _undo_single(self):
+        """
+        Handle the undo of a single term
         """
         self.last_word = self.terms.get_last_classified_term()
         if self.last_word is None:
@@ -809,14 +834,6 @@ class Fawoc:
 
         self.profiler.info("WORD '{}' UNDONE".format(self.last_word.string))
         self.last_word = self.terms.get_last_classified_term()
-        self.gui.update_windows(self.terms, self.to_classify, self.classified,
-                                self.postponed, self.last_word,
-                                self.related_count, self.sort_word_key)
-
-        if not self.args.dry_run and not self.args.no_auto_save:
-            self.save_terms()
-
-        self._get_next_word()
 
     def save_terms(self):
         """
