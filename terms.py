@@ -150,7 +150,9 @@ class TermList:
         if not isinstance(other, TermList):
             return NotImplemented
 
-        items = [w for w in self.items if w not in other.items]
+        #items = [w for w in self.items if w not in other.items]
+        filt = {x.string: None for x in other.items}
+        items = [w for w in self.items if w.string not in filt]
         return TermList(items)
 
     def get_strings(self):
