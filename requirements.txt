@@ -5,3 +5,5 @@ prompt-toolkit
 RISparser
 scikit-learn
 regex
+matplotlib
+scipy
