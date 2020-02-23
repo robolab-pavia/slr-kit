@@ -114,7 +114,7 @@ def main():
     # we will also specify `random_state` so the plot is reproducible.
     debug_logger.debug('[multidimensional scaling] Calculating distances information')
 
-    U, Sigma, VT = randomized_svd(data_rescaled, n_components=optimal_components, n_iter=100, random_state=122)
+    U, Sigma, VT = randomized_svd(dtm.values, n_components=optimal_components, n_iter=100, random_state=122)
 
     # for i, comp in enumerate(VT):
     #     terms_comp = zip(terms['term'], comp)
@@ -126,10 +126,11 @@ def main():
     #     print(" ")
 
     U_df = pd.DataFrame(U)
-    print(U_df.head())
+    U_df_transposed = U_df.T # for consistency with pipeline workflow, export tdm matrix
+    print(U_df_transposed.head())
     debug_logger.debug('[multidimensional scaling] Saving')
     output_file = open(args.output, 'w') if args.output is not None else sys.stdout
-    export_csv = U_df.to_csv(output_file, header=True, sep='\t')
+    export_csv = U_df_transposed.to_csv(output_file, header=True, sep='\t')
     output_file.close()
 
     debug_logger.debug('[multidimensional scaling] Terminated')
