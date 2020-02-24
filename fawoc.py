@@ -570,6 +570,7 @@ class Fawoc:
         last_word = terms.get_last_classified_term()
         self.postponed = terms.get_from_label(Label.POSTPONED)
         if last_word is None:
+            self.last_classified_order = -1
             related = 0
             sort_key = ''
             if review == Label.NONE:
@@ -577,6 +578,7 @@ class Fawoc:
             else:
                 self.to_classify = terms.get_from_label(review, order_set=False)
         else:
+            self.last_classified_order = last_word.order
             sort_key = last_word.related
             if sort_key == '' and last_word.label != Label.POSTPONED:
                 sort_key = last_word.string
@@ -643,14 +645,13 @@ class Fawoc:
 
         n = len(self.evaluated_word.string.split())
         auto = []
-        last_order = self.terms.get_last_classified_order() + 1
         for t in self.to_classify.items:
             if len(t.string.split()) != n:
                 break
 
             t.label = Label.AUTONOISE
-            t.order = last_order
-            last_order += 1
+            self.last_classified_order += 1
+            t.order = self.last_classified_order
             auto.append(t.string)
             msg = f"WORD '{t.string}' labeled as {Label.AUTONOISE.label_name}"
             self.profiler.info(msg)
@@ -685,15 +686,16 @@ class Fawoc:
         if self.evaluated_word is None:
             return
 
-        t0=time.time()
+        t0 = time.time()
         self.profiler.info("WORD '{}' AS '{}'".format(self.evaluated_word.string,
                                                       label.label_name))
 
-        self.terms.classify_term(self.evaluated_word.string, label,
-                                 self.terms.get_last_classified_order() + 1,
-                                 self.sort_word_key)
-        t1=time.time()
-        debug_logger.debug("do_classify time 0 {}".format(t1-t0))
+        self.evaluated_word.label = label
+        self.last_classified_order += 1
+        self.evaluated_word.order = self.last_classified_order
+        self.evaluated_word.related = self.sort_word_key
+        t1 = time.time()
+        debug_logger.debug("do_classify time 0 {}".format(t1 - t0))
 
         if self.related_count <= 0:
             self.sort_word_key = self.evaluated_word.string
@@ -701,7 +703,7 @@ class Fawoc:
             # last related word has been classified: reset the related machinery
             self.sort_word_key = ''
 
-        t0=time.time()
+        t0 = time.time()
         ret = self.terms.return_related_items(self.sort_word_key,
                                               label=self.review)
         containing, not_containing = ret
@@ -711,10 +713,10 @@ class Fawoc:
             self.related_count = len(containing)
         else:
             self.related_count -= 1
-        t1=time.time()
-        debug_logger.debug("do_classify time 1 {}".format(t1-t0))
+        t1 = time.time()
+        debug_logger.debug("do_classify time 1 {}".format(t1 - t0))
 
-        t0=time.time()
+        t0 = time.time()
         self.to_classify = containing + not_containing
         self.last_word = self.evaluated_word
 
@@ -723,16 +725,16 @@ class Fawoc:
         self.gui.update_windows(self.terms, self.to_classify, self.classified,
                                 self.postponed, self.last_word,
                                 self.related_count, self.sort_word_key)
-        t1=time.time()
-        debug_logger.debug("do_classify time 2 {}".format(t1-t0))
+        t1 = time.time()
+        debug_logger.debug("do_classify time 2 {}".format(t1 - t0))
 
-        t0=time.time()
+        t0 = time.time()
         if not self.args.dry_run and not self.args.no_auto_save:
             self.save_terms()
 
         self._get_next_word()
-        t1=time.time()
-        debug_logger.debug("do_classify time 3 {}".format(t1-t0))
+        t1 = time.time()
+        debug_logger.debug("do_classify time 3 {}".format(t1 - t0))
 
     def do_postpone(self):
         """
@@ -744,9 +746,10 @@ class Fawoc:
         msg = "WORD '{}' POSTPONED".format(self.evaluated_word.string)
         self.profiler.info(msg)
         # classification: POSTPONED
-        self.terms.classify_term(self.evaluated_word.string, Label.POSTPONED,
-                                 self.terms.get_last_classified_order() + 1,
-                                 self.sort_word_key)
+        self.evaluated_word.label = Label.POSTPONED
+        self.last_classified_order += 1
+        self.evaluated_word.order = self.last_classified_order
+        self.evaluated_word.related = self.sort_word_key
 
         self.related_count -= 1
         if self.related_count > 0:
@@ -824,7 +827,10 @@ class Fawoc:
             self.classified.remove([self.last_word.string])
 
         # un-mark self.last_word
-        self.terms.classify_term(self.last_word.string, self.review, -1)
+        self.last_classified_order = self.last_word.order
+        self.last_word.label = self.review
+        self.last_word.order = -1
+        self.last_word.related = ''
 
         # handle related word
         if related == self.sort_word_key:
@@ -964,12 +970,8 @@ def classify_kb(event: KeyPressEvent, fawoc: Fawoc):
     :param fawoc: fawoc object
     :type fawoc: Fawoc
     """
-    debug_logger.debug("event {}".format(event))
     label = Label.get_from_key(event.data.lower())
-    t0=time.time()
     fawoc.do_classify(label)
-    t1=time.time()
-    debug_logger.debug("classify {}: {}".format(label, t1-t0))
 
 
 def postpone_kb(event: KeyPressEvent, fawoc: Fawoc):
