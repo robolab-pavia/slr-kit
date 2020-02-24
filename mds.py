@@ -103,7 +103,7 @@ def main():
     # List of explained variances
     tsvd_var_ratios = tsvd.explained_variance_ratio_
 
-    optimal_components = select_n_components(tsvd_var_ratios, 0.90)
+    optimal_components = select_n_components(tsvd_var_ratios, 0.95)
 
 
     # TODO: allow the selection of the filename from command line
@@ -114,7 +114,15 @@ def main():
     # we will also specify `random_state` so the plot is reproducible.
     debug_logger.debug('[multidimensional scaling] Calculating distances information')
 
-    U, Sigma, VT = randomized_svd(dtm.values, n_components=optimal_components, n_iter=100, random_state=122)
+    #U, Sigma, VT = randomized_svd(dtm.values, n_components=optimal_components, n_iter=100, random_state=122)
+
+    from sklearn.manifold import MDS
+    mds = MDS(n_components=optimal_components, dissimilarity="euclidean", random_state=1)
+    pos = mds.fit_transform(dtm.values)
+
+    U_df = pd.DataFrame(pos)
+    U_df_transposed = U_df.T  # for consistency with pipeline workflow, export tdm matrix
+    print(U_df_transposed.head())
 
     # for i, comp in enumerate(VT):
     #     terms_comp = zip(terms['term'], comp)
@@ -125,9 +133,6 @@ def main():
     #         print(t[0] , end=",")
     #     print(" ")
 
-    U_df = pd.DataFrame(U)
-    U_df_transposed = U_df.T # for consistency with pipeline workflow, export tdm matrix
-    print(U_df_transposed.head())
     debug_logger.debug('[multidimensional scaling] Saving')
     output_file = open(args.output, 'w') if args.output is not None else sys.stdout
     export_csv = U_df_transposed.to_csv(output_file, header=True, sep='\t')
