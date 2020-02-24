@@ -19,10 +19,6 @@ from prompt_toolkit.widgets import TextArea, Frame
 
 from terms import Label, TermList, Term
 from utils import setup_logger, substring_index
-import time
-
-debug_logger = setup_logger('debug_logger', 'slr-kit.log',
-                            level=logging.DEBUG)
 
 DEBUG = False
 
@@ -634,6 +630,46 @@ class Fawoc:
 
             self.keybindings.add(k)(handler)
 
+    def do_autonoise(self):
+        """
+        Classifies all the subsequent terms with the same num of word as autonoise
+        """
+        if self.evaluated_word is None:
+            return
+
+        n = len(self.evaluated_word.string.split())
+        auto = []
+        last_order = self.terms.get_last_classified_order() + 1
+        for t in self.to_classify.items:
+            if len(t.string.split()) != n:
+                break
+
+            t.label = Label.AUTONOISE
+            t.order = last_order
+            last_order += 1
+            auto.append(t.string)
+            msg = f"WORD '{t.string}' labeled as {Label.AUTONOISE.label_name}"
+            self.profiler.info(msg)
+            self.classified.items.append(t)
+
+        ret = self.terms.return_related_items(self.sort_word_key,
+                                              label=self.review)
+        containing, not_containing = ret
+        self.related_count = len(containing)
+        if self.related_count == 0:
+            self.sort_word_key = ''
+
+        self.to_classify = containing + not_containing
+        self.last_word = self.classified.items[-1]
+        self.gui.update_windows(self.terms, self.to_classify, self.classified,
+                                self.postponed, self.last_word,
+                                self.related_count, self.sort_word_key)
+
+        if not self.args.dry_run and not self.args.no_auto_save:
+            self.save_terms()
+
+        self._get_next_word()
+
     def do_classify(self, label):
         """
         Classify the evaluated word
@@ -641,19 +677,15 @@ class Fawoc:
         :param label: label to use to classify the term
         :type label: Label
         """
-        debug_logger.debug("do_classify {} {}".format(self.evaluated_word, label))
         if self.evaluated_word is None:
             return
 
-        t0=time.time()
         self.profiler.info("WORD '{}' AS '{}'".format(self.evaluated_word.string,
                                                       label.label_name))
 
         self.terms.classify_term(self.evaluated_word.string, label,
                                  self.terms.get_last_classified_order() + 1,
                                  self.sort_word_key)
-        t1=time.time()
-        debug_logger.debug("do_classify time 0 {}".format(t1-t0))
 
         if self.related_count <= 0:
             self.sort_word_key = self.evaluated_word.string
@@ -661,7 +693,6 @@ class Fawoc:
             # last related word has been classified: reset the related machinery
             self.sort_word_key = ''
 
-        t0=time.time()
         ret = self.terms.return_related_items(self.sort_word_key,
                                               label=self.review)
         containing, not_containing = ret
@@ -671,10 +702,7 @@ class Fawoc:
             self.related_count = len(containing)
         else:
             self.related_count -= 1
-        t1=time.time()
-        debug_logger.debug("do_classify time 1 {}".format(t1-t0))
 
-        t0=time.time()
         self.to_classify = containing + not_containing
         self.last_word = self.evaluated_word
 
@@ -683,16 +711,11 @@ class Fawoc:
         self.gui.update_windows(self.terms, self.to_classify, self.classified,
                                 self.postponed, self.last_word,
                                 self.related_count, self.sort_word_key)
-        t1=time.time()
-        debug_logger.debug("do_classify time 2 {}".format(t1-t0))
 
-        t0=time.time()
         if not self.args.dry_run and not self.args.no_auto_save:
             self.save_terms()
 
         self._get_next_word()
-        t1=time.time()
-        debug_logger.debug("do_classify time 3 {}".format(t1-t0))
 
     def do_postpone(self):
         """
@@ -741,7 +764,32 @@ class Fawoc:
 
     def undo(self):
         """
-        Handle the undo of a term
+        Handles the undo process
+        """
+        self.last_word = self.terms.get_last_classified_term()
+        if self.last_word is None:
+            return
+
+        label = self.last_word.label
+        if label == Label.AUTONOISE:
+            for t in reversed(list(self.classified.items)):
+                if t.label == Label.AUTONOISE:
+                    self._undo_single()
+        else:
+            self._undo_single()
+
+        self.gui.update_windows(self.terms, self.to_classify, self.classified,
+                                self.postponed, self.last_word,
+                                self.related_count, self.sort_word_key)
+
+        if not self.args.dry_run and not self.args.no_auto_save:
+            self.save_terms()
+
+        self._get_next_word()
+
+    def _undo_single(self):
+        """
+        Handle the undo of a single term
         """
         self.last_word = self.terms.get_last_classified_term()
         if self.last_word is None:
@@ -786,14 +834,6 @@ class Fawoc:
 
         self.profiler.info("WORD '{}' UNDONE".format(self.last_word.string))
         self.last_word = self.terms.get_last_classified_term()
-        self.gui.update_windows(self.terms, self.to_classify, self.classified,
-                                self.postponed, self.last_word,
-                                self.related_count, self.sort_word_key)
-
-        if not self.args.dry_run and not self.args.no_auto_save:
-            self.save_terms()
-
-        self._get_next_word()
 
     def save_terms(self):
         """
@@ -886,6 +926,18 @@ def get_stats_strings(terms, related_items_count=0):
     return stats_strings
 
 
+def autonoise_kb(event: KeyPressEvent, fawoc: Fawoc):
+    """
+    Callback for the autonoise key
+
+    :param event: prompt_toolkit event associate to the key pressed
+    :type event: KeyPressEvent
+    :param fawoc: fawoc object
+    :type fawoc: Fawoc
+    """
+    fawoc.do_autonoise()
+
+
 def classify_kb(event: KeyPressEvent, fawoc: Fawoc):
     """
     Callback for the classifing keys
@@ -895,12 +947,8 @@ def classify_kb(event: KeyPressEvent, fawoc: Fawoc):
     :param fawoc: fawoc object
     :type fawoc: Fawoc
     """
-    debug_logger.debug("event {}".format(event))
     label = Label.get_from_key(event.data.lower())
-    t0=time.time()
     fawoc.do_classify(label)
-    t1=time.time()
-    debug_logger.debug("classify {}: {}".format(label, t1-t0))
 
 
 def postpone_kb(event: KeyPressEvent, fawoc: Fawoc):
@@ -991,6 +1039,7 @@ def fawoc_main(terms, args, review, last_reviews, logger=None, profiler=None):
                        Label.RELEVANT.key]
 
     fawoc.add_key_binding(classifing_keys, lambda e: classify_kb(e, fawoc))
+    fawoc.add_key_binding(['a'], lambda e: autonoise_kb(e, fawoc))
     fawoc.add_key_binding(['p'], lambda e: postpone_kb(e, fawoc))
     fawoc.add_key_binding(['u'], lambda e: undo_kb(e, fawoc))
     fawoc.add_key_binding(['w'], lambda e: save_kb(e, fawoc))
@@ -1012,6 +1061,8 @@ def main():
 
     profiler_logger = setup_logger('profiler_logger', 'profiler.log',
                                    level=profile_log_level)
+    debug_logger = setup_logger('debug_logger', 'slr-kit.log',
+                                level=logging.DEBUG)
 
     if args.input is not None:
         try:
