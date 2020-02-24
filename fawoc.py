@@ -476,7 +476,7 @@ class Gui:
         """
         self._stats_win.text = '\n'.join(stats)
 
-    def set_terms(self, to_classify, sort_key, classified=False):
+    def set_terms(self, to_classify, sort_key):
         """
         Sets the terms to be classified in the proper window
 
@@ -484,10 +484,8 @@ class Gui:
         :type to_classify: TermList
         :param sort_key: string used for searching the related terms
         :type sort_key: str
-        :param classified: if True, only the terms with a label are assigned
-        :type classified: bool
         """
-        self._word_win.assign_terms(to_classify, classified=classified)
+        self._word_win.terms = to_classify.items
         self._word_win.display_lines(rev=False, highlight_word=sort_key)
 
     def update_windows(self, to_classify, classified, postponed,
@@ -509,12 +507,11 @@ class Gui:
         :type stats_str: list[str]
         """
         review = self._review != Label.NONE
-        self.set_terms(to_classify, sort_word_key,
-                       classified=review)
+        self.set_terms(to_classify, sort_word_key)
 
-        self._post_win.assign_terms(postponed, classified=True)
+        self._post_win.terms = postponed.items
 
-        self._class_win.assign_terms(classified, classified=True)
+        self._class_win.terms = classified.items
 
         if term_to_highlight is not None:
             self.refresh_label_windows(term_to_highlight.string,
@@ -605,8 +602,7 @@ class Fawoc:
             self.gui.refresh_label_windows(self.last_word.string,
                                            self.last_word.label)
 
-        self.gui.set_terms(self.to_classify, self.sort_word_key,
-                           classified=self.review != Label.NONE)
+        self.gui.set_terms(self.to_classify, self.sort_word_key)
         self.gui.set_stats(self.get_stats_strings())
 
     def add_key_binding(self, keys, handler):
