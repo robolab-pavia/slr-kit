@@ -4,7 +4,11 @@ from pathlib import Path
 import tempfile
 from dataclasses import dataclass
 import utils
+#import logging
+import time
 
+#debug_logger = utils.setup_logger('debug_logger', 'slr-kit.log',
+#                            level=logging.DEBUG)
 
 class Label(enum.Enum):
     """
@@ -238,6 +242,7 @@ class TermList:
         elif not isinstance(label, (list, tuple)):
             raise TypeError('label has wrong type {}'.format(type(label)))
 
+        #debug_logger.debug("--- len {}".format(len(self.items)))
         items = []
         for t in self.items:
             if t.label in label:
@@ -257,7 +262,7 @@ class TermList:
         :return: a TermList containing the Terms not classified
         :rtype: TermList
         """
-        items = [t for t in self.items if not t.is_classified()]
+        items = [t for t in self.items if not t.label != Label.NONE]
         return TermList(items)
 
     def get_classified(self):
@@ -267,7 +272,7 @@ class TermList:
         :return: a TermList containing the Terms classified
         :rtype: TermList
         """
-        items = [t for t in self.items if t.is_classified()]
+        items = [t for t in self.items if t.label != Label.NONE]
         return TermList(items)
 
     def from_tsv(self, infile):
@@ -443,6 +448,7 @@ class TermList:
         """
         containing = []
         not_containing = []
+        t0=time.time()
         for w in self.items:
             if w.label != label or w.order >= 0:
                 continue
@@ -456,6 +462,8 @@ class TermList:
         nc = TermList(not_containing)
         co.sort_by_index()
         nc.sort_by_index()
+        t1=time.time()
+        #debug_logger.debug("dur {}".format(t1-t0))
         return co, nc
 
     def count_classified(self):

@@ -19,6 +19,10 @@ from prompt_toolkit.widgets import TextArea, Frame
 
 from terms import Label, TermList, Term
 from utils import setup_logger, substring_index
+import time
+
+debug_logger = setup_logger('debug_logger', 'slr-kit.log',
+                            level=logging.DEBUG)
 
 DEBUG = False
 
@@ -463,19 +467,16 @@ class Gui:
                                           color='ffff00')
             self._post_win.display_lines(rev=True)
 
-    def set_stats(self, terms, related_count):
+    def set_stats(self, stats):
         """
         Sets the statistics in the proper windows
 
-        :param terms: list of terms
-        :type terms: TermList
-        :param related_count: number of related terms
-        :type related_count: int
+        :param stats: the statistics about words formatted as strings
+        :type stats: list[str]
         """
-        stats = get_stats_strings(terms, related_count)
         self._stats_win.text = '\n'.join(stats)
 
-    def set_terms(self, to_classify, sort_key, classified=False):
+    def set_terms(self, to_classify, sort_key):
         """
         Sets the terms to be classified in the proper window
 
@@ -483,19 +484,15 @@ class Gui:
         :type to_classify: TermList
         :param sort_key: string used for searching the related terms
         :type sort_key: str
-        :param classified: if True, only the terms with a label are assigned
-        :type classified: bool
         """
-        self._word_win.assign_terms(to_classify, classified=classified)
+        self._word_win.terms = to_classify.items
         self._word_win.display_lines(rev=False, highlight_word=sort_key)
 
-    def update_windows(self, terms, to_classify, classified, postponed,
-                       term_to_highlight, related_items_count, sort_word_key):
+    def update_windows(self, to_classify, classified, postponed,
+                       term_to_highlight, sort_word_key, stats_str):
         """
         Handle the update of all the windows
 
-        :param terms: list of the Term
-        :type terms: TermList
         :param to_classify: terms not yet classified
         :type to_classify: TermList
         :param classified: list of classified terms
@@ -504,18 +501,17 @@ class Gui:
         :type postponed: TermList
         :param term_to_highlight: term to hightlight as the last classified term
         :type term_to_highlight: Term
-        :param related_items_count: number of related items
-        :type related_items_count: int
         :param sort_word_key: words used for the related item highlighting
         :type sort_word_key: str
+        :param stats_str: statistics to display
+        :type stats_str: list[str]
         """
         review = self._review != Label.NONE
-        self.set_terms(to_classify, sort_word_key,
-                       classified=review)
+        self.set_terms(to_classify, sort_word_key)
 
-        self._post_win.assign_terms(postponed, classified=True)
+        self._post_win.terms = postponed.items
 
-        self._class_win.assign_terms(classified, classified=True)
+        self._class_win.terms = classified.items
 
         if term_to_highlight is not None:
             self.refresh_label_windows(term_to_highlight.string,
@@ -523,7 +519,7 @@ class Gui:
         else:
             self.refresh_label_windows('', Label.NONE)
 
-        self.set_stats(terms, related_items_count)
+        self.set_stats(stats_str)
 
     def assign_labeled_terms(self, classified, postponed):
         """
@@ -563,9 +559,11 @@ class Fawoc:
         self.args = args
         self.gui = gui
         self.terms = terms
+        self.n_terms = len(terms)
         last_word = terms.get_last_classified_term()
         self.postponed = terms.get_from_label(Label.POSTPONED)
         if last_word is None:
+            self.last_classified_order = -1
             related = 0
             sort_key = ''
             if review == Label.NONE:
@@ -573,6 +571,7 @@ class Fawoc:
             else:
                 self.to_classify = terms.get_from_label(review, order_set=False)
         else:
+            self.last_classified_order = last_word.order
             sort_key = last_word.related
             if sort_key == '' and last_word.label != Label.POSTPONED:
                 sort_key = last_word.string
@@ -603,9 +602,8 @@ class Fawoc:
             self.gui.refresh_label_windows(self.last_word.string,
                                            self.last_word.label)
 
-        self.gui.set_terms(self.to_classify, self.sort_word_key,
-                           classified=self.review != Label.NONE)
-        self.gui.set_stats(self.terms, self.related_count)
+        self.gui.set_terms(self.to_classify, self.sort_word_key)
+        self.gui.set_stats(self.get_stats_strings())
 
     def add_key_binding(self, keys, handler):
         """
@@ -639,14 +637,13 @@ class Fawoc:
 
         n = len(self.evaluated_word.string.split())
         auto = []
-        last_order = self.terms.get_last_classified_order() + 1
         for t in self.to_classify.items:
             if len(t.string.split()) != n:
                 break
 
             t.label = Label.AUTONOISE
-            t.order = last_order
-            last_order += 1
+            self.last_classified_order += 1
+            t.order = self.last_classified_order
             auto.append(t.string)
             msg = f"WORD '{t.string}' labeled as {Label.AUTONOISE.label_name}"
             self.profiler.info(msg)
@@ -661,9 +658,10 @@ class Fawoc:
 
         self.to_classify = containing + not_containing
         self.last_word = self.classified.items[-1]
-        self.gui.update_windows(self.terms, self.to_classify, self.classified,
+        stats = self.get_stats_strings()
+        self.gui.update_windows(self.to_classify, self.classified,
                                 self.postponed, self.last_word,
-                                self.related_count, self.sort_word_key)
+                                self.sort_word_key, stats)
 
         if not self.args.dry_run and not self.args.no_auto_save:
             self.save_terms()
@@ -677,45 +675,57 @@ class Fawoc:
         :param label: label to use to classify the term
         :type label: Label
         """
+        debug_logger.debug("do_classify {} {}".format(self.evaluated_word, label))
         if self.evaluated_word is None:
             return
 
+        t0 = time.time()
         self.profiler.info("WORD '{}' AS '{}'".format(self.evaluated_word.string,
                                                       label.label_name))
 
-        self.terms.classify_term(self.evaluated_word.string, label,
-                                 self.terms.get_last_classified_order() + 1,
-                                 self.sort_word_key)
+        self.evaluated_word.label = label
+        self.last_classified_order += 1
+        self.evaluated_word.order = self.last_classified_order
+        self.evaluated_word.related = self.sort_word_key
+        del self.to_classify.items[0]
+        self.related_count -= 1
+        t1 = time.time()
+        debug_logger.debug("do_classify time 0 {}".format(t1 - t0))
 
-        if self.related_count <= 0:
+        t0 = time.time()
+        if self.related_count < 0:
             self.sort_word_key = self.evaluated_word.string
-        elif self.related_count == 1:
+            ret = self.to_classify.return_related_items(self.sort_word_key,
+                                                        label=self.review)
+            containing, not_containing = ret
+            self.to_classify = containing + not_containing
+            # the sort_word_key has been changed: reload the related count
+            self.related_count = len(containing)
+        elif self.related_count == 0:
             # last related word has been classified: reset the related machinery
             self.sort_word_key = ''
 
-        ret = self.terms.return_related_items(self.sort_word_key,
-                                              label=self.review)
-        containing, not_containing = ret
+        t1 = time.time()
+        debug_logger.debug("do_classify time 1 {}".format(t1 - t0))
 
-        if self.related_count <= 0:
-            # the sort_word_key has been changed: reload the related count
-            self.related_count = len(containing)
-        else:
-            self.related_count -= 1
-
-        self.to_classify = containing + not_containing
+        t0 = time.time()
         self.last_word = self.evaluated_word
 
         self.classified.items.append(self.evaluated_word)
-
-        self.gui.update_windows(self.terms, self.to_classify, self.classified,
+        stats = self.get_stats_strings()
+        self.gui.update_windows(self.to_classify, self.classified,
                                 self.postponed, self.last_word,
-                                self.related_count, self.sort_word_key)
+                                self.sort_word_key, stats)
+        t1 = time.time()
+        debug_logger.debug("do_classify time 2 {}".format(t1 - t0))
 
+        t0 = time.time()
         if not self.args.dry_run and not self.args.no_auto_save:
             self.save_terms()
 
         self._get_next_word()
+        t1 = time.time()
+        debug_logger.debug("do_classify time 3 {}".format(t1 - t0))
 
     def do_postpone(self):
         """
@@ -727,9 +737,10 @@ class Fawoc:
         msg = "WORD '{}' POSTPONED".format(self.evaluated_word.string)
         self.profiler.info(msg)
         # classification: POSTPONED
-        self.terms.classify_term(self.evaluated_word.string, Label.POSTPONED,
-                                 self.terms.get_last_classified_order() + 1,
-                                 self.sort_word_key)
+        self.evaluated_word.label = Label.POSTPONED
+        self.last_classified_order += 1
+        self.evaluated_word.order = self.last_classified_order
+        self.evaluated_word.related = self.sort_word_key
 
         self.related_count -= 1
         if self.related_count > 0:
@@ -744,9 +755,10 @@ class Fawoc:
 
         self.last_word = self.evaluated_word
         self.postponed.items.append(self.evaluated_word)
-        self.gui.update_windows(self.terms, self.to_classify, self.classified,
+        stats = self.get_stats_strings()
+        self.gui.update_windows(self.to_classify, self.classified,
                                 self.postponed, self.last_word,
-                                self.related_count, self.sort_word_key)
+                                self.sort_word_key, stats)
 
         if not self.args.dry_run and not self.args.no_auto_save:
             self.save_terms()
@@ -778,9 +790,10 @@ class Fawoc:
         else:
             self._undo_single()
 
-        self.gui.update_windows(self.terms, self.to_classify, self.classified,
+        stats = self.get_stats_strings()
+        self.gui.update_windows(self.to_classify, self.classified,
                                 self.postponed, self.last_word,
-                                self.related_count, self.sort_word_key)
+                                self.sort_word_key, stats)
 
         if not self.args.dry_run and not self.args.no_auto_save:
             self.save_terms()
@@ -807,7 +820,10 @@ class Fawoc:
             self.classified.remove([self.last_word.string])
 
         # un-mark self.last_word
-        self.terms.classify_term(self.last_word.string, self.review, -1)
+        self.last_classified_order = self.last_word.order
+        self.last_word.label = self.review
+        self.last_word.order = -1
+        self.last_word.related = ''
 
         # handle related word
         if related == self.sort_word_key:
@@ -840,6 +856,43 @@ class Fawoc:
         Saves the terms to file
         """
         self.terms.to_tsv(self.args.datafile)
+
+    def get_stats_strings(self):
+        """
+        Calculates the statistics and formats them into strings
+
+        :return: the statistics about words formatted as strings
+        :rtype: list[str]
+        """
+        stats_strings = []
+        n_later = len(self.postponed)
+        n_keywords = self.classified.count_by_label(Label.KEYWORD)
+        n_relevant = self.classified.count_by_label(Label.RELEVANT)
+        n_noise = self.classified.count_by_label(Label.NOISE)
+        n_not_relevant = self.classified.count_by_label(Label.NOT_RELEVANT)
+        n_completed = n_relevant + n_keywords + n_noise + n_not_relevant
+        n_completed += n_later
+        stats_strings.append(f'Total words:  {self.n_terms:7}')
+        avg = avg_or_zero(n_completed, self.n_terms)
+        stats_strings.append(f'Completed:    {n_completed:7} ({avg:6.2f}%)')
+        avg = avg_or_zero(n_keywords, n_completed)
+        stats_strings.append(f'Keywords:     {n_keywords:7} ({avg:6.2f}%)')
+        avg = avg_or_zero(n_relevant, n_completed)
+        stats_strings.append(f'Relevant:     {n_relevant:7} ({avg:6.2f}%)')
+        avg = avg_or_zero(n_noise, n_completed)
+        stats_strings.append(f'Noise:        {n_noise:7} ({avg:6.2f}%)')
+        avg = avg_or_zero(n_not_relevant, n_completed)
+        stats_strings.append(f'Not relevant: {n_not_relevant:7} ({avg:6.2f}%)')
+        avg = avg_or_zero(n_later, n_completed)
+        stats_strings.append(f'Postponed:    {n_later:7} ({avg:6.2f}%)')
+        s = 'Related:      {:7}'
+        if self.related_count >= 0:
+            s = s.format(self.related_count)
+        else:
+            s = s.format(0)
+
+        stats_strings.append(s)
+        return stats_strings
 
 
 def init_argparser():
@@ -878,52 +931,6 @@ def avg_or_zero(num, den):
         avg = 0
 
     return avg
-
-
-def get_stats_strings(terms, related_items_count=0):
-    """
-    Calculates the statistics and formats them into strings
-
-    :param terms: the list of terms
-    :type terms: TermList
-    :param related_items_count: the current number of related term
-    :type related_items_count: int
-    :return: the statistics about words formatted as strings
-    :rtype: list[str]
-    """
-    stats_strings = []
-    n_completed = terms.count_classified()
-    n_keywords = terms.count_by_label(Label.KEYWORD)
-    n_relevant = terms.count_by_label(Label.RELEVANT)
-    n_noise = terms.count_by_label(Label.NOISE)
-    n_not_relevant = terms.count_by_label(Label.NOT_RELEVANT)
-    n_later = terms.count_by_label(Label.POSTPONED)
-    stats_strings.append('Total words:  {:7}'.format(len(terms.items)))
-    avg = avg_or_zero(n_completed, len(terms.items))
-    stats_strings.append('Completed:    {:7} ({:6.2f}%)'.format(n_completed,
-                                                                avg))
-    avg = avg_or_zero(n_keywords, n_completed)
-    stats_strings.append('Keywords:     {:7} ({:6.2f}%)'.format(n_keywords,
-                                                                avg))
-    avg = avg_or_zero(n_relevant, n_completed)
-    stats_strings.append('Relevant:     {:7} ({:6.2f}%)'.format(n_relevant,
-                                                                avg))
-    avg = avg_or_zero(n_noise, n_completed)
-    stats_strings.append('Noise:        {:7} ({:6.2f}%)'.format(n_noise, avg))
-    avg = avg_or_zero(n_not_relevant, n_completed)
-    stats_strings.append('Not relevant: {:7} ({:6.2f}%)'.format(n_not_relevant,
-                                                                avg))
-    avg = avg_or_zero(n_later, n_completed)
-    stats_strings.append('Postponed:    {:7} ({:6.2f}%)'.format(n_later,
-                                                                avg))
-    s = 'Related:      {:7}'
-    if related_items_count >= 0:
-        s = s.format(related_items_count)
-    else:
-        s = s.format(0)
-
-    stats_strings.append(s)
-    return stats_strings
 
 
 def autonoise_kb(event: KeyPressEvent, fawoc: Fawoc):
@@ -1061,8 +1068,6 @@ def main():
 
     profiler_logger = setup_logger('profiler_logger', 'profiler.log',
                                    level=profile_log_level)
-    debug_logger = setup_logger('debug_logger', 'slr-kit.log',
-                                level=logging.DEBUG)
 
     if args.input is not None:
         try:
