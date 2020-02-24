@@ -5,6 +5,8 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import nltk
+
 from sklearn.decomposition import PCA
 from sklearn.decomposition import TruncatedSVD
 from sklearn.preprocessing import MinMaxScaler
@@ -79,6 +81,34 @@ def select_n_components(var_ratio, goal_var: float) -> int:
     # Return the number of components
     return n_components
 
+
+def do_MDS(dtm):
+    # scale dtm in range [0:1] to better variance maximization
+    scl = MinMaxScaler(feature_range=[0, 1])
+    data_rescaled = scl.fit_transform(dtm)
+
+    tsvd = TruncatedSVD(n_components=data_rescaled.shape[1] - 1)
+    X_tsvd = tsvd.fit(data_rescaled)
+
+    # List of explained variances
+    tsvd_var_ratios = tsvd.explained_variance_ratio_
+
+    optimal_components = select_n_components(tsvd_var_ratios, 0.95)
+
+    # U, Sigma, VT = randomized_svd(dtm.values,
+    #                               n_components=optimal_components,
+    #                               n_iter=100,
+    #                               random_state=122)
+
+    from sklearn.manifold import MDS
+    mds = MDS(n_components=optimal_components, dissimilarity="euclidean", random_state=1)
+    pos = mds.fit_transform(dtm.values)
+
+    U_df = pd.DataFrame(pos)
+    U_df_transposed = U_df.T  # for consistency with pipeline workflow, export tdm matrix
+    return U_df_transposed
+
+
 def main():
     debug_logger.debug('[multidimensional scaling] Started')
     parser = init_argparser()
@@ -93,18 +123,8 @@ def main():
     # performs PCA analysis
     # pca_ = doPCA(dtm)
 
-    # scale dtm in range [0:1] to better variance maximization
-    scl = MinMaxScaler(feature_range=[0, 1])
-    data_rescaled = scl.fit_transform(dtm)
-
-    tsvd = TruncatedSVD(n_components=data_rescaled.shape[1] - 1)
-    X_tsvd = tsvd.fit(data_rescaled)
-
-    # List of explained variances
-    tsvd_var_ratios = tsvd.explained_variance_ratio_
-
-    optimal_components = select_n_components(tsvd_var_ratios, 0.95)
-
+    # performs MDS analysis
+    # mds_ = doMDS(dtm)
 
     # TODO: allow the selection of the filename from command line
     terms = load_df('term-list.csv', required_columns=['id', 'term'])
@@ -113,19 +133,6 @@ def main():
     # "precomputed" because we provide a distance matrix
     # we will also specify `random_state` so the plot is reproducible.
     debug_logger.debug('[multidimensional scaling] Calculating distances information')
-
-    # U, Sigma, VT = randomized_svd(dtm.values,
-    #                               n_components=optimal_components,
-    #                               n_iter=100,
-    #                               random_state=122)
-
-    from sklearn.manifold import MDS
-    mds = MDS(n_components=optimal_components, dissimilarity="euclidean", random_state=1)
-    pos = mds.fit_transform(dtm.values)
-
-    U_df = pd.DataFrame(pos)
-    U_df_transposed = U_df.T  # for consistency with pipeline workflow, export tdm matrix
-    print(U_df_transposed.head())
 
     # for i, comp in enumerate(VT):
     #     terms_comp = zip(terms['term'], comp)
