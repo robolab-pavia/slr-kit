@@ -694,30 +694,31 @@ class Fawoc:
         self.last_classified_order += 1
         self.evaluated_word.order = self.last_classified_order
         self.evaluated_word.related = self.sort_word_key
+        del self.to_classify.items[0]
+        self.related_count -= 1
         t1 = time.time()
         debug_logger.debug("do_classify time 0 {}".format(t1 - t0))
 
-        if self.related_count <= 0:
+        t0 = time.time()
+        if self.related_count < 0:
             self.sort_word_key = self.evaluated_word.string
-        elif self.related_count == 1:
+            ret = self.to_classify.return_related_items(self.sort_word_key,
+                                                        label=self.review)
+            containing, not_containing = ret
+            self.to_classify = containing + not_containing
+            # the sort_word_key has been changed: reload the related count
+            self.related_count = len(containing)
+        elif self.related_count == 0:
             # last related word has been classified: reset the related machinery
             self.sort_word_key = ''
 
-        t0 = time.time()
-        ret = self.terms.return_related_items(self.sort_word_key,
-                                              label=self.review)
-        containing, not_containing = ret
+        # ret = self.terms.return_related_items(self.sort_word_key,
+        #                                       label=self.review)
 
-        if self.related_count <= 0:
-            # the sort_word_key has been changed: reload the related count
-            self.related_count = len(containing)
-        else:
-            self.related_count -= 1
         t1 = time.time()
         debug_logger.debug("do_classify time 1 {}".format(t1 - t0))
 
         t0 = time.time()
-        self.to_classify = containing + not_containing
         self.last_word = self.evaluated_word
 
         self.classified.items.append(self.evaluated_word)
