@@ -19,6 +19,10 @@ from prompt_toolkit.widgets import TextArea, Frame
 
 from terms import Label, TermList, Term
 from utils import setup_logger, substring_index
+import time
+
+debug_logger = setup_logger('debug_logger', 'slr-kit.log',
+                            level=logging.DEBUG)
 
 DEBUG = False
 
@@ -677,15 +681,19 @@ class Fawoc:
         :param label: label to use to classify the term
         :type label: Label
         """
+        debug_logger.debug("do_classify {} {}".format(self.evaluated_word, label))
         if self.evaluated_word is None:
             return
 
+        t0=time.time()
         self.profiler.info("WORD '{}' AS '{}'".format(self.evaluated_word.string,
                                                       label.label_name))
 
         self.terms.classify_term(self.evaluated_word.string, label,
                                  self.terms.get_last_classified_order() + 1,
                                  self.sort_word_key)
+        t1=time.time()
+        debug_logger.debug("do_classify time 0 {}".format(t1-t0))
 
         if self.related_count <= 0:
             self.sort_word_key = self.evaluated_word.string
@@ -693,6 +701,7 @@ class Fawoc:
             # last related word has been classified: reset the related machinery
             self.sort_word_key = ''
 
+        t0=time.time()
         ret = self.terms.return_related_items(self.sort_word_key,
                                               label=self.review)
         containing, not_containing = ret
@@ -702,7 +711,10 @@ class Fawoc:
             self.related_count = len(containing)
         else:
             self.related_count -= 1
+        t1=time.time()
+        debug_logger.debug("do_classify time 1 {}".format(t1-t0))
 
+        t0=time.time()
         self.to_classify = containing + not_containing
         self.last_word = self.evaluated_word
 
@@ -711,11 +723,16 @@ class Fawoc:
         self.gui.update_windows(self.terms, self.to_classify, self.classified,
                                 self.postponed, self.last_word,
                                 self.related_count, self.sort_word_key)
+        t1=time.time()
+        debug_logger.debug("do_classify time 2 {}".format(t1-t0))
 
+        t0=time.time()
         if not self.args.dry_run and not self.args.no_auto_save:
             self.save_terms()
 
         self._get_next_word()
+        t1=time.time()
+        debug_logger.debug("do_classify time 3 {}".format(t1-t0))
 
     def do_postpone(self):
         """
@@ -947,8 +964,12 @@ def classify_kb(event: KeyPressEvent, fawoc: Fawoc):
     :param fawoc: fawoc object
     :type fawoc: Fawoc
     """
+    debug_logger.debug("event {}".format(event))
     label = Label.get_from_key(event.data.lower())
+    t0=time.time()
     fawoc.do_classify(label)
+    t1=time.time()
+    debug_logger.debug("classify {}: {}".format(label, t1-t0))
 
 
 def postpone_kb(event: KeyPressEvent, fawoc: Fawoc):
@@ -1061,8 +1082,6 @@ def main():
 
     profiler_logger = setup_logger('profiler_logger', 'profiler.log',
                                    level=profile_log_level)
-    debug_logger = setup_logger('debug_logger', 'slr-kit.log',
-                                level=logging.DEBUG)
 
     if args.input is not None:
         try:
