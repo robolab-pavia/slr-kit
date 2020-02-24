@@ -1,25 +1,25 @@
-import matplotlib.pyplot as plt
-import sys
-import pandas as pd
-import numpy as np
 import argparse
 import logging
+import sys
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from sklearn.decomposition import PCA
+from sklearn.decomposition import TruncatedSVD
+from sklearn.preprocessing import MinMaxScaler
+
 from utils import (
     load_df,
     setup_logger,
 )
-
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.utils.extmath import randomized_svd
-from sklearn.decomposition import TruncatedSVD
 
 debug_logger = setup_logger('debug_logger', 'slr-kit.log',
                             level=logging.DEBUG)
 
 def init_argparser():
     """Initialize the command line parser."""
-    parser = argparse.ArgumentParser(description='Perform Multidimensional Scaling (MDS) over a distance matrix')
+    parser = argparse.ArgumentParser(description='Perform MDS over a distance matrix')
 
     parser.add_argument('infile', action="store", type=str,
                         help="input CSV file with documents-terms matrix")
@@ -114,7 +114,10 @@ def main():
     # we will also specify `random_state` so the plot is reproducible.
     debug_logger.debug('[multidimensional scaling] Calculating distances information')
 
-    #U, Sigma, VT = randomized_svd(dtm.values, n_components=optimal_components, n_iter=100, random_state=122)
+    # U, Sigma, VT = randomized_svd(dtm.values,
+    #                               n_components=optimal_components,
+    #                               n_iter=100,
+    #                               random_state=122)
 
     from sklearn.manifold import MDS
     mds = MDS(n_components=optimal_components, dissimilarity="euclidean", random_state=1)
@@ -135,7 +138,8 @@ def main():
 
     debug_logger.debug('[multidimensional scaling] Saving')
     output_file = open(args.output, 'w') if args.output is not None else sys.stdout
-    export_csv = U_df_transposed.to_csv(output_file, header=True, sep='\t')
+    export_csv = U_df_transposed.to_csv(output_file, header=True,
+                                        sep='\t', float_format='%.3f')
     output_file.close()
 
     debug_logger.debug('[multidimensional scaling] Terminated')
