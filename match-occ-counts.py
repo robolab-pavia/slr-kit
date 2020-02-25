@@ -33,17 +33,28 @@ def main():
 
     # convert the dataframe into a Series indexed by Abstract
     # making the search of an existing abstract very quick
-    nrel = pandas.Series(zip(nrelevant['Count'], nrelevant['Terms']), index=nrelevant['Abstract'])
+    nrel = pandas.Series(zip(nrelevant['Count'], nrelevant['Terms']),
+                         index=nrelevant['Abstract'])
 
-    print('{}\t{}\t{}\t{}\t{}'.format('Abstract', 'Keyword count', 'Not-relevant count', 'Keyword Terms', 'Not-relevant Terms'))
+    if args.output is not None:
+        output = open(args.output, 'w', encoding='utf-8')
+    else:
+        output = sys.stdout
+
+    header = ['abstract', 'keyword_count', 'not_relevant_count',
+              'keyword', 'not-relevant']
+    print('\t'.join(header), file=output)
     tot = len(keywords['Abstract'])
     for ik, k in keywords.iterrows():
         abst = k['Abstract']
         if abst in nrel:
-            print('{}\t{}\t{}\t{}\t{}'.format(abst, k['Count'], nrel[abst][0], k['Terms'], nrel[abst][1]))
+            data = [str(abst), str(k['Count']), str(nrel[abst][0]), k['Terms'],
+                    nrel[abst][1]]
+            print('\t'.join(data), file=output)
+
         if (ik % 50) == 0:
-            debug_logger.debug('Matching keywords and not-relevant {}/{}'.format(ik, tot))
-    
+            debug_log.debug(f'Matching keywords and not-relevant {ik}/{tot}')
+
 
 if __name__ == "__main__":
     main()
