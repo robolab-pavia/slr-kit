@@ -9,27 +9,25 @@ from utils import setup_logger
 def init_argparser():
     """Initialize the command line parser."""
     parser = argparse.ArgumentParser()
-    parser.add_argument('datafile', action="store", type=str,
-                        help="input CSV data file")
+    parser.add_argument('keyword_file', action='store', type=str,
+                        help='CSV input file with the keyword occurrences')
+    parser.add_argument('not_relevant_file', action='store', type=str,
+                        help='CSV input file with the not-relevant occurrences')
     parser.add_argument('--output', '-o', metavar='FILENAME',
                         help='output file name')
-    parser.add_argument('--stop-words', '-s', metavar='FILENAME', dest='stop_words_file',
-                        help='stop words file name')
     return parser
 
 
 def main():
-    #parser = init_argparser()
-    #args = parser.parse_args()
-    debug_logger = setup_logger('debug_logger', 'slr-kit.log',
-                                level=logging.DEBUG)
+    parser = init_argparser()
+    args = parser.parse_args()
+    debug_log = setup_logger('debug_logger', 'slr-kit.log', level=logging.DEBUG)
 
     # load the dataset
-    # TODO: read the input files from command line
-    keywords = pandas.read_csv('occ-keyword-count.csv', delimiter='\t',
+    keywords = pandas.read_csv(args.keyword_file, delimiter='\t',
                                encoding='utf-8')
     keywords.fillna('', inplace=True)
-    nrelevant = pandas.read_csv('occ-not-relevant-count.csv', delimiter='\t',
+    nrelevant = pandas.read_csv(args.not_relevant_file, delimiter='\t',
                                 encoding='utf-8')
     nrelevant.fillna('', inplace=True)
 
