@@ -10,9 +10,9 @@ from utils import (
     load_df
 )
 
-
 debug_logger = setup_logger('debug_logger', 'slr-kit.log',
                             level=logging.DEBUG)
+
 
 def init_argparser():
     """Initialize the command line parser."""
@@ -29,14 +29,15 @@ def init_argparser():
 
 
 def find_all_occurrences(term, document, doc_id):
-    l = []
+    lst = []
     # prepend and append a space to both keyword and abstract
     # in order to look for terms delimited by spaces (whole words)
     term_expanded = ' ' + term + ' '
     doc_expanded = ' ' + document + ' '
     for match in re.finditer(term_expanded, doc_expanded):
-        l.append(match.start())
-    return doc_id, l
+        lst.append(match.start())
+
+    return doc_id, lst
 
 
 def find_occurrences_in_all_documents(terms, documents_df, output_file):
@@ -69,21 +70,20 @@ def main():
     # load the datasets
     abstracts_df = load_df(args.abstracts, required_columns=[abstracts_column])
     terms_df = load_df(args.terms, required_columns=[terms_column])
-    #logging.debug(dataset.head())
 
     # select only the terms that are properly labelled
     if args.label is not None:
         label = args.label
     else:
-        label = 'keyword'   # default behavior
-    #print(label)
+        label = 'keyword'  # default behavior
+
     terms_flags = terms_df['label'] == label
     terms_df = terms_df[terms_flags]
-    #print(keywords)
 
     output_file = open(args.output, 'w',
                        encoding='utf-8') if args.output is not None else sys.stdout
-    find_occurrences_in_all_documents(terms_df[terms_column], abstracts_df, output_file)
+    find_occurrences_in_all_documents(terms_df[terms_column],
+                                      abstracts_df, output_file)
     output_file.close()
 
 
