@@ -66,17 +66,20 @@ def main():
     parser = init_argparser()
     args = parser.parse_args()
 
-    # TODO: write log string with values of the parameters used in the execution
-
-    # load the datasets
-    abstracts_df = load_df(args.abstracts, required_columns=[abstracts_column])
-    terms_df = load_df(args.terms, required_columns=[terms_column])
-
     # select only the terms that are properly labelled
     if args.label is not None:
         label = args.label
     else:
         label = 'keyword'  # default behavior
+
+    debug_logger.info('occurrences started')
+    msg = f'parameters: abstracts {args.abstracts}, terms {args.terms}'
+    msg = f'{msg}, label {label}'
+    debug_logger.info(msg)
+
+    # load the datasets
+    abstracts_df = load_df(args.abstracts, required_columns=[abstracts_column])
+    terms_df = load_df(args.terms, required_columns=[terms_column])
 
     terms_flags = terms_df['label'] == label
     terms_df = terms_df[terms_flags]
@@ -86,6 +89,7 @@ def main():
     find_occurrences_in_all_documents(terms_df[terms_column],
                                       abstracts_df, output_file)
     output_file.close()
+    debug_logger.info('occurrences ended')
 
 
 if __name__ == "__main__":
