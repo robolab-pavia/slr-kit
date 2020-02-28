@@ -45,18 +45,19 @@ def find_occurrences_in_all_documents(terms, documents_df, output_file):
     tot = len(terms)
     document_list = list(documents_df['abstract_lem'])
     doc_id_list = list(documents_df['id'])
-    for i, term in enumerate(terms):
-        info = {'term': term, 'occurrences': {}}
-        term_list = [term] * len(document_list)
-        # parallel invocation of the search function
-        with Pool() as pool:
-            result = pool.starmap(find_all_occurrences, zip(term_list, document_list, doc_id_list))
-        # keeps non empty lists of occurrences
-        info['occurrences'] = {r[0]: r[1] for r in result if len(r[1]) > 0}
-        output_file.write(json.dumps(info))
-        output_file.write('\n')
-        if (i % 5) == 0:
-            debug_logger.debug('Finding occurrences ({}/{})'.format(i, tot))
+    with Pool() as pool:
+        for i, term in enumerate(terms):
+            info = {'term': term, 'occurrences': {}}
+            term_list = [term] * len(document_list)
+            # parallel invocation of the search function
+            result = pool.starmap(find_all_occurrences,
+                                  zip(term_list, document_list, doc_id_list))
+            # keeps non empty lists of occurrences
+            info['occurrences'] = {r[0]: r[1] for r in result if len(r[1]) > 0}
+            output_file.write(json.dumps(info))
+            output_file.write('\n')
+            if (i % 5) == 0:
+                debug_logger.debug('Finding occurrences ({}/{})'.format(i, tot))
 
 
 def main():
