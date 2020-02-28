@@ -643,6 +643,7 @@ class Fawoc:
 
             t.label = Label.AUTONOISE
             self.last_classified_order += 1
+            t.related = self.sort_word_key
             t.order = self.last_classified_order
             auto.append(t.string)
             msg = f"WORD '{t.string}' labeled as {Label.AUTONOISE.label_name}"
