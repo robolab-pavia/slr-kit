@@ -870,21 +870,32 @@ class Fawoc:
         n_relevant = self.classified.count_by_label(Label.RELEVANT)
         n_noise = self.classified.count_by_label(Label.NOISE)
         n_not_relevant = self.classified.count_by_label(Label.NOT_RELEVANT)
+        n_autonoise = self.classified.count_by_label(Label.AUTONOISE)
         n_completed = n_relevant + n_keywords + n_noise + n_not_relevant
-        n_completed += n_later
+        n_completed += n_later + n_autonoise
         stats_strings.append(f'Total words:  {self.n_terms:7}')
+
         avg = avg_or_zero(n_completed, self.n_terms)
         stats_strings.append(f'Completed:    {n_completed:7} ({avg:6.2f}%)')
+
         avg = avg_or_zero(n_keywords, n_completed)
         stats_strings.append(f'Keywords:     {n_keywords:7} ({avg:6.2f}%)')
+
         avg = avg_or_zero(n_relevant, n_completed)
         stats_strings.append(f'Relevant:     {n_relevant:7} ({avg:6.2f}%)')
+
         avg = avg_or_zero(n_noise, n_completed)
         stats_strings.append(f'Noise:        {n_noise:7} ({avg:6.2f}%)')
+
         avg = avg_or_zero(n_not_relevant, n_completed)
         stats_strings.append(f'Not relevant: {n_not_relevant:7} ({avg:6.2f}%)')
+
+        avg = avg_or_zero(n_autonoise, n_completed)
+        stats_strings.append(f'Autonoise:    {n_autonoise:7} ({avg:6.2f}%)')
+
         avg = avg_or_zero(n_later, n_completed)
         stats_strings.append(f'Postponed:    {n_later:7} ({avg:6.2f}%)')
+
         s = 'Related:      {:7}'
         if self.related_count >= 0:
             s = s.format(self.related_count)
@@ -1034,7 +1045,7 @@ def fawoc_main(terms, args, review, last_reviews, logger=None, profiler=None):
                 w.related = ''
 
     win_width = 40
-    rows = 8
+    rows = 9
     terms_rows = 28
 
     gui = Gui(win_width, terms_rows, rows, review)
