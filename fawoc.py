@@ -925,6 +925,26 @@ def init_argparser():
                         help='disable auto-saving; save changes at the end of the session')
     parser.add_argument('--no-profile', action='store_true', dest='no_profile',
                         help='disable profiling logging')
+    wmin = 40
+    wmax = 100
+    wdef = 50
+
+    def check_width(arg):
+        try:
+            w = int(arg)
+            if w < wmin or w > wmax:
+                msg = f'width {w} is not in range [{wmin}, {wmax}]'
+            else:
+                return w
+        except ValueError:
+            msg = f'width {arg} is not a valid int'
+
+        raise argparse.ArgumentTypeError(msg)
+
+    help_msg = f"""width of the windows in columns.
+Must be in range [{wmin}, {wmax}]. Default {wdef} columns"""
+    parser.add_argument('--width', '-w', action='store', type=check_width,
+                        help=help_msg, default=wdef)
     return parser
 
 
@@ -1045,7 +1065,7 @@ def fawoc_main(terms, args, review, last_reviews, logger=None, profiler=None):
                 w.order = -1
                 w.related = ''
 
-    win_width = 40
+    win_width = args.width
     rows = 9
     terms_rows = 28
 
