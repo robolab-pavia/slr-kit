@@ -598,6 +598,8 @@ def prepare_df(args):
         if f not in df.columns:
             df[f] = [''] * len(df)
 
+    df.fillna('', inplace=True)
+
     return df
 
 
