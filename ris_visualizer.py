@@ -270,6 +270,7 @@ class Gui:
                 if 0 <= search_id < len(self.df):
                     self.list_box.select_clear(0, tk.END)
                     self.list_box.select_set(first=search_id)
+                    self.list_box.see(search_id)
                     self.list_box.activate(search_id)
                     self._list_change_event(None)
                 else:
