@@ -6,7 +6,7 @@ from tkinter import ttk
 import pandas as pd
 import utils
 
-WORD_DELIMITERS = string.whitespace + ',;.:"\''
+WORD_DELIMITERS = string.whitespace + ',;.:"\'()\\/-'
 
 
 class SearchPanel(ttk.Frame):
