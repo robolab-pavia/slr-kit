@@ -792,6 +792,8 @@ class Fawoc:
             for t in reversed(list(self.classified.items)):
                 if t.label == Label.AUTONOISE:
                     self._undo_single()
+                else:
+                    break
         else:
             self._undo_single()
 
