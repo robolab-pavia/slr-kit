@@ -591,7 +591,11 @@ class Fawoc:
         self._get_next_word()
         self.review = review
         self.related_count = related
-        self.sort_word_key = sort_key
+        if related > 0:
+            self.sort_word_key = sort_key
+        else:
+            self.sort_word_key = ''
+
         self.last_word = last_word
         self.profiler = profiler
         self.logger = logger
@@ -788,6 +792,8 @@ class Fawoc:
             for t in reversed(list(self.classified.items)):
                 if t.label == Label.AUTONOISE:
                     self._undo_single()
+                else:
+                    break
         else:
             self._undo_single()
 
