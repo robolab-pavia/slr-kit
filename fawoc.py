@@ -706,8 +706,10 @@ class Fawoc:
             self.to_classify = containing + not_containing
             # the sort_word_key has been changed: reload the related count
             self.related_count = len(containing)
-        elif self.related_count == 0:
-            # last related word has been classified: reset the related machinery
+
+        if self.related_count == 0:
+            # last related word has been classified or no related words found:
+            # reset the related machinery
             self.sort_word_key = ''
 
         t1 = time.time()
