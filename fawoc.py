@@ -570,6 +570,7 @@ class Fawoc:
                 self.to_classify = terms.get_not_classified()
             else:
                 self.to_classify = terms.get_from_label(review, order_set=False)
+                self.to_classify.sort_by_index()
         else:
             self.last_classified_order = last_word.order
             sort_key = last_word.related
