@@ -42,6 +42,19 @@ def init_argparser():
 
 
 def compute_optimal_model(dictionary, corpus, texts, limit, start, step, alpha, beta):
+    """
+    Train several models iterating over the specified number of topics and performs
+    LDA hyper-parameters alpha and beta tuning
+    :param dictionary: Gensim dictionary from FAWOC classification
+    :param corpus: Gensim corpus
+    :param texts: Tokenized text, used for window sliding
+    :param limit: Maximum number of topics
+    :param start: Minimum number of topics
+    :param step: Step for topics range
+    :param alpha: Alpha parameter values to test
+    :param beta: Beta parameter values to test
+    :return: pandas data-frame with best model performances
+    """
     # Topics range
     topics_range = range(start, limit, step)
 
