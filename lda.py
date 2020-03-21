@@ -259,7 +259,7 @@ def main():
             x = range(start, limit, step)
             plt.plot(x, data['Coherence'], color='b',
                      marker='.', linestyle='solid',
-                     markerfacecolor='none',
+                     markerfacecolor='w',
                      markeredgecolor='b')
             plt.xlabel("Number of Topics")
             plt.ylabel("Coherence score")
