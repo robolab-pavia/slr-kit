@@ -164,17 +164,18 @@ def main():
         answer = ""
         while answer not in ["y", "n"]:
             answer = input("Running with -DM will permanently delete pre-trained model."
-                           "Are you sure? [Y/N]? ").lower()
+                           " Are you sure? [Y/N]? ").lower()
             if answer == "y":
                 # Handle errors while calling os.remove()
                 try:
                     [os.remove(x) for x in glob.glob("model.bin*")]
                 except OSError:
                     print("Error while deleting pre-trained model")
+                finally:
+                    break
             else:
                 print("Aborting")
                 exit()
-        return answer == "y"
 
     tdm = pd.read_csv(args.infile, delimiter='\t')
     tdm.fillna('', inplace=True)
@@ -215,11 +216,11 @@ def main():
             step = int(args.s)
 
         # Alpha parameter
-        alpha = list(np.arange(0.01, 1, 0.3))
+        alpha = list(np.arange(0.01, 1, 0.2))
         alpha.append('symmetric')
         alpha.append('asymmetric')
         # Beta parameter
-        beta = list(np.arange(0.01, 1, 0.3))
+        beta = list(np.arange(0.01, 1, 0.2))
         beta.append('symmetric')
 
         debug_logger.debug('[Latent Dirichlet allocation] LDA hyper-parameters tuning')
