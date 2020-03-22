@@ -160,6 +160,22 @@ def main():
     parser = init_argparser()
     args = parser.parse_args()
 
+    if args.DM:  # user asks to delete the pre-trained model
+        answer = ""
+        while answer not in ["y", "n"]:
+            answer = input("Running with -DM will permanently delete pre-trained model."
+                           "Are you sure? [Y/N]? ").lower()
+            if answer == "y":
+                # Handle errors while calling os.remove()
+                try:
+                    [os.remove(x) for x in glob.glob("model.bin*")]
+                except OSError:
+                    print("Error while deleting pre-trained model")
+            else:
+                print("Aborting")
+                exit()
+        return answer == "y"
+
     tdm = pd.read_csv(args.infile, delimiter='\t')
     tdm.fillna('', inplace=True)
 
@@ -179,13 +195,6 @@ def main():
         documents.append(doc)
     dictionary = corpora.Dictionary(documents)
     corpus = [dictionary.doc2bow(doc) for doc in documents]
-
-    if args.DM:  # user asked to delete the pre-trained model
-        # Handle errors while calling os.remove()
-        try:
-            [os.remove(x) for x in glob.glob("model.bin*")]
-        except OSError:
-            print("Error while deleting pre-trained model")
 
     # Checks for pre-trained model file named 'model.bin'
     # if model exists than loads it, otherwise starts training
@@ -310,12 +319,27 @@ def main():
         output_file.close()
 
     # get best document for each topic
-    max_values_indexes = df.loc[:, df.columns != 'dominant_topic'].idxmax()
-    topic_index = 0
+    # max_values_indexes = df.loc[:, df.columns != 'dominant_topic'].idxmax()
+    # topic_index = 0
+    # best_documents = []
+    # for row in max_values_indexes:
+    #     best_documents.append(row)
+    #     topic_index = topic_index + 1
+
     best_documents = []
-    for row in max_values_indexes:
-        best_documents.append(row)
-        topic_index = topic_index + 1
+    N = 3  # TODO: maybe from commandline?
+    for column in df.loc[:, df.columns != 'dominant_topic']:
+        sorted_df = df.sort_values(by=[column], ascending=False)
+        top_n = []
+        i = 0
+        for index, row in sorted_df.iterrows():
+            if i < N:  # get only top N
+                top_n.append(index)
+                i = i + 1
+            else:
+                break
+
+        best_documents.append(top_n)
 
     debug_logger.debug('[Latent Dirichlet allocation] Saving Topics-Keywords matrix')
     # Topic-Keyword Matrix
