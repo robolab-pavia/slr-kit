@@ -319,13 +319,6 @@ def main():
         output_file.close()
 
     # get best document for each topic
-    # max_values_indexes = df.loc[:, df.columns != 'dominant_topic'].idxmax()
-    # topic_index = 0
-    # best_documents = []
-    # for row in max_values_indexes:
-    #     best_documents.append(row)
-    #     topic_index = topic_index + 1
-
     best_documents = []
     N = 3  # TODO: maybe from commandline?
     for column in df.loc[:, df.columns != 'dominant_topic']:
@@ -338,7 +331,6 @@ def main():
                 i = i + 1
             else:
                 break
-
         best_documents.append(top_n)
 
     debug_logger.debug('[Latent Dirichlet allocation] Saving Topics-Keywords matrix')
