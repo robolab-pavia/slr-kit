@@ -100,7 +100,7 @@ def compute_optimal_model(dictionary, corpus, texts, limit, start, step, alpha, 
                     progress_bar.update(1)
 
     df = pd.DataFrame(model_results)
-    # df.to_csv('lda_tuning_results.csv', sep='\t', index=False)
+    df.to_csv('lda_tuning_results.csv', sep='\t', float_format='%.4f', index=False)
     progress_bar.close()
 
     return df
@@ -216,12 +216,12 @@ def main():
             step = int(args.s)
 
         # Alpha parameter
-        alpha = list(np.arange(0.01, 1, 0.2))
+        alpha = list(np.arange(0.01, 1, 0.1))
         alpha.append('symmetric')
         alpha.append('asymmetric')
         # Beta parameter
-        beta = list(np.arange(0.01, 1, 0.2))
-        beta.append('symmetric')
+        beta = list(np.arange(0.01, 1, 0.1))
+        beta.append('auto')
 
         debug_logger.debug('[Latent Dirichlet allocation] LDA hyper-parameters tuning')
         # Optimal model selection based on iterated test taking as best model
@@ -262,15 +262,15 @@ def main():
 
         if args.plot:
             # Show graph for coherence and reshape data-frame fot topics-c_v plot
-            corpus_100.insert(1, 'temp', np.max(corpus_100.Coherence.values, axis=0))
-            idx = corpus_100.groupby('Topics')['temp'].idxmax()  # get max score per topics number
-            data = corpus_100.loc[idx].drop('temp', 1)  # drops temporary column
+            idx = corpus_100.groupby('Topics')['Coherence'].idxmax()  # get max score per topics number
+            data = corpus_100.loc[idx]
 
             x = range(start, limit, step)
             plt.plot(x, data['Coherence'], color='b',
-                     marker='.', linestyle='solid',
+                     marker='o', linestyle='solid',
                      markerfacecolor='w',
                      markeredgecolor='b')
+            plt.xticks(x)
             plt.xlabel("Number of Topics")
             plt.ylabel("Coherence score")
             plt.legend("coherence_values", loc='best')
