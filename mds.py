@@ -6,16 +6,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import nltk
-
+import tqdm
 from sklearn.decomposition import PCA
+from sklearn.manifold import MDS
 from sklearn.decomposition import TruncatedSVD
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.cluster import AgglomerativeClustering
 
 from utils import (
     load_df,
     setup_logger,
 )
+
 
 debug_logger = setup_logger('debug_logger', 'slr-kit.log',
                             level=logging.DEBUG)
@@ -26,14 +29,14 @@ def init_argparser():
 
     parser.add_argument('infile', action="store", type=str,
                         help="input CSV file with documents-terms matrix")
+    parser.add_argument('datafile', action="store", type=str,
+                        help="input CSV file documents data (id, title, abstract)")
     parser.add_argument('--output', '-o', metavar='FILENAME',
                         help='output file name in CSV format')
     return parser
 
 
-def do_PCA(tdm, n):
-
-    dtm = tdm.T
+def do_PCA(dtm, n):
     # scale dtm in range [0:1] to better variance maximization
     scl = MinMaxScaler(feature_range=[0, 1])
     data_rescaled = scl.fit_transform(dtm)
@@ -42,20 +45,34 @@ def do_PCA(tdm, n):
     pca = PCA(n_components=n).fit(data_rescaled)
     data_reducted = pca.transform(data_rescaled)
 
-    dtm_reducted = pd.DataFrame(data_reducted)
-    # plt.plot(np.cumsum(pca.explained_variance_ratio_))
-    # plt.xlabel('number of components')
-    # plt.ylabel('cumulative explained variance')
-    # plt.show()
-    tdm_reducted = dtm_reducted.T
-    return tdm_reducted
+    dtm_reducted = pd.DataFrame(data_reducted, index=dtm.index)
+    return dtm_reducted
 
 
-def compute_csimilarity(tdm):
-    dtm = tdm.T
+def do_MDS(dtm, n):
+    # scale dtm in range [0:1] to better variance maximization
+    scl = MinMaxScaler(feature_range=[0, 1])
+    data_rescaled = scl.fit_transform(dtm)
+
+    # Fitting the MDS algorithm with our Data
+    mds = MDS(n_components=n).fit(data_rescaled)
+    data_reducted = mds.transform(data_rescaled)
+
+    dtm_reducted = pd.DataFrame(data_reducted, index=dtm.index)
+    return dtm_reducted
+
+
+def compute_csimilarity(dtm):
     cs = cosine_similarity(dtm)
-    cs_pd = pd.DataFrame(cs)
+    cs_pd = pd.DataFrame(cs, index=dtm.index)
     return cs_pd
+
+
+def do_clustering(dist_matrix, num_clusters):
+    ward_cl = AgglomerativeClustering(n_clusters=num_clusters,
+                                      affinity='euclidean',
+                                      linkage='ward')
+    return ward_cl.fit(dist_matrix)
 
 
 def autotune_PCA(dtm):
@@ -119,17 +136,42 @@ def main():
     tdm = pd.read_csv(args.infile, delimiter='\t', index_col=0)
     tdm.fillna('0', inplace=True)
 
+    dtm = tdm.T
+    # preserve index as docs_id
+    dtm = dtm.rename(columns=dtm.iloc[0]).drop(dtm.index[0])
+    dtm.index.name = None  # drop 'Unnamed: 0' coming from transposition
+
+    docs = load_df(args.datafile, required_columns=['id', 'title'])
     # we want to use the documents-terms matrix so DONE IN FUNCTIONS
     # dtm = tdm.T
 
-    n_components = tdm.shape[0]
-    start = int(n_components*0.1)
-    for n in range(start, n_components, int(n_components*0.1)):
-        reduced_tdm = do_PCA(tdm, n)
-        cs_tdm = compute_csimilarity(reduced_tdm)
+    num_clusters = 5
 
-    # performs MDS analysis
-    # mds_ = doMDS(dtm)
+    n_components = tdm.shape[0]
+    start = int(n_components*0.2)
+    step = start
+
+    progress_bar = tqdm.tqdm(total=len(range(start, n_components, step)))
+    for n in range(start, n_components, step):
+        #print("Performing PCA...")
+        reduced_dtm = do_PCA(dtm, n)
+
+        #print("Computing cosine similarity...")
+        dist_matrix = compute_csimilarity(reduced_dtm)
+
+        #print("Clustering with Ward HAC...")
+        ward_cl = do_clustering(dist_matrix, num_clusters)
+        labels = ward_cl.labels_
+
+        #print("Saving results...")
+        df = pd.DataFrame(dict(title=docs['title'], label=labels), index=dtm.index)
+
+        output_file = "pca_" + str(n) + "_clusters_" + str(num_clusters) + ".csv"
+        df.to_csv(output_file, header=True, sep='\t', encoding='utf-8')
+
+        progress_bar.update(1)
+
+    progress_bar.close()
     debug_logger.debug('[multidimensional scaling] Terminated')
 
 
