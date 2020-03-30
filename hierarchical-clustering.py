@@ -111,6 +111,13 @@ def plot_dendrogram(linkage_matrix, out_file, **kwargs):
     plt.close()
 
 
+def do_clustering(dist_matrix, num_clusters):
+    ward_cl = AgglomerativeClustering(n_clusters=num_clusters,
+                                      affinity='euclidean',
+                                      linkage='ward')
+    return ward_cl.fit(dist_matrix)
+
+
 def main():
     debug_logger.debug('[hierarchical clustering] Started')
     parser = init_argparser()
@@ -138,10 +145,7 @@ def main():
         num_clusters = int(args.clusters)
 
     # performs Hierarchical Clustering using Ward's method
-    ward_cl = AgglomerativeClustering(n_clusters=num_clusters,
-                                      affinity='euclidean',
-                                      linkage='ward')
-    ward_cl.fit(dist_matrix)
+    ward_cl = do_clustering(dist_matrix, num_clusters)
 
     # retrieves cluster labels for each sample
     labels = ward_cl.labels_
