@@ -51,7 +51,7 @@ def main():
 
     debug_logger.debug('[cosine_similarity] Calculate similarity')
     cs = cosine_similarity(dtm)
-    cs_pd = pd.DataFrame(cs, index=dtm.index)
+    cs_pd = pd.DataFrame(cs, columns=dtm.index, index=dtm.index)
 
     # write to output, either a file or stdout (default)
     debug_logger.debug('[cosine_similarity] Saving')
