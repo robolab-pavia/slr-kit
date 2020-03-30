@@ -32,7 +32,7 @@ def init_argparser():
 
 def load_stop_words(input_file, language='english'):
     stop_words_list = []
-    with open(input_file, "r") as f:
+    with open(input_file, "r", encoding='utf-8') as f:
         stop_words_list = f.read().split('\n')
     stop_words_list = [w for w in stop_words_list if w != '']
     stop_words_list = [w for w in stop_words_list if w[0] != '#']
@@ -82,7 +82,7 @@ def main():
     # TODO: write log string with values of the parameters used in the execution
 
     # load the dataset
-    dataset = pandas.read_csv(args.datafile, delimiter='\t')
+    dataset = pandas.read_csv(args.datafile, delimiter='\t', encoding='utf-8')
     dataset.fillna('', inplace=True)
     assert_column(args.datafile, dataset, target_column)
     debug_logger.debug("Dataset loaded {} items".format(len(dataset[target_column])))
@@ -104,7 +104,8 @@ def main():
     #print(dataset.iloc[0])
 
     # write to output, either a file or stdout (default)
-    output_file = open(args.output, 'w') if args.output is not None else sys.stdout
+    output_file = open(args.output, 'w',
+                       encoding='utf-8') if args.output is not None else sys.stdout
     export_csv = dataset.to_csv(output_file, index=None, header=True, sep='\t')
 
 

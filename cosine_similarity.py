@@ -25,7 +25,7 @@ def init_argparser():
 
 
 def save_term_list(filename, df):
-    with open(filename, 'w') as outfile:
+    with open(filename, 'w', encoding='utf-8') as outfile:
         outfile.write('id\tterm\n')
         i = 0
         for name, row in df.iterrows():
@@ -39,18 +39,22 @@ def main():
 
     # load the dataset
     debug_logger.debug('[cosine_similarity] Loading input file')
-    df = pd.read_csv(args.terms, delimiter='\t', index_col=0)
+    df = pd.read_csv(args.terms, delimiter='\t', index_col=0, encoding='utf-8')
     df.fillna('', inplace=True)
     #debug_logger.debug(df.head())
 
+    # transposes dataframe to get document-terms matrix
+    df_transposed = df.T
+
     debug_logger.debug('[cosine_similarity] Calculate similarity')
-    cs = cosine_similarity(df)
+    cs = cosine_similarity(df_transposed)
     cs_pd = pd.DataFrame(cs)
 
     # write to output, either a file or stdout (default)
     debug_logger.debug('[cosine_similarity] Saving')
     output_file = open(args.output, 'w') if args.output is not None else sys.stdout
-    export_csv = cs_pd.to_csv(output_file, header=True, sep='\t', float_format='%.3f')
+    export_csv = cs_pd.to_csv(output_file, header=True, sep='\t',
+                              float_format='%.3f', encoding='utf-8')
     output_file.close()
 
     # TODO: allow the selection of this filename from command line
@@ -61,4 +65,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

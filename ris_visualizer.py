@@ -6,7 +6,7 @@ from tkinter import ttk
 import pandas as pd
 import utils
 
-WORD_DELIMITERS = string.whitespace + ',;.:"\''
+WORD_DELIMITERS = string.whitespace + ',;.:"\'()\\/-'
 
 
 class SearchPanel(ttk.Frame):
@@ -19,6 +19,7 @@ class SearchPanel(ttk.Frame):
         self._filterframe = ttk.LabelFrame(self, text='Filter')
         self.filter_txt, self.filter_entry = self._setup_filter_entry()
         self.filter_box = self._setup_filter_combobox()
+        self.case_insensitive = self._setup_case_checkbutton()
         self._searchframe = ttk.LabelFrame(self, text='Search by ID')
         self.search_txt, self.search_entry = self._setup_search()
 
@@ -29,6 +30,21 @@ class SearchPanel(ttk.Frame):
     @property
     def search_shown(self):
         return self._search_shown
+
+    def _setup_case_checkbutton(self):
+        """
+        Setups the case insensitive checkbutton
+
+        :return: the variable associated to the checkbutton
+        :rtype: tk.BooleanVar
+        """
+        case = tk.BooleanVar()
+        case.set(False)
+        check = ttk.Checkbutton(self._filterframe, text='Case insensitive',
+                                variable=case, onvalue=True,
+                                offvalue=False)
+        check.grid(row=0, column=2, sticky=(tk.E, tk.W))
+        return case
 
     def _setup_filter_combobox(self):
         """
@@ -116,10 +132,12 @@ class TextWrapper(tk.Text):
         if disabled:
             self['state'] = 'disabled'
 
-    def highlight_words(self, words):
+    def highlight_words(self, words, case_insensitive=False):
         """
         Hightlights the specified words
 
+        :param case_insensitive: if the word search must be case insensitive (Default: False)
+        :type case_insensitive: bool
         :param words: list of words to highlight
         :type words: str or list[str]
         """
@@ -133,7 +151,12 @@ class TextWrapper(tk.Text):
         s = self.get('1.0', 'end')
         idx = []
         for w in words:
+            if case_insensitive:
+                s = s.lower()
+                w = w.lower()
+
             idx += list(utils.substring_index(s, w, delim=WORD_DELIMITERS))
+
         for start, end in idx:
             sstart = '1.{}'.format(start)
             sstop = '1.{}'.format(end)
@@ -209,6 +232,7 @@ class Gui:
         self.filter_txt = ''
         self.fdf = None
         self.filter_field = ''
+        self.filter_case_insensitive = False
         self.root = tk.Tk()
         self.root.title('RIS Visualizer')
         self.root.rowconfigure(0, weight=1)
@@ -246,6 +270,7 @@ class Gui:
                 if 0 <= search_id < len(self.df):
                     self.list_box.select_clear(0, tk.END)
                     self.list_box.select_set(first=search_id)
+                    self.list_box.see(search_id)
                     self.list_box.activate(search_id)
                     self._list_change_event(None)
                 else:
@@ -311,6 +336,7 @@ class Gui:
         """
         if getattr(event, 'char', '') == '\r':
             filter_txt = self.filterpanel.filter_txt.get()
+            self.filter_case_insensitive = self.filterpanel.case_insensitive.get()
             if filter_txt == '':
                 self.filter_txt = ''
                 self.status_bar.text = ''
@@ -324,7 +350,7 @@ class Gui:
                 print(self.filter_field)
 
                 self.filter_txt = filter_txt
-                cond = self._filter()
+                cond = self._filter(self.filter_case_insensitive)
                 s = f'Filter by {self.filter_field.upper()} Text: {filter_txt}'
 
                 if any(cond):
@@ -345,17 +371,25 @@ class Gui:
             self._list_change_event(None)
             self.list_box.focus()
 
-    def _filter(self):
+    def _filter(self, case_insensitive=False):
         """
         Filters the dataframe using the info in self.filter_txt and self.filter_field
 
+        :param case_insensitive: if the search is case insensitive or not (Default: False)
+        :type case_insensitive: bool
         :return: a Series indicating which rows of self.df correspond to the filter
         :rtype: pd.Series
         """
         delim = WORD_DELIMITERS
 
         def func(v):
-            return utils.substring_check(v, self.filter_txt, delim=delim)
+            if case_insensitive:
+                v = v.lower()
+                txt = self.filter_txt.lower()
+            else:
+                txt = self.filter_txt
+
+            return utils.substring_check(v, txt, delim=delim)
 
         cond = self.df[self.filter_field].apply(func)
         return cond
@@ -382,11 +416,14 @@ class Gui:
         self.pub.set(df['pubblication'].iat[idx])
 
         if self.filter_field == 'abstract':
-            self.abstract.highlight_words(self.filter_txt)
+            self.abstract.highlight_words(self.filter_txt,
+                                          self.filter_case_insensitive)
         elif self.filter_field == 'title':
-            self.title.highlight_words(self.filter_txt)
+            self.title.highlight_words(self.filter_txt,
+                                       self.filter_case_insensitive)
         elif self.filter_field == 'pubblication':
-            self.pub.highlight_words(self.filter_txt)
+            self.pub.highlight_words(self.filter_txt,
+                                     self.filter_case_insensitive)
 
         self.authors.set(df['authors'].iat[idx])
         self.year.set(df['year'].iat[idx])
@@ -586,7 +623,7 @@ def prepare_df(args):
     :rtype: pd.DataFrame
     """
     df = pd.read_csv(args.datafile, sep='\t',
-                     usecols=usecols,
+                     usecols=usecols, encoding='utf-8',
                      converters={'authors': authors_convert})
     df.rename(columns={'secondary_title': 'pubblication',
                        'abstract1': 'abstract'}, inplace=True)
@@ -597,6 +634,8 @@ def prepare_df(args):
     for f in ['authors', 'title', 'year', 'pubblication']:
         if f not in df.columns:
             df[f] = [''] * len(df)
+
+    df.fillna('', inplace=True)
 
     return df
 

@@ -33,6 +33,7 @@ In all the stages, mark NOT-RELEVANT words if needed.
 # Available scripts and programs
 
 The following scripts and programs are currently available. They are listed in the order that they are expected to be used in the SLR workflow.
+All the scripts expect utf-8 files as input.
 
 ## `ris2csv.py`
 

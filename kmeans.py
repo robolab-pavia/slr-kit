@@ -39,7 +39,7 @@ def main():
 
     # load the dataset
     debug_logger.debug('[kmeans] Loading input file')
-    df = pd.read_csv(args.matrix, delimiter='\t', index_col=0)
+    df = pd.read_csv(args.matrix, delimiter='\t', index_col=0, encoding='utf-8')
     df.fillna('', inplace=True)
     debug_logger.debug(df.head())
 

@@ -48,7 +48,8 @@ def main():
 
     # write to output, either a file or stdout (default)
     output_file = open(args.output, 'w') if args.output is not None else sys.stdout
-    export_csv = df.to_csv(output_file, index=None, header=True, sep='\t')
+    export_csv = df.to_csv(output_file, index=None, header=True, sep='\t',
+                           encoding='utf-8')
 
 
 if __name__ == "__main__":

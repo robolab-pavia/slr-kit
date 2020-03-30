@@ -25,7 +25,7 @@ def main():
     debug_logger = setup_logger('debug_logger', 'slr-kit.log',
                                 level=logging.DEBUG)
 
-    with open(args.occurrence) as input_file:
+    with open(args.occurrence, encoding='utf-8') as input_file:
         terms = []
         for l in input_file:
             terms.append(json.loads(l))
@@ -62,7 +62,8 @@ def main():
     df = df.sort_values(by=['Count'])
 
     # write to output, either a file or stdout (default)
-    output_file = open(args.output, 'w') if args.output is not None else sys.stdout
+    output_file = open(args.output, 'w',
+                       encoding='utf-8') if args.output is not None else sys.stdout
     export_csv = df.to_csv(output_file, index=None, header=True, sep='\t')
 
 
