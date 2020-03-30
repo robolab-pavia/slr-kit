@@ -51,11 +51,12 @@ def do_PCA(tdm, n):
     return tdm_reducted
 
 
-def cosine_similarity(tdm):
+def compute_csimilarity(tdm):
     dtm = tdm.T
     cs = cosine_similarity(dtm)
     cs_pd = pd.DataFrame(cs)
     return cs_pd
+
 
 def autotune_PCA(dtm):
     # scale dtm in range [0:1] to better variance maximization
@@ -109,6 +110,7 @@ def select_n_components(var_ratio, goal_var: float) -> int:
     # Return the number of components
     return n_components
 
+
 def main():
     debug_logger.debug('[multidimensional scaling] Started')
     parser = init_argparser()
@@ -124,10 +126,8 @@ def main():
     start = int(n_components*0.1)
     for n in range(start, n_components, int(n_components*0.1)):
         reduced_tdm = do_PCA(tdm, n)
-        print(reduced_tdm.head())
-        cs_tdm = cosine_similarity(reduced_tdm)
-        print(cs_tdm.head())
-        print(cs_tdm.shape)
+        cs_tdm = compute_csimilarity(reduced_tdm)
+
     # performs MDS analysis
     # mds_ = doMDS(dtm)
     debug_logger.debug('[multidimensional scaling] Terminated')
