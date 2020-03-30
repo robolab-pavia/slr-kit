@@ -142,6 +142,7 @@ def main():
     dtm.index.name = None  # drop 'Unnamed: 0' coming from transposition
 
     docs = load_df(args.datafile, required_columns=['id', 'title'])
+    titles = docs.iloc[dtm.index.values.tolist()]['title']
     # we want to use the documents-terms matrix so DONE IN FUNCTIONS
     # dtm = tdm.T
 
@@ -153,18 +154,22 @@ def main():
 
     progress_bar = tqdm.tqdm(total=len(range(start, n_components, step)))
     for n in range(start, n_components, step):
-        #print("Performing PCA...")
+        progress_bar.set_description("Performing PCA")
+        progress_bar.refresh()
         reduced_dtm = do_PCA(dtm, n)
 
-        #print("Computing cosine similarity...")
+        progress_bar.set_description("Computing cosine similarity")
+        progress_bar.refresh()
         dist_matrix = compute_csimilarity(reduced_dtm)
 
-        #print("Clustering with Ward HAC...")
+        progress_bar.set_description("Clustering with Ward HAC")
+        progress_bar.refresh()
         ward_cl = do_clustering(dist_matrix, num_clusters)
-        labels = ward_cl.labels_
 
-        #print("Saving results...")
-        df = pd.DataFrame(dict(title=docs['title'], label=labels), index=dtm.index)
+        progress_bar.set_description("Saving results")
+        progress_bar.refresh()
+
+        df = pd.DataFrame(dict(title=titles, label=ward_cl.labels_), index=dtm.index)
 
         output_file = "pca_" + str(n) + "_clusters_" + str(num_clusters) + ".csv"
         df.to_csv(output_file, header=True, sep='\t', encoding='utf-8')
