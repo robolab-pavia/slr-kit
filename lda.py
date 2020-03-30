@@ -21,7 +21,7 @@ debug_logger = setup_logger('debug_logger', 'slr-kit.log',
 
 def init_argparser():
     """Initialize the command line parser."""
-    parser = argparse.ArgumentParser(description='Perform MDS over a distance matrix')
+    parser = argparse.ArgumentParser(description='Perform LDA for topics modelling')
     parser.add_argument('infile', action="store", type=str,
                         help="input CSV file with documents-terms matrix")
     parser.add_argument('-DM', action='store_true',
