@@ -45,9 +45,6 @@ def main():
 
     # transposes dataframe to get document-terms matrix
     dtm = tdm.T
-    # fix indexes for missing documents
-    dtm = dtm.rename(columns=dtm.iloc[0]).drop(dtm.index[0])
-    dtm.index.name = None  # drop 'Unnamed: 0' coming from transposition
 
     debug_logger.debug('[cosine_similarity] Calculate similarity')
     cs = cosine_similarity(dtm)

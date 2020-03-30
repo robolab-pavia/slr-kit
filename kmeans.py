@@ -44,11 +44,8 @@ def main():
     df = pd.read_csv(args.matrix, delimiter='\t', index_col=0, encoding='utf-8')
     df.fillna('', inplace=True)
 
-    # fix indexes for missing documents
-    df = df.rename(columns=df.iloc[0]).drop(df.index[0])
-    df.index.name = None  # drop 'Unnamed: 0' coming from transposition
-
     docs = load_df(args.datafile, required_columns=['id', 'title'])
+    titles = docs.iloc[df.index.values.tolist()]['title']
 
     num_clusters = default_n_clusters
     if args.clusters is not None:
@@ -59,7 +56,7 @@ def main():
     km.fit(df)
     clusters = km.labels_.tolist()
 
-    cs_pd = pd.DataFrame(dict(title=docs['title'], label=clusters), index=df.index)
+    cs_pd = pd.DataFrame(dict(title=titles, label=clusters), index=df.index)
 
     ## write to output, either a file or stdout (default)
     debug_logger.debug('[kmeans] Saving')
