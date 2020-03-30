@@ -127,6 +127,9 @@ def main():
     dist_matrix = pd.read_csv(args.infile, delimiter='\t', index_col=0)
     dist_matrix.fillna('', inplace=True)
 
+    dist_matrix = dist_matrix.rename(columns=dist_matrix.iloc[0]).drop(dist_matrix.index[0])
+    dist_matrix.index.name = None  # drop 'Unnamed: 0' coming from transposition
+
     # default uses entire dataset
     max_docs = dist_matrix.shape[0]
     if args.samples is not None:
