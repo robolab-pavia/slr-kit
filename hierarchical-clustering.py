@@ -136,7 +136,7 @@ def main():
 
     docs = load_df(args.datafile, required_columns=['id', 'title'])
 
-    titles = docs.iloc[dist_matrix.index[0:max_docs].tolist()]['title']
+    titles = docs.iloc[dist_matrix.index[0:max_docs].tolist()]['title'].values
 
     debug_logger.debug('[hierarchical clustering] Computing clusters')
 
