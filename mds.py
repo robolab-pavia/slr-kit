@@ -138,13 +138,9 @@ def main():
 
     dtm = tdm.T
     # preserve index as docs_id
-    dtm = dtm.rename(columns=dtm.iloc[0]).drop(dtm.index[0])
-    dtm.index.name = None  # drop 'Unnamed: 0' coming from transposition
 
     docs = load_df(args.datafile, required_columns=['id', 'title'])
-    titles = docs.iloc[dtm.index.values.tolist()]['title']
-    # we want to use the documents-terms matrix so DONE IN FUNCTIONS
-    # dtm = tdm.T
+    titles = docs.iloc[dtm.index.tolist()]['title'].values
 
     num_clusters = 5
 
