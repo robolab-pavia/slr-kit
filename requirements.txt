@@ -1,4 +1,3 @@
-tqdm
 matplotlib
 nltk
 numpy
@@ -8,4 +7,5 @@ RISparser
 scikit-learn
 regex
 matplotlib
-gensim
+scipy
+tqdm
