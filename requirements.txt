@@ -8,3 +8,4 @@ scikit-learn
 regex
 matplotlib
 scipy
+tqdm
