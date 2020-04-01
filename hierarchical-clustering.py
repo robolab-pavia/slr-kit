@@ -135,7 +135,8 @@ def main():
     dist_matrix = dist_matrix.iloc[0:max_docs, 0:max_docs]
 
     docs = load_df(args.datafile, required_columns=['id', 'title'])
-    docs = docs.iloc[0:max_docs]
+
+    titles = docs.iloc[dist_matrix.index[0:max_docs].tolist()]['title'].values
 
     debug_logger.debug('[hierarchical clustering] Computing clusters')
 
@@ -160,7 +161,7 @@ def main():
 
     # Only for development: concatenates document Title and assigned Label
     labelled_titles = []
-    for label, title in zip(labels, docs['title'].values):
+    for label, title in zip(labels, titles):
         labelled_titles.append("%s - %s" % (label, title))
 
     # if plotting is turned on
@@ -170,9 +171,9 @@ def main():
                         orientation="left",
                         labels=labelled_titles)
 
-    df = pd.DataFrame(dict(title=docs['title'], label=labels), index=dist_matrix.index)
+    df = pd.DataFrame(dict(title=titles, label=labels), index=dist_matrix.index)
 
-    output_file = open(args.output, 'w', encoding='utf-8') if args.output is not None else sys.stdout
+    output_file = open(args.output, 'w', encoding='utf-8', newline='') if args.output is not None else sys.stdout
     export_csv = df.to_csv(output_file, header=True, sep='\t', encoding='utf-8')
     output_file.close()
 

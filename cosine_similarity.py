@@ -39,16 +39,16 @@ def main():
 
     # load the dataset
     debug_logger.debug('[cosine_similarity] Loading input file')
-    df = pd.read_csv(args.terms, delimiter='\t', index_col=0, encoding='utf-8')
-    df.fillna('', inplace=True)
+    tdm = pd.read_csv(args.terms, delimiter='\t', index_col=0, encoding='utf-8')
+    tdm.fillna('', inplace=True)
     #debug_logger.debug(df.head())
 
     # transposes dataframe to get document-terms matrix
-    df_transposed = df.T
+    dtm = tdm.T
 
     debug_logger.debug('[cosine_similarity] Calculate similarity')
-    cs = cosine_similarity(df_transposed)
-    cs_pd = pd.DataFrame(cs)
+    cs = cosine_similarity(dtm)
+    cs_pd = pd.DataFrame(cs, columns=dtm.index, index=dtm.index)
 
     # write to output, either a file or stdout (default)
     debug_logger.debug('[cosine_similarity] Saving')
@@ -58,7 +58,7 @@ def main():
     output_file.close()
 
     # TODO: allow the selection of this filename from command line
-    save_term_list('term-list.csv', df)
+    save_term_list('term-list.csv', tdm)
 
     debug_logger.debug('[cosine_similarity] Terminated')
 
