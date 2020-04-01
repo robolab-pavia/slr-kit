@@ -1,3 +1,5 @@
+gensim
+tqdm
 matplotlib
 nltk
 numpy
