@@ -301,14 +301,11 @@ class TermList:
             header = csv_reader.fieldnames
             items = []
             for i, row in enumerate(csv_reader):
-                try:
-                    order_value = row['order']
-                    if order_value == '':
-                        order = -1
-                    else:
-                        order = int(order_value)
-                except KeyError:
+                order_value = row.get('order', '')
+                if order_value == '':
                     order = -1
+                else:
+                    order = int(order_value)
 
                 related = row.get('related', '')
                 try:
@@ -330,12 +327,6 @@ class TermList:
                     related=related
                 )
                 items.append(item)
-
-        if 'related' not in header:
-            header.append('related')
-
-        if 'order' not in csv_reader.fieldnames:
-            header.append('order')
 
         self.csv_header = header
         items.sort(key=lambda t: t.order)
@@ -402,30 +393,24 @@ class TermList:
         """
         Saves the terms in a tsv file
 
+        No service data (order and related) are written.
         :param outfile: path to the tsv file to write the terms
         :type outfile: str
         """
         items = sorted(self.items, key=lambda t: t.index)
         path = str(Path(outfile).resolve().parent)
-        with tempfile.NamedTemporaryFile('w', dir=path,
-                                         prefix='.fawoc.temp.',
-                                         encoding='utf-8',
-                                         delete=False) as out:
+        with tempfile.NamedTemporaryFile('w', dir=path, prefix='.fawoc.temp.',
+                                         encoding='utf-8', delete=False) as out:
             writer = csv.DictWriter(out, fieldnames=self.csv_header,
                                     delimiter='\t', quotechar='"',
                                     quoting=csv.QUOTE_MINIMAL)
             writer.writeheader()
             for w in items:
-                if w.order >= 0:
-                    order = str(w.order)
-                else:
-                    order = ''
-
-                item = {'keyword': w.string,
-                        'count': w.count,
-                        'label': w.label.label_name,
-                        'order': order,
-                        'related': w.related}
+                item = {
+                    'keyword': w.string,
+                    'count': w.count,
+                    'label': w.label.label_name,
+                }
                 writer.writerow(item)
 
             temp = Path(out.name)
