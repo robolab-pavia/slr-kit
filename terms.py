@@ -1,5 +1,6 @@
 import csv
 import enum
+import json
 from pathlib import Path
 import tempfile
 from dataclasses import dataclass
@@ -165,7 +166,7 @@ class TermList:
         if not isinstance(other, TermList):
             return NotImplemented
 
-        #items = [w for w in self.items if w not in other.items]
+        # items = [w for w in self.items if w not in other.items]
         filt = {x.string: None for x in other.items}
         items = [w for w in self.items if w.string not in filt]
         return TermList(items)
@@ -253,7 +254,7 @@ class TermList:
         elif not isinstance(label, (list, tuple)):
             raise TypeError('label has wrong type {}'.format(type(label)))
 
-        #debug_logger.debug("--- len {}".format(len(self.items)))
+        # debug_logger.debug("--- len {}".format(len(self.items)))
         items = []
         for t in self.items:
             if t.label in label:
@@ -341,6 +342,41 @@ class TermList:
         self.items = items
         return header, items
 
+    def load_service_data(self, jsonfile):
+        """
+        Loads the order and related fields from the specified json file
+
+        :param jsonfile: path to the json file containing the service data
+        :type jsonfile: str or Path
+        :raise InvalidServiceDataError: if the json data is not valid
+        """
+        with open(jsonfile, 'r') as file:
+            data = json.load(file)
+
+        if not isinstance(data, dict):
+            raise InvalidServiceDataError('the loaded data is not a list')
+
+        for t in self.items:
+            d = data.get(t.string)
+            if d is not None:
+                try:
+                    if isinstance(t['order'], int):
+                        t.order = d['order']
+                    else:
+                        s = f"'order' field of the {t.string} entry is not an int"
+                        raise InvalidServiceDataError(s)
+                    if isinstance(d['related'], str):
+                        t.related = d['related']
+                    else:
+                        s = f"'relate' field of the {t.string} entry is not a str"
+                        raise InvalidServiceDataError(s)
+                except KeyError as ke:
+                    s = f'Missing {repr(ke.args[0])} in {repr(t.string)} entry'
+                    raise InvalidServiceDataError(s)
+                except TypeError:
+                    s = f'{repr(t.string)} is not a dict'
+                    raise InvalidServiceDataError(s)
+
     def to_tsv(self, outfile):
         """
         Saves the terms in a tsv file
@@ -349,7 +385,6 @@ class TermList:
         :type outfile: str
         """
         items = sorted(self.items, key=lambda t: t.index)
-        # with open(outfile, mode='w') as out:
         path = str(Path(outfile).resolve().parent)
         with tempfile.NamedTemporaryFile('w', dir=path,
                                          prefix='.fawoc.temp.',
@@ -459,7 +494,7 @@ class TermList:
         """
         containing = []
         not_containing = []
-        t0=time.time()
+        t0 = time.time()
         for w in self.items:
             if w.label != label or w.order >= 0:
                 continue
@@ -473,8 +508,8 @@ class TermList:
         nc = TermList(not_containing)
         co.sort_by_index()
         nc.sort_by_index()
-        t1=time.time()
-        #debug_logger.debug("dur {}".format(t1-t0))
+        t1 = time.time()
+        # debug_logger.debug("dur {}".format(t1-t0))
         return co, nc
 
     def count_classified(self):
