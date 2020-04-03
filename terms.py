@@ -377,6 +377,27 @@ class TermList:
                     s = f'{repr(t.string)} is not a dict'
                     raise InvalidServiceDataError(s)
 
+    def save_service_data(self, jsonfile):
+        """
+        Saves the order and related fields in the specified json file
+
+        :param jsonfile: path to the json file in which to save the service data
+        :type jsonfile: str or Path
+        """
+        path = str(Path(jsonfile).resolve().parent)
+        data = {}
+        for t in self.items:
+            data[t.string] = {
+                'order': t.order,
+                'related': t.related,
+            }
+        with tempfile.NamedTemporaryFile('w', dir=path, prefix='.fawoc.temp.',
+                                         encoding='utf-8', delete=False) as out:
+            json.dump(data, out)
+            temp = Path(out.name)
+
+        temp.replace(jsonfile)
+
     def to_tsv(self, outfile):
         """
         Saves the terms in a tsv file
