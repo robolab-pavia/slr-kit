@@ -4,11 +4,22 @@ from pathlib import Path
 import tempfile
 from dataclasses import dataclass
 import utils
-#import logging
+# import logging
 import time
 
-#debug_logger = utils.setup_logger('debug_logger', 'slr-kit.log',
+
+class Error(Exception):
+    def __str__(self):
+        s = super(Error, self).__str__()
+        return f'{self.__class__.__name__} {s}'
+
+
+class InvalidServiceDataError(Error):
+    pass
+
+# debug_logger = utils.setup_logger('debug_logger', 'slr-kit.log',
 #                            level=logging.DEBUG)
+
 
 class Label(enum.Enum):
     """
