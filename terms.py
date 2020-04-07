@@ -402,8 +402,8 @@ class TermList:
         path = str(Path(outfile).resolve().parent)
         with tempfile.NamedTemporaryFile('w', dir=path, prefix='.fawoc.temp.',
                                          encoding='utf-8', delete=False) as out:
-            writer = csv.DictWriter(out, fieldnames=self.csv_header,
-                                    delimiter='\t', quotechar='"',
+            writer = csv.DictWriter(out, delimiter='\t', quotechar='"',
+                                    fieldnames=['keyword', 'count', 'label'],
                                     quoting=csv.QUOTE_MINIMAL)
             writer.writeheader()
             for w in items:
