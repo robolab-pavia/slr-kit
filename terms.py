@@ -378,10 +378,11 @@ class TermList:
         path = str(Path(jsonfile).resolve().parent)
         data = {}
         for t in self.items:
-            data[t.string] = {
-                'order': t.order,
-                'related': t.related,
-            }
+            if t.label != Label.NONE and not (t.order == -1 and t.related == ''):
+                data[t.string] = {
+                    'order': t.order,
+                    'related': t.related,
+                }
         with tempfile.NamedTemporaryFile('w', dir=path, prefix='.fawoc.temp.',
                                          encoding='utf-8', delete=False) as out:
             json.dump(data, out)
