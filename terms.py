@@ -351,7 +351,7 @@ class TermList:
             d = data.get(t.string)
             if d is not None:
                 try:
-                    if isinstance(t['order'], int):
+                    if isinstance(d['order'], int):
                         t.order = d['order']
                     else:
                         s = f"'order' field of the {t.string} entry is not an int"
