@@ -27,20 +27,7 @@ def init_argparser():
     return parser
 
 
-def labels_encoder(gt):
-    voc = {}
-    index = 0
-
-    unique_labels = sorted(set([val[0] for val in gt.values()]))
-    for label in unique_labels:
-        voc.update({label: index})
-        index += 1
-
-    return voc
-
-
 class PairingsEvaluator:
-
     class Stat(NamedTuple):
         label: str
         elements: int
@@ -95,10 +82,98 @@ class PairingsEvaluator:
                                                                            self.__clusters_k))
 
         print("Ground Truth: {} elements and m={} labels".format(self.ground_truth.shape[0],
-                                                                 self.clusters.shape[1] - 1))  # exclude ID
+                                                                 self.ground_truth.shape[1] - 1))  # exclude ID
         for stat in self.__stats_data:
             print("\tCluster: ", stat.label, "[{}] elements".format(stat.elements),
                   f'matched {stat.intersect_elements} unique pairs', "--> {:.2f} %".format(stat.ratio))
+
+
+class ConfusionMatrixEvaluator:
+
+    class Metric:
+
+        def __init__(self, predicted_label, attended_label, TP, FP, TN, FN):
+            self.predicted_label = predicted_label
+            self.attended_label = attended_label
+            self.TP = TP
+            self.FP = FP
+            self.TN = TN
+            self.FN = FN
+
+        def countTP(self):
+            return len(self.TP)
+
+        def countFP(self):
+            return len(self.FP)
+
+        def countTN(self):
+            return len(self.TN)
+
+        def countFN(self):
+            return len(self.FN)
+
+        def __str__(self):
+            return format_matrix([f'in {self.predicted_label}', f'not in {self.predicted_label}'],
+                                 [[self.countTP(), self.countFP()], [self.countFN(), self.countTN()]],
+                                 '{:^{}}', '{:<{}}', '{:>{}.3f}', '\n', ' | ')
+
+    def __init__(self, clusters, ground_truth):
+        self.clusters = clusters
+        self.ground_truth = ground_truth
+
+        self.__CM = []
+
+    def evaluate(self):
+        indexes = list(map(int, self.ground_truth['id'].values.tolist()))
+        # reduce clusters_file matching only manually analyzed documents:  -------->   TOT
+        reduced_df = self.clusters.loc[self.clusters['id'].isin(indexes), :]
+
+        TOT = set(reduced_df['id'].values.tolist())
+
+        clusters_groups = reduced_df.groupby('label')
+
+        for label, df_group in clusters_groups:
+            docs_in_cluster = df_group['id'].values.tolist()
+
+            row = []
+            for col in self.ground_truth.columns[1:]:
+                constraints = list(
+                    map(int, self.ground_truth.loc[self.ground_truth[col] == 1, 'id'].values.tolist())
+                )
+
+                A = set(docs_in_cluster)
+                B = set(constraints)
+
+                TP = list(A & B)
+                FP = list(A - (A & B))
+                TN = list((TOT - A) & (TOT - B))
+                FN = list(B - A)
+
+                row.append(self.Metric(predicted_label=str(label), attended_label=col, TP=TP, FP=FP, TN=TN, FN=FN))
+
+            self.__CM.append(row)
+
+    def stats(self):
+        count = 0
+        for row in self.__CM:
+            print("For predicted cluster {0}".format(count))
+            for m in row:
+                print("For attended label {0}".format(m.attended_label))
+                print('\n', m, '\n')
+            count += 1
+            print("########################################################")
+
+
+def labels_encoder(gt):
+    voc = {}
+    index = 0
+
+    unique_labels = sorted(set([val[0] for val in gt.values()]))
+    for label in unique_labels:
+        voc.update({label: index})
+        index += 1
+
+    return voc
 
 
 def parse_pairings(gt):
@@ -129,8 +204,22 @@ def all_pairs(partition):
     return list(itertools.combinations(partition, 2))
 
 
-def main():
+def format_matrix(header, matrix, top_format, left_format, cell_format, row_delim, col_delim):
+    table = [[''] + header] + [[name] + row for name, row in zip(header, matrix)]
+    table_format = [['{:^{}}'] + len(header) * [top_format]] \
+                 + len(matrix) * [[left_format] + len(header) * [cell_format]]
+    col_widths = [max(
+                      len(format.format(cell, 0))
+                      for format, cell in zip(col_format, col))
+                  for col_format, col in zip(zip(*table_format), zip(*table))]
+    return row_delim.join(
+               col_delim.join(
+                   format.format(cell, width)
+                   for format, cell, width in zip(row_format, row, col_widths))
+               for row_format, row in zip(table_format, table))
 
+
+def main():
     parser = init_argparser()
     args = parser.parse_args()
 
@@ -139,9 +228,15 @@ def main():
 
     ground_truth = parse_pairings(args.ground_truth)
 
+    # Evaluate pairs constraints
     pairs = PairingsEvaluator(clusters=clusters_file, ground_truth=ground_truth)
     pairs.evaluate()
     pairs.stats()
+
+    # Compute Confusion Matrix
+    cm = ConfusionMatrixEvaluator(clusters=clusters_file, ground_truth=ground_truth)
+    cm.evaluate()
+    cm.stats()
 
 
 if __name__ == '__main__':
