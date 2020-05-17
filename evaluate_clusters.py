@@ -1,11 +1,14 @@
-import logging
 import argparse
+import itertools
 import json
-import pandas as pd
+import logging
+from typing import NamedTuple
+
 import numpy as np
+import pandas as pd
+
 from utils import (
     setup_logger,
-    load_df,
 )
 
 debug_logger = setup_logger('debug_logger', 'slr-kit.log',
@@ -36,6 +39,68 @@ def labels_encoder(gt):
     return voc
 
 
+class PairingsEvaluator:
+
+    class Stat(NamedTuple):
+        label: str
+        elements: int
+        intersect_elements: int
+        ratio: float
+
+    def __init__(self, clusters, ground_truth):
+        self.clusters = clusters
+        self.ground_truth = ground_truth
+
+        self.clusters_k = 0
+        self.stats_data = []
+
+    def evaluate(self):
+        indexes = list(map(int, self.ground_truth['id'].values.tolist()))
+        # reduce clusters_file matching only manually analyzed documents:
+        reduced_df = self.clusters.loc[self.clusters['id'].isin(indexes), :]
+
+        clusters_groups = reduced_df.groupby('label')
+        self.clusters_k = len(clusters_groups)
+
+        for label, df_group in clusters_groups:
+
+            docs_in_cluster = df_group['id'].values.tolist()
+            pairs_docs_in_cluster = all_pairs(docs_in_cluster)
+
+            intersection_list = []
+
+            for col in self.ground_truth.columns[1:]:
+
+                # get pairs for this columns/label
+                constraints = list(
+                    map(int, self.ground_truth.loc[self.ground_truth[col] == 1, 'id'].values.tolist())
+                )
+                pairs_constraints = all_pairs(constraints)
+
+                # find sets intersection (of pairs) between current cluster and ground_truth
+                intersection = list(set(pairs_constraints) & set(pairs_docs_in_cluster))
+
+                if len(intersection) > 0:
+                    # concatenate with other labels from ground_truth
+                    intersection_list += intersection
+
+            # get rid of duplicates
+            # intersection_list = list(dict.fromkeys(intersection_list))
+            # with np.maximum prevent division by 0 for empty cluster
+            ratio = len(intersection_list) / np.maximum(len(pairs_docs_in_cluster), 1e-10) * 100
+            self.stats_data.append(self.Stat(label, df_group.shape[0], len(intersection_list), ratio))
+
+    def stats(self):
+        print("Automatic clustering: {} elements and k={} clusters".format(self.clusters.shape[0],
+                                                                           self.clusters_k))
+
+        print("Ground Truth: {} elements and m={} labels".format(self.ground_truth.shape[0],
+                                                                 self.clusters.shape[1] - 1))  # exclude ID
+        for stat in self.stats_data:
+            print("\tCluster: ", stat.label, "[{}] elements".format(stat.elements),
+                  f'matched {len(stat.intersect_elements)} unique pairs', "--> {:.2f} %".format(stat.ratio))
+
+
 def parse_pairings(gt):
     """
     Transform the pairings into a DF with a sort of one-hot-encoding for each label assigned by the user
@@ -57,15 +122,10 @@ def parse_pairings(gt):
         labels_list = ground_truth[doc]
         for label in labels_list:
             df.loc[df['id'] == doc, label] = 1
-
     return df
 
 
-import itertools
-
-
 def all_pairs(partition):
-
     return list(itertools.combinations(partition, 2))
 
 
@@ -79,66 +139,45 @@ def main():
 
     ground_truth = parse_pairings(args.ground_truth)
 
-    clusters_groups = clusters_file.groupby('label')
+    indexes = list(map(int, ground_truth['id'].values.tolist()))
+    # reduce clusters_file matching only manually analyzed documents:
+    reduced_df = clusters_file.loc[clusters_file['id'].isin(indexes), :]
 
+    # Some documents may be missing?
+    # main_list = np.setdiff1d(indexes, clusters_file['id'].values.tolist())
+    # print(main_list)
+
+    clusters_groups = reduced_df.groupby('label')
+
+    print("Automatic clustering: {} elements and k={} clusters".format(clusters_file.shape[0], len(clusters_groups)))
+    print("Ground Truth: {} elements and m={} labels".format(ground_truth.shape[0], ground_truth.shape[1] - 1))  # exclude ID
     for label, df_group in clusters_groups:
 
         docs_in_cluster = df_group['id'].values.tolist()
         pairs_docs_in_cluster = all_pairs(docs_in_cluster)
 
-        count = 0
-        total = 0
-
-        # f = open(f'C:\\Users\\Marco\\Desktop\\cluster_{label}.txt', 'w')
-        #
-        # for d in docs_in_cluster:
-        #     f.write(str(d) + '\n')
-        #
-        # f.write('\nDOCUMENTI ETICHETTATI:\n')
-
         intersection_list = []
 
         for col in ground_truth.columns[1:]:
 
+            # get pairs for this columns/label
             constraints = list(map(int, ground_truth.loc[ground_truth[col] == 1, 'id'].values.tolist()))
             pairs_constraints = all_pairs(constraints)
+
+            # find sets intersection (of pairs) between current cluster and ground_truth
             intersection = list(set(pairs_constraints) & set(pairs_docs_in_cluster))
 
             if len(intersection) > 0:
 
-                for val in intersection:
-                    intersection_list.append(val)
-                # how many docs of the constraints are actually in cluster
-                #
-                # count += len(intersection)
-                total += len(pairs_constraints)
-                # for c in intersection:
-                #     f.write(str(c) + '\n')
+                # concatenate with other labels from ground_truth
+                intersection_list += intersection
 
-        intersection_list = list(dict.fromkeys(intersection_list))
-        ratio = len(intersection_list) / total * 100
-        print("Cluster: ", label, "[{}] elements".format(df_group.shape[0]), f'matched {len(intersection_list)} unique pairs over {total}', "--> {:.2f} %".format(ratio))
-
-        # print("\tVincolo su", col, "rispettato al ", "{:.2f}%".format(ratio), " --> W:{:.2f}".format(W),
-        #       " --> {:.2f}".format(W * ratio))
-
-    print("Number of constraints:", ground_truth.shape[0])
-        # f.close()
-
-    # scan clusterization results, doc by doc
-    # for label, df_group in clusters_groups:
-    #     docs_in_cluster = df_group['id'].values.tolist()
-    #     print(docs_in_cluster)
-    #     # here we have a dataframe for each cluster
-    #     count = 0
-    #     total = 0
-    #     for (columnName, columnData) in ground_truth.iteritems():
-    #         if columnName != 'id':
-    #             togethers = ground_truth.loc[ground_truth[columnName] == 1, 'id']
-    #             total += len(togethers.values.tolist())
-    #             count += len(list(set(map(int, togethers.values.tolist())) & set(docs_in_cluster)))
-    #     overlapping = count/total * 100
-    #     print("For the label:", label, " the constraints have been respected for the {:.2f}%".format(overlapping))
+        # get rid of duplicates
+        # intersection_list = list(dict.fromkeys(intersection_list))
+        # with np.maximum prevent division by 0 for empty cluster
+        ratio = len(intersection_list) / np.maximum(len(pairs_docs_in_cluster), 1e-10) * 100
+        print("\tCluster: ", label, "[{}] elements".format(df_group.shape[0]),
+              f'matched {len(intersection_list)} unique pairs', "--> {:.2f} %".format(ratio))
 
 
 if __name__ == '__main__':
