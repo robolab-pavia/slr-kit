@@ -224,3 +224,9 @@ NOTE: At the moment, this script works on the complete lemmatized abstracts. It 
 - ACTION: Parse a file of a manual clustering session to create a ground-truth for a semi-supervised clustering
 - INPUT: Text file where each line represents a cluster and documents ID with format: 'cluster_label:2,3,5,34,[...]'
 - OUTPUT: JSON file with format: 'id' : ['label1', 'label2'] (a document may belong to multiple clusters)
+
+### Example of usage
+
+```
+parse_pairings.py manual_pairings.txt > ground_truth.json
+```
