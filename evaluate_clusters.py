@@ -6,6 +6,8 @@ from typing import NamedTuple
 
 import numpy as np
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 from utils import (
     setup_logger,
@@ -112,6 +114,38 @@ class ConfusionMatrixEvaluator:
         def countFN(self):
             return len(self.FN)
 
+        def total(self):
+            return self.countTN() + self.countFN() + self.countTP() + self.countFP()
+
+        def precision(self):
+            try:
+                prec = self.countTP() / (self.countTP() + self.countFP())
+            except ZeroDivisionError:
+                prec = 0
+            return "{:.2f}".format(prec)
+
+        def accuracy(self):
+            # prevent division by 0
+            try:
+                acc = (self.countTP() + self.countTN()) / self.total()
+            except ZeroDivisionError:
+                acc = 0
+            return "{:.2f}".format(acc)
+
+        def recall(self):
+            try:
+                recall = self.countTP() / (self.countTP() + self.countFN())
+            except ZeroDivisionError:
+                recall = 0
+            return "{:.2f}".format(recall)
+
+        def f1_score(self):
+            try:
+                f1 = (2*self.countTP()) / (2*self.countTP() + self.countFP() + self.countFN())
+            except ZeroDivisionError:
+                f1 = 0
+            return "{:.2f}".format(f1)
+
         def __str__(self):
             return format_matrix([f'in {self.predicted_label}', f'not in {self.predicted_label}'],
                                  [[self.countTP(), self.countFP()], [self.countFN(), self.countTN()]],
@@ -154,14 +188,67 @@ class ConfusionMatrixEvaluator:
             self.__CM.append(row)
 
     def stats(self):
-        count = 0
+
+        df_acc = pd.DataFrame(columns=self.ground_truth.columns[1:])
+        df_rec = pd.DataFrame(columns=self.ground_truth.columns[1:])
+        df_f1 = pd.DataFrame(columns=self.ground_truth.columns[1:])
+        df_prec = pd.DataFrame(columns=self.ground_truth.columns[1:])
+
         for row in self.__CM:
-            print("For predicted cluster {0}".format(count))
+            acc_row = {}
+            rec_row = {}
+            f1_row = {}
+            prec_row = {}
             for m in row:
-                print("For attended label {0}".format(m.attended_label))
-                print('\n', m, '\n')
-            count += 1
-            print("########################################################")
+                acc_row.update({m.attended_label: float(m.accuracy())})
+                rec_row.update({m.attended_label: float(m.recall())})
+                f1_row.update({m.attended_label: float(m.f1_score())})
+                prec_row.update({m.attended_label: float(m.precision())})
+
+            df_acc = df_acc.append(acc_row, ignore_index=True)
+            df_rec = df_rec.append(rec_row, ignore_index=True)
+            df_f1 = df_f1.append(f1_row, ignore_index=True)
+            df_prec = df_prec.append(prec_row, ignore_index=True)
+
+        plt.rcParams["figure.figsize"] = (15, 10)
+
+        df_acc.to_csv(f'eval_accuracy.csv', sep='\t')
+
+        plt.figure()
+        chart = sns.heatmap(df_acc, cmap='coolwarm', linewidths=0.5)
+        chart.set_xticklabels(chart.get_xticklabels(), rotation=30, horizontalalignment='right', fontweight='light')
+        plt.title("Accuracy")
+        plt.ylabel("Automatic clusters")
+        plt.xlabel("Manually assigned clusters")
+        plt.savefig('accuracy.png', dpi=100)
+
+        df_rec.to_csv(f'eval_recall.csv', sep='\t')
+        plt.figure()
+        chart = sns.heatmap(df_rec, cmap='coolwarm', linewidths=0.5)
+        chart.set_xticklabels(chart.get_xticklabels(), rotation=30, horizontalalignment='right', fontweight='light')
+        plt.title("Recall")
+        plt.ylabel("Automatic clusters")
+        plt.xlabel("Manually assigned clusters")
+        plt.savefig('recall.png', dpi=100)
+
+        df_rec.to_csv(f'eval_f1.csv', sep='\t')
+        plt.figure()
+        chart = sns.heatmap(df_rec, cmap='coolwarm', linewidths=0.5)
+        chart.set_xticklabels(chart.get_xticklabels(), rotation=30, horizontalalignment='right', fontweight='light')
+        plt.title("F1-score")
+        plt.ylabel("Automatic clusters")
+        plt.xlabel("Manually assigned clusters")
+        plt.savefig('f1_score.png', dpi=100)
+
+        df_prec.to_csv(f'eval_precision.csv', sep='\t')
+        plt.figure()
+        chart = sns.heatmap(df_prec, cmap='coolwarm', linewidths=0.5)
+        chart.set_xticklabels(chart.get_xticklabels(), rotation=30, horizontalalignment='right', fontweight='light')
+        plt.title("Precision")
+        plt.ylabel("Automatic clusters")
+        plt.xlabel("Manually assigned clusters")
+        plt.savefig('precision.png', dpi=100)
+
 
 
 def labels_encoder(gt):
