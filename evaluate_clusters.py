@@ -76,7 +76,10 @@ class PairingsEvaluator:
             # get rid of duplicates
             # intersection_list = list(dict.fromkeys(intersection_list))
             # with np.maximum prevent division by 0 for empty cluster
-            ratio = len(intersection_list) / np.maximum(len(pairs_docs_in_cluster), 1e-10) * 100
+            try:
+                ratio = len(intersection_list) / len(pairs_docs_in_cluster) * 100
+            except ZeroDivisionError:
+                ratio = 0
             self.__stats_data.append(self.Stat(label, df_group.shape[0], len(intersection_list), ratio))
 
     def stats(self):
