@@ -60,8 +60,8 @@ def main():
 
     ## write to output, either a file or stdout (default)
     debug_logger.debug('[kmeans] Saving')
-    output_file = open(args.output, 'w') if args.output is not None else sys.stdout
-    export_csv = cs_pd.to_csv(output_file, header=True, sep='\t', float_format='%.3f')
+    output_file = open(args.output, 'w', encoding='utf-8', newline='') if args.output is not None else sys.stdout
+    export_csv = cs_pd.to_csv(output_file, encoding='utf-8', header=True, sep='\t', float_format='%.3f')
     output_file.close()
 
     debug_logger.debug('[kmeans] Terminated')
