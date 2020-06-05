@@ -55,6 +55,8 @@ def main():
 
     warnings.simplefilter(action='ignore', category=RuntimeWarning)
 
+    cores = multiprocessing.cpu_count()  # Count the number of cores in a computer
+
     voc = load_vocabulary()
     corpus = load_df(args.input, required_columns=['id', 'abstract_lem'])
     stop_words = load_stop_words('..\\RTS\\stop_words.txt', language='english')
@@ -104,7 +106,6 @@ def main():
             train_sentences.append(s + bigrams_ + trigrams_ + quadrigrams_)
 
     if not os.path.isfile('word2vec.model'):
-        cores = multiprocessing.cpu_count()  # Count the number of cores in a computer
 
         model = Word2Vec(size=100, window=50, min_count=5, alpha=0.03,
                          min_alpha=0.0007, sg=1, negative=10, workers=cores)
@@ -122,17 +123,22 @@ def main():
 
     else:
 
-        num_cores = multiprocessing.cpu_count()
-        print("Availables CPUs:", num_cores)
+        print("Availables CPUs:", cores)
 
         s = None
 
         targets = sentences_keywords[:s]
 
-        diss_matrix = Parallel(n_jobs=num_cores)(delayed(similarity)(source, targets, i) for i, source in enumerate(targets, 0))
-        df = pd.DataFrame(data=diss_matrix, index=corpus['id'].values.tolist()[:s], columns=corpus['id'].values.tolist()[:s])
+        diss_matrix = Parallel(n_jobs=cores)(
+            delayed(similarity)(source, targets, i) for i, source in enumerate(targets, 0)
+        )
+
+        df = pd.DataFrame(data=diss_matrix, index=corpus['id'].values.tolist()[:s],
+                          columns=corpus['id'].values.tolist()[:s])
         if args.output:
-            df.to_csv(args.output, sep='\t', compression='gzip', index=True, header=True, float_format='%.5f', encoding='utf-8')
+
+            df.to_csv(args.output, sep='\t', compression='gzip', index=True,
+                      header=True, float_format='%.5f', encoding='utf-8')
         else:
             print(df)
 
