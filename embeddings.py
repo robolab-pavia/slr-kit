@@ -2,18 +2,17 @@ import logging
 import argparse
 import os
 import warnings
+from time import time
 
 import pandas as pd
-import numpy as np
 
-from DocSim import DocSim
-from gensim.models import Word2Vec, phrases, Phrases
+from docsim import DocSim
+from gensim.models import Word2Vec, Phrases
 from joblib import Parallel, delayed
 import multiprocessing
 
 from preprocess import load_stop_words
 from utils import (
-    assert_column,
     setup_logger,
     load_df,
 )
@@ -39,7 +38,10 @@ def load_vocabulary():
     return voc
 
 
-def similarity(ds, source, targets, i):
+def similarity(source, targets, i):
+    model = Word2Vec.load('word2vec.model')
+    ds = DocSim(model)
+
     sim_scores = ds.calculate_similarity(source, targets)
     scores = [score['score'] for score in sim_scores]
     print(i)
@@ -51,11 +53,10 @@ def main():
     parser = init_argparser()
     args = parser.parse_args()
 
-    #warnings.simplefilter(action='ignore', category=RuntimeWarning)
+    warnings.simplefilter(action='ignore', category=RuntimeWarning)
 
     voc = load_vocabulary()
     corpus = load_df(args.input, required_columns=['id', 'abstract_lem'])
-    tabs = load_df('..\\RTS\\rts_terms_tab.csv', required_columns=['keyword'])
     stop_words = load_stop_words('..\\RTS\\stop_words.txt', language='english')
     tdm = pd.read_csv(args.tdm, sep='\t')
     dtm = tdm.T
@@ -100,20 +101,26 @@ def main():
                 if not k in quadrigrams_:
                     quadrigrams_.append(k)
 
-        train_sentences.append(s + bigrams_ + trigrams_ + quadrigrams_)
+            train_sentences.append(s + bigrams_ + trigrams_ + quadrigrams_)
 
     if not os.path.isfile('word2vec.model'):
         cores = multiprocessing.cpu_count()  # Count the number of cores in a computer
 
-        model = Word2Vec(train_sentences, size=100, window=10, min_count=0, iter=20,
-                         alpha=0.03, min_alpha=0.0007, workers=cores-1)
+        model = Word2Vec(size=100, window=50, min_count=5, alpha=0.03,
+                         min_alpha=0.0007, sg=1, negative=10, workers=cores)
+        t = time()
+        model.build_vocab(train_sentences, progress_per=100)
+        print('Time to build vocab: {} mins'.format(round((time() - t) / 60, 2)))
 
+        t = time()
+        model.train(train_sentences, total_examples=model.corpus_count, epochs=30, report_delay=1)
+
+        print('Time to train the model: {} mins'.format(round((time() - t) / 60, 2)))
+
+        model.init_sims(replace=True)
         model.save('word2vec.model')
 
     else:
-
-        model = Word2Vec.load('word2vec.model')
-        ds = DocSim(model)
 
         num_cores = multiprocessing.cpu_count()
         print("Availables CPUs:", num_cores)
@@ -122,14 +129,12 @@ def main():
 
         targets = sentences_keywords[:s]
 
-        diss_matrix = Parallel(n_jobs=num_cores)(delayed(similarity)(ds, source, targets, i) for i, source in enumerate(targets, 0))
-
+        diss_matrix = Parallel(n_jobs=num_cores)(delayed(similarity)(source, targets, i) for i, source in enumerate(targets, 0))
         df = pd.DataFrame(data=diss_matrix, index=corpus['id'].values.tolist()[:s], columns=corpus['id'].values.tolist()[:s])
         if args.output:
             df.to_csv(args.output, sep='\t', compression='gzip', index=True, header=True, float_format='%.5f', encoding='utf-8')
         else:
             print(df)
-
 
     debug_logger.debug('[Embeddings] Terminated')
 

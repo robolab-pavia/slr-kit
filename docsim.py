@@ -44,6 +44,5 @@ class DocSim:
         for doc in target_docs:
             target_vec = self.vectorize(doc)
             sim_score = self._cosine_sim(source_vec, target_vec)
-            if sim_score >= threshold:
-                results.append({"score": sim_score, "doc": doc})
+            results.append({"score": sim_score, "doc": doc})
         return results
