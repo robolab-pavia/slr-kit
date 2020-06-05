@@ -11,3 +11,4 @@ regex
 matplotlib
 scipy
 tqdm
+active-semi-supervised-clustering
