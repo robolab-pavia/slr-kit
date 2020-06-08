@@ -107,14 +107,15 @@ def main():
 
     if not os.path.isfile('word2vec.model'):
 
-        model = Word2Vec(size=100, window=50, min_count=5, alpha=0.03,
-                         min_alpha=0.0007, sg=1, negative=10, workers=cores)
+        w = max(len(l) for l in train_sentences)
+        model = Word2Vec(size=300, window=w, min_count=5, alpha=0.03, sample=1e-5,
+                         min_alpha=0.00007, negative=15, workers=cores)
         t = time()
         model.build_vocab(train_sentences, progress_per=100)
         print('Time to build vocab: {} mins'.format(round((time() - t) / 60, 2)))
 
         t = time()
-        model.train(train_sentences, total_examples=model.corpus_count, epochs=30, report_delay=1)
+        model.train(train_sentences, total_examples=model.corpus_count, epochs=30)
 
         print('Time to train the model: {} mins'.format(round((time() - t) / 60, 2)))
 
