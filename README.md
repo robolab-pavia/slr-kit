@@ -162,6 +162,18 @@ dtm.py dataset_occ_keyword.json > dataset_dtm.csv
 cosine_similarity.py dataset_dtm.csv > dataset_cosine_similarity.csv
 ```
 
+## `supervised_clustering.py`
+
+- ACTION: Perform semi-supervised clustering with pairwise constraints
+- INPUT: JSON file with a precomputed ground-truth from `parse_pairings.py`
+- OUTPUT: CSV file with documents divided into clusters
+
+### Example of usage
+
+```
+supervised_clustering.py paper_pairings.json > pckmeans_clusters.csv
+```
+
 # Additional scripts
 
 ## `analyze-occ.py`

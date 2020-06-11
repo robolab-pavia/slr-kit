@@ -7,8 +7,7 @@ from pprint import pprint
 
 from utils import setup_logger
 
-debug_logger = setup_logger('debug_logger', 'slr-kit.log',
-                            level=logging.DEBUG)
+debug_logger = setup_logger('debug_logger', 'slr-kit.log', level=logging.DEBUG)
 
 
 def init_argparser():
