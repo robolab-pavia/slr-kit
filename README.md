@@ -171,7 +171,7 @@ cosine_similarity.py dataset_dtm.csv > dataset_cosine_similarity.csv
 ### Example of usage
 
 ```
-supervised_clustering.py paper_pairings.json > pckmeans_clusters.csv
+supervised_clustering.py ground_truth.json > pckmeans_clusters.csv
 ```
 
 # Additional scripts
@@ -241,4 +241,16 @@ NOTE: At the moment, this script works on the complete lemmatized abstracts. It 
 
 ```
 parse_pairings.py manual_pairings.txt > ground_truth.json
+```
+
+## `evaluate_clusters.py`
+
+- ACTION: Analyze clustering performance comparing results with a ground truth
+- INPUT: Clusters and manually labeled documents (from `parse_pairings.py`)
+- OUTPUT: Multiple files with confusion matrices, pairs overlappings and other metrics
+
+### Example of usage
+
+```
+evaluate_clusters.py pckmeans_clusters.csv ground_truth.json
 ```
