@@ -174,6 +174,18 @@ cosine_similarity.py dataset_dtm.csv > dataset_cosine_similarity.csv
 ebbedings.py dataset_preproc.csv dataset_dtm.csv > dataset_w2v_similarity.csv
 ```
 
+## `supervised_clustering.py`
+
+- ACTION: Perform semi-supervised clustering with pairwise constraints
+- INPUT: JSON file with a precomputed ground-truth from `parse_pairings.py`
+- OUTPUT: CSV file with documents divided into clusters
+
+### Example of usage
+
+```
+supervised_clustering.py ground_truth.json > pckmeans_clusters.csv
+```
+
 # Additional scripts
 
 ## `analyze-occ.py`
@@ -231,3 +243,26 @@ NOTE: At the moment, this script works on the complete lemmatized abstracts. It 
 - INPUT:
 - OUTPUT:
 
+## `parse_pairings.py`
+
+- ACTION: Parse a file of a manual clustering session to create a ground-truth for a semi-supervised clustering
+- INPUT: Text file where each line represents a cluster and documents ID with format: 'cluster_label:2,3,5,34,[...]'
+- OUTPUT: JSON file with format: 'id' : ['label1', 'label2'] (a document may belong to multiple clusters)
+
+### Example of usage
+
+```
+parse_pairings.py manual_pairings.txt > ground_truth.json
+```
+
+## `evaluate_clusters.py`
+
+- ACTION: Analyze clustering performance comparing results with a ground truth
+- INPUT: Clusters and manually labeled documents (from `parse_pairings.py`)
+- OUTPUT: Multiple files with confusion matrices, pairs overlappings and other metrics
+
+### Example of usage
+
+```
+evaluate_clusters.py pckmeans_clusters.csv ground_truth.json
+```

@@ -15,3 +15,4 @@ sklearn~=0.0
 prompt_toolkit~=3.0.3
 joblib~=0.14.1
 seaborn~=0.10.1
+active-semi-supervised-clustering
