@@ -162,6 +162,18 @@ dtm.py dataset_occ_keyword.json > dataset_dtm.csv
 cosine_similarity.py dataset_dtm.csv > dataset_cosine_similarity.csv
 ```
 
+## `embeddings.py`
+
+- ACTION: Create words embeddings based on Word2Vec and computed documents similarity
+- INPUT: CSV with corpus preprocessed (`preprocess.py) , CSV file with document-terms matrix
+- OUTPUT: CSV file with the similarity of documents vectors
+
+### Example of usage
+
+```
+ebbedings.py dataset_preproc.csv dataset_dtm.csv > dataset_w2v_similarity.csv
+```
+
 # Additional scripts
 
 ## `analyze-occ.py`
