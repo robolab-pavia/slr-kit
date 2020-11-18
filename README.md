@@ -108,6 +108,20 @@ Extracts terms from `dataset_preproc.csv` and store them in `dataset_terms.csv`:
 gen-n-grams.py dataset_preproc.csv > dataset_terms.csv
 ```
 
+## `cumulative-frequency.py`
+
+- ACTION: Extracts the terms ({1,2,3,4}-grams) from the abstracts, and produces a lineplot of most N frequent terms over the number of papers.
+- INPUT: The CSV file produced by `preprocess.py` (it works on the column `abstract_lem`).
+- OUTPUT: A png file showing the plot and/or the dataset used to build that png
+
+### Example of usage
+
+Extracts terms from `dataset_preproc.csv` and prints the chart on `./n-grams_frequency/dataset_preproc_N-gram.png`:
+
+```
+cumulative-frequency.py --datafile dataset_preproc.csv --top 5 --savefig
+```
+
 ## `fawoc.py`, the FAst WOrd Classifier
 
 - ACTION: GUI program for the fast classification of terms.
