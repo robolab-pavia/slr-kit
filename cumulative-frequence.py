@@ -193,7 +193,6 @@ def main():
 
     # load the dataset
     dataset = pandas.read_csv(args.datafile, delimiter='\t', encoding='utf-8')
-    dataset = dataset.sort_values('citations', ascending=False)
     dataset.fillna('', inplace=True)
     if target_column not in dataset:
         print('File "{}" must contain a column labelled as "{}".'.format(args.datafile, target_column))
