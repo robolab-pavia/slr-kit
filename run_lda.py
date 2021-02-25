@@ -6,16 +6,42 @@ Introduces Gensim's LDA model and demonstrates its use on the NIPS corpus.
 
 """
 
+import argparse
 import logging
 from pathlib import Path
+from pprint import pprint
+
 import pandas as pd
 from gensim.corpora import Dictionary
 from gensim.models import Phrases, LdaModel
 
-from pprint import pprint
-
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s',
                     level=logging.INFO)
+
+
+def init_argparser():
+    """
+    Initialize the command line parser.
+
+    :return: the command line parser
+    :rtype: argparse.ArgumentParser
+    """
+    parser = argparse.ArgumentParser(description='Performs the LDA on a dataset',
+                                     epilog='The program uses two files: '
+                                            '<dataset>/<prefix>_preproc.csv and '
+                                            '<dataset>/<prefix>_terms.csv')
+    parser.add_argument('dataset', action="store", type=Path,
+                        help='path to the directory where the files of the '
+                             'dataset to elaborate are stored.')
+    parser.add_argument('prefix', action="store", type=str,
+                        help='prefix used when searching files.')
+
+    parser.add_argument('--no-relevant', '-n', action='store_true',
+                        help='Do not use the relevant term. Use only keywords')
+    parser.add_argument('--outfile', '-o', action="store", default='-',
+                        type=argparse.FileType('w'),
+                        help="output CSV data file")
+    return parser
 
 
 def generate_raw_docs():
@@ -50,13 +76,10 @@ def generate_filtered_docs(terms_file, preproc_file):
 
 
 def main():
-    # TODO: argparse
+    args = init_argparser().parse_args()
 
-    # TODO: the following code in a function that receives dataset
-    dataset = 'rts'
-    dataset_dir = Path('rts')
-    terms_file = dataset_dir / f'{dataset}_terms.csv'
-    preproc_file = dataset_dir / f'{dataset}_preproc.csv'
+    terms_file = args.dataset / f'{args.prefix}_terms.csv'
+    preproc_file = args.dataset / f'{args.prefix}_preproc.csv'
     good_docs = generate_filtered_docs(terms_file, preproc_file)
     # good_docs = generate_raw_docs()
     # good_docs = good_docs[:2000]
