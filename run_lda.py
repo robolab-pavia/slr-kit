@@ -27,21 +27,17 @@ def init_argparser():
     :return: the command line parser
     :rtype: argparse.ArgumentParser
     """
+    epilog = """"'The program uses two files: <dataset>/<prefix>_preproc.csv and
+ '<dataset>/<prefix>_terms.csv.
+ It outputs the topics in <dataset>/<prefix>_topics.json and the topics assigned
+ to each document in <dataset>/<prefix>_docs-topics.json"""
     parser = argparse.ArgumentParser(description='Performs the LDA on a dataset',
-                                     epilog='The program uses two files: '
-                                            '<dataset>/<prefix>_preproc.csv and '
-                                            '<dataset>/<prefix>_terms.csv')
+                                     epilog=epilog)
     parser.add_argument('dataset', action="store", type=Path,
                         help='path to the directory where the files of the '
                              'dataset to elaborate are stored.')
     parser.add_argument('prefix', action="store", type=str,
                         help='prefix used when searching files.')
-
-    parser.add_argument('--no-relevant', '-n', action='store_true',
-                        help='Do not use the relevant term. Use only keywords')
-    parser.add_argument('--outfile', '-o', action="store", default='-',
-                        type=argparse.FileType('w'),
-                        help="output CSV data file")
     return parser
 
 
