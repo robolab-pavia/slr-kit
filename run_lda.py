@@ -8,22 +8,18 @@ Introduces Gensim's LDA model and demonstrates its use on the NIPS corpus.
 
 import logging
 from pathlib import Path
+import pandas as pd
+from gensim.corpora import Dictionary
+from gensim.models import Phrases, LdaModel
+
+from pprint import pprint
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s',
                     level=logging.INFO)
 
-import io
-import sys
-import os.path
-import re
-import tarfile
-import pandas
-
-import smart_open
-
 
 def generate_raw_docs():
-    dataset = pandas.read_csv('rts_preproc.csv', delimiter='\t', encoding='utf-8')
+    dataset = pd.read_csv('rts_preproc.csv', delimiter='\t', encoding='utf-8')
     dataset.fillna('', inplace=True)
     documents = dataset['abstract_lem'].to_list()
     docs = [d.split(' ') for d in documents]
@@ -31,8 +27,8 @@ def generate_raw_docs():
 
 
 def generate_filtered_docs(terms_file, preproc_file):
-    words_dataset = pandas.read_csv(terms_file, delimiter='\t',
-                                    encoding='utf-8')
+    words_dataset = pd.read_csv(terms_file, delimiter='\t',
+                                encoding='utf-8')
     terms = words_dataset['keyword'].to_list()
     labels = words_dataset['label'].to_list()
     zipped = zip(terms, labels)
@@ -41,7 +37,7 @@ def generate_filtered_docs(terms_file, preproc_file):
     for x in good:
         good_set.add(x[0])
     # print(good_set)
-    dataset = pandas.read_csv(preproc_file, delimiter='\t', encoding='utf-8')
+    dataset = pd.read_csv(preproc_file, delimiter='\t', encoding='utf-8')
     dataset.fillna('', inplace=True)
     documents = dataset['abstract_lem'].to_list()
     docs = [d.split(' ') for d in documents]
@@ -68,8 +64,6 @@ def main():
     # sys.exit(1)
 
     # Compute bigrams.
-    from gensim.models import Phrases
-
     # Add bigrams and trigrams to docs (only ones that appear 20 times or more).
     bigram = Phrases(docs, min_count=20)
     for idx in range(len(docs)):
@@ -85,8 +79,6 @@ def main():
     #
 
     # Remove rare and common tokens.
-    from gensim.corpora import Dictionary
-
     # Create a dictionary representation of the documents.
     dictionary = Dictionary(docs)
 
@@ -106,8 +98,6 @@ def main():
     print('Number of documents: %d' % len(corpus))
 
     # Train LDA model.
-    from gensim.models import LdaModel
-
     # Set training parameters.
     if False:
         num_topics = 20
@@ -144,8 +134,6 @@ def main():
     # divided by the number of topics.
     avg_topic_coherence = sum([t[1] for t in top_topics]) / num_topics
     print('Average topic coherence: %.4f.' % avg_topic_coherence)
-
-    from pprint import pprint
 
     pprint(top_topics)
 
