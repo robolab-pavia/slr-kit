@@ -7,7 +7,9 @@ Introduces Gensim's LDA model and demonstrates its use on the NIPS corpus.
 """
 
 import logging
-logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
+
+logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s',
+                    level=logging.INFO)
 
 import io
 import sys
@@ -26,8 +28,10 @@ def generate_raw_docs():
     docs = [d.split(' ') for d in documents]
     return docs
 
+
 def generate_filtered_docs():
-    words_dataset = pandas.read_csv('dataset/rts/tags_facchinetti/rts_terms_tab.csv', delimiter='\t', encoding='utf-8')
+    words_dataset = pandas.read_csv('dataset/rts/tags_facchinetti/rts_terms_tab.csv',
+                                    delimiter='\t', encoding='utf-8')
     terms = words_dataset['keyword'].to_list()
     labels = words_dataset['label'].to_list()
     zipped = zip(terms, labels)
@@ -35,8 +39,9 @@ def generate_filtered_docs():
     good_set = set()
     for x in good:
         good_set.add(x[0])
-    #print(good_set)
-    dataset = pandas.read_csv('rts_preproc.csv', delimiter='\t', encoding='utf-8')
+    # print(good_set)
+    dataset = pandas.read_csv('rts_preproc.csv', delimiter='\t',
+                              encoding='utf-8')
     dataset.fillna('', inplace=True)
     documents = dataset['abstract_lem'].to_list()
     docs = [d.split(' ') for d in documents]
@@ -47,11 +52,50 @@ def generate_filtered_docs():
         good_docs.append(gd)
     return good_docs
 
+
 good_docs = generate_filtered_docs()
-#good_docs = generate_raw_docs()
-#good_docs = good_docs[:2000]
+# good_docs = generate_raw_docs()
+# good_docs = good_docs[:2000]
 docs = good_docs
-#sys.exit(1)
+# sys.exit(1)
+
+# Compute bigrams.
+from gensim.models import Phrases
+
+# Add bigrams and trigrams to docs (only ones that appear 20 times or more).
+bigram = Phrases(docs, min_count=20)
+for idx in range(len(docs)):
+    for token in bigram[docs[idx]]:
+        if '_' in token:
+            # Token is a bigram, add to document.
+            docs[idx].append(token)
+
+# We remove rare words and common words based on their *document frequency*.
+# Below we remove words that appear in less than 20 documents or in more than
+# 50% of the documents. Consider trying to remove words only based on their
+# frequency, or maybe combining that with this approach.
+#
+
+# Remove rare and common tokens.
+from gensim.corpora import Dictionary
+
+# Create a dictionary representation of the documents.
+dictionary = Dictionary(docs)
+
+# Filter out words that occur less than 20 documents, or more than 50% of
+# the documents.
+dictionary.filter_extremes(no_below=20, no_above=0.5)
+
+# Finally, we transform the documents to a vectorized form. We simply compute
+# the frequency of each word, including the bigrams.
+
+# Bag-of-words representation of the documents.
+corpus = [dictionary.doc2bow(doc) for doc in docs]
+
+# Let's see how many tokens and documents we have to train on.
+
+print('Number of unique tokens: %d' % len(dictionary))
+print('Number of documents: %d' % len(corpus))
 
 # Train LDA model.
 from gensim.models import LdaModel
@@ -86,16 +130,19 @@ model = LdaModel(
     eval_every=eval_every
 )
 
-top_topics = model.top_topics(corpus) #, num_words=20)
+top_topics = model.top_topics(corpus)  # , num_words=20)
 
-# Average topic coherence is the sum of topic coherences of all topics, divided by the number of topics.
+# Average topic coherence is the sum of topic coherences of all topics,
+# divided by the number of topics.
 avg_topic_coherence = sum([t[1] for t in top_topics]) / num_topics
 print('Average topic coherence: %.4f.' % avg_topic_coherence)
 
 from pprint import pprint
+
 pprint(top_topics)
 
 for d in docs:
     bow = dictionary.doc2bow(d)
     t = model.get_document_topics(bow)
     print(t)
+
