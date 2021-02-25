@@ -63,17 +63,18 @@ def generate_filtered_docs(terms_file, preproc_file):
     good_set = set()
     for x in good:
         good_set.add(x[0])
-    # print(good_set)
+
     dataset = pd.read_csv(preproc_file, delimiter='\t', encoding='utf-8')
     dataset.fillna('', inplace=True)
     documents = dataset['abstract_lem'].to_list()
+    titles = dataset['title'].to_list()
     docs = [d.split(' ') for d in documents]
 
     good_docs = []
     for doc in docs:
         gd = [t for t in doc if t in good_set]
         good_docs.append(gd)
-    return good_docs
+    return good_docs, titles
 
 
 def main():
@@ -81,7 +82,7 @@ def main():
 
     terms_file = args.dataset / f'{args.prefix}_terms.csv'
     preproc_file = args.dataset / f'{args.prefix}_preproc.csv'
-    docs = generate_filtered_docs(terms_file, preproc_file)
+    docs, titles = generate_filtered_docs(terms_file, preproc_file)
     # good_docs = generate_raw_docs()
     # good_docs = good_docs[:2000]
     # sys.exit(1)
@@ -165,17 +166,28 @@ def main():
         topic = {'id': i,
                  'coherence': float(t[1]),
                  'terms_probability': {term[1]: float(term[0]) for term in t[0]},
-        }
+                 }
         topics.append(topic)
 
     topic_file = args.dataset / f'{args.prefix}_topics.json'
     with open(topic_file, 'w') as file:
         json.dump(topics, file, indent='\t')
 
-    for d in docs:
+    docs_topics = []
+    for i, (title, d) in enumerate(zip(titles, docs)):
         bow = dictionary.doc2bow(d)
         t = model.get_document_topics(bow)
-        print(t)
+        d_t = {
+            'id': i,
+            'title': title,
+            'topics': {tu[0]: float(tu[1]) for tu in t},
+        }
+        docs_topics.append(d_t)
+        print(title, t)
+
+    docs_file = args.dataset / f'{args.prefix}_docs-topics.json'
+    with open(docs_file, 'w') as file:
+        json.dump(docs_topics, file, indent='\t')
 
 
 if __name__ == '__main__':
