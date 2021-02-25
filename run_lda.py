@@ -7,6 +7,7 @@ Introduces Gensim's LDA model and demonstrates its use on the NIPS corpus.
 """
 
 import logging
+from pathlib import Path
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s',
                     level=logging.INFO)
@@ -29,9 +30,9 @@ def generate_raw_docs():
     return docs
 
 
-def generate_filtered_docs():
-    words_dataset = pandas.read_csv('dataset/rts/tags_facchinetti/rts_terms_tab.csv',
-                                    delimiter='\t', encoding='utf-8')
+def generate_filtered_docs(terms_file, preproc_file):
+    words_dataset = pandas.read_csv(terms_file, delimiter='\t',
+                                    encoding='utf-8')
     terms = words_dataset['keyword'].to_list()
     labels = words_dataset['label'].to_list()
     zipped = zip(terms, labels)
@@ -40,8 +41,7 @@ def generate_filtered_docs():
     for x in good:
         good_set.add(x[0])
     # print(good_set)
-    dataset = pandas.read_csv('rts_preproc.csv', delimiter='\t',
-                              encoding='utf-8')
+    dataset = pandas.read_csv(preproc_file, delimiter='\t', encoding='utf-8')
     dataset.fillna('', inplace=True)
     documents = dataset['abstract_lem'].to_list()
     docs = [d.split(' ') for d in documents]
@@ -54,7 +54,14 @@ def generate_filtered_docs():
 
 
 def main():
-    good_docs = generate_filtered_docs()
+    # TODO: argparse
+
+    # TODO: the following code in a function that receives dataset
+    dataset = 'rts'
+    dataset_dir = Path('rts')
+    terms_file = dataset_dir / f'{dataset}_terms.csv'
+    preproc_file = dataset_dir / f'{dataset}_preproc.csv'
+    good_docs = generate_filtered_docs(terms_file, preproc_file)
     # good_docs = generate_raw_docs()
     # good_docs = good_docs[:2000]
     docs = good_docs
