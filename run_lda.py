@@ -7,6 +7,7 @@ Introduces Gensim's LDA model and demonstrates its use on the NIPS corpus.
 """
 
 import argparse
+import json
 import logging
 from pathlib import Path
 from pprint import pprint
@@ -80,10 +81,9 @@ def main():
 
     terms_file = args.dataset / f'{args.prefix}_terms.csv'
     preproc_file = args.dataset / f'{args.prefix}_preproc.csv'
-    good_docs = generate_filtered_docs(terms_file, preproc_file)
+    docs = generate_filtered_docs(terms_file, preproc_file)
     # good_docs = generate_raw_docs()
     # good_docs = good_docs[:2000]
-    docs = good_docs
     # sys.exit(1)
 
     # Compute bigrams.
@@ -156,9 +156,21 @@ def main():
     # Average topic coherence is the sum of topic coherences of all topics,
     # divided by the number of topics.
     avg_topic_coherence = sum([t[1] for t in top_topics]) / num_topics
-    print('Average topic coherence: %.4f.' % avg_topic_coherence)
+    print(f'Average topic coherence: {avg_topic_coherence:.4f}.')
 
     pprint(top_topics)
+
+    topics = []
+    for i, t in enumerate(top_topics):
+        topic = {'id': i,
+                 'coherence': float(t[1]),
+                 'terms_probability': {term[1]: float(term[0]) for term in t[0]},
+        }
+        topics.append(topic)
+
+    topic_file = args.dataset / f'{args.prefix}_topics.json'
+    with open(topic_file, 'w') as file:
+        json.dump(topics, file, indent='\t')
 
     for d in docs:
         bow = dictionary.doc2bow(d)
