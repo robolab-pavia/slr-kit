@@ -17,7 +17,7 @@ from gensim.corpora import Dictionary
 from gensim.models import Phrases, LdaModel
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s',
-                    level=logging.INFO)
+                    level=logging.DEBUG)
 
 
 def init_argparser():
@@ -85,12 +85,12 @@ def main():
 
     # Compute bigrams.
     # Add bigrams and trigrams to docs (only ones that appear 20 times or more).
-    bigram = Phrases(docs, min_count=20)
-    for idx in range(len(docs)):
-        for token in bigram[docs[idx]]:
-            if '_' in token:
-                # Token is a bigram, add to document.
-                docs[idx].append(token)
+    ### bigram = Phrases(docs, min_count=20)
+    ### for idx in range(len(docs)):
+    ###     for token in bigram[docs[idx]]:
+    ###         if '_' in token:
+    ###             # Token is a bigram, add to document.
+    ###             docs[idx].append(token)
 
     # We remove rare words and common words based on their *document frequency*.
     # Below we remove words that appear in less than 20 documents or in more than
@@ -127,10 +127,10 @@ def main():
         eval_every = None  # Don't evaluate model perplexity, takes too much time.
     else:
         num_topics = 30
-        chunksize = 2000
+        chunksize = 10000
         passes = 20
-        iterations = 4
-        eval_every = 5  # Don't evaluate model perplexity, takes too much time.
+        iterations = 600
+        eval_every = 1  # Don't evaluate model perplexity, takes too much time.
 
     # Make a index to word dictionary.
     temp = dictionary[0]  # This is only to "load" the dictionary.
@@ -155,7 +155,7 @@ def main():
     avg_topic_coherence = sum([t[1] for t in top_topics]) / num_topics
     print(f'Average topic coherence: {avg_topic_coherence:.4f}.')
 
-    pprint(top_topics)
+    #pprint(top_topics)
 
     topics = []
     for i, t in enumerate(top_topics):
@@ -179,7 +179,7 @@ def main():
             'topics': {tu[0]: float(tu[1]) for tu in t},
         }
         docs_topics.append(d_t)
-        print(title, t)
+        #print(title, t)
 
     docs_file = args.dataset / f'{args.prefix}_docs-topics.json'
     with open(docs_file, 'w') as file:
