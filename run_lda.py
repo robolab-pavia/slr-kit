@@ -155,16 +155,16 @@ def main():
     # divided by the number of topics.
     avg_topic_coherence = cm.get_coherence()
     print(f'Average topic coherence: {avg_topic_coherence:.4f}.')
-    topics = []
+    topics = {}
     coherence = cm.get_coherence_per_topic()
     for i in range(model.num_topics):
         topic = model.show_topic(i)
-        t_dict = {'id': i,
-                  'coherence': float(coherence[i]),
-                  'terms_probability': {t[0]: float(t[1])
-                                        for t in topic},
-                  }
-        topics.append(t_dict)
+        t_dict = {
+            'name': '',
+            'terms_probability': {t[0]: float(t[1]) for t in topic},
+            'coherence': float(coherence[i]),
+        }
+        topics[i] = t_dict
 
     topic_file = args.dataset / f'{args.prefix}_topics.json'
     with open(topic_file, 'w') as file:
