@@ -160,6 +160,7 @@ def main():
     topics = []
     for i, t in enumerate(top_topics):
         topic = {'id': i,
+                 'name': f'Topic {i}',
                  'coherence': float(t[1]),
                  'terms_probability': {term[1]: float(term[0]) for term in t[0]},
                  }
