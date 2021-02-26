@@ -15,6 +15,7 @@ from pprint import pprint
 import pandas as pd
 from gensim.corpora import Dictionary
 from gensim.models import Phrases, LdaModel
+from gensim.models.coherencemodel import CoherenceModel
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s',
                     level=logging.INFO)
@@ -148,22 +149,22 @@ def main():
         eval_every=eval_every
     )
 
-    top_topics = model.top_topics(corpus)  # , num_words=20)
-
+    cm = CoherenceModel(model=model, corpus=corpus, coherence='u_mass',
+                        processes=6)
     # Average topic coherence is the sum of topic coherences of all topics,
     # divided by the number of topics.
-    avg_topic_coherence = sum([t[1] for t in top_topics]) / num_topics
+    avg_topic_coherence = cm.get_coherence()
     print(f'Average topic coherence: {avg_topic_coherence:.4f}.')
-
-    pprint(top_topics)
-
     topics = []
-    for i, t in enumerate(top_topics):
-        topic = {'id': i,
-                 'coherence': float(t[1]),
-                 'terms_probability': {term[1]: float(term[0]) for term in t[0]},
-                 }
-        topics.append(topic)
+    coherence = cm.get_coherence_per_topic()
+    for i in range(model.num_topics):
+        topic = model.show_topic(i)
+        t_dict = {'id': i,
+                  'coherence': float(coherence[i]),
+                  'terms_probability': {t[0]: float(t[1])
+                                        for t in topic},
+                  }
+        topics.append(t_dict)
 
     topic_file = args.dataset / f'{args.prefix}_topics.json'
     with open(topic_file, 'w') as file:
