@@ -49,17 +49,22 @@ def generate_raw_docs():
     return docs
 
 
-def generate_filtered_docs(terms_file, preproc_file):
+def load_terms(terms_file, labels=('keyword', 'related')):
     words_dataset = pd.read_csv(terms_file, delimiter='\t',
                                 encoding='utf-8')
     terms = words_dataset['keyword'].to_list()
-    labels = words_dataset['label'].to_list()
-    zipped = zip(terms, labels)
-    good = [x for x in zipped if x[1] == 'keyword' or x[1] == 'relevant']
+    term_labels = words_dataset['label'].to_list()
+    zipped = zip(terms, term_labels)
+    good = [x for x in zipped if x[1] in labels]
     good_set = set()
     for x in good:
         good_set.add(x[0])
 
+    return good_set
+
+
+def generate_filtered_docs(terms_file, preproc_file):
+    terms = load_terms(terms_file)
     dataset = pd.read_csv(preproc_file, delimiter='\t', encoding='utf-8')
     dataset.fillna('', inplace=True)
     documents = dataset['abstract_lem'].to_list()
@@ -68,7 +73,7 @@ def generate_filtered_docs(terms_file, preproc_file):
 
     good_docs = []
     for doc in docs:
-        gd = [t for t in doc if t in good_set]
+        gd = [t for t in doc if t in terms]
         good_docs.append(gd)
     return good_docs, titles
 
