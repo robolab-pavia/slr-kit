@@ -9,12 +9,16 @@ Introduces Gensim's LDA model and demonstrates its use on the NIPS corpus.
 import argparse
 import json
 import logging
+from itertools import repeat
+from multiprocessing import Pool
 from pathlib import Path
 
 import pandas as pd
 from gensim.corpora import Dictionary
 from gensim.models import LdaModel
 from gensim.models.coherencemodel import CoherenceModel
+
+from utils import substring_index
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s',
                     level=logging.DEBUG)
@@ -49,6 +53,46 @@ def generate_raw_docs():
     return docs
 
 
+def load_ngrams(terms_file, labels=('keyword', 'related')):
+    words_dataset = pd.read_csv(terms_file, delimiter='\t',
+                                encoding='utf-8')
+    terms = words_dataset['keyword'].to_list()
+    term_labels = words_dataset['label'].to_list()
+    zipped = zip(terms, term_labels)
+    good = [x[0] for x in zipped if x[1] in labels]
+    ngrams = {1: []}
+    for x in good:
+        n = x.count(' ') + 1
+        try:
+            ngrams[n].append(x)
+        except KeyError:
+            ngrams[n] = [x]
+
+    return ngrams
+
+
+def check_ngram(doc, idx):
+    for dd in doc:
+        r = range(dd[0][0], dd[0][1])
+        yield idx[0] in r or idx[1] in r
+
+
+def filter_doc(d, ngram_len, terms):
+    doc = []
+    flag = False
+    for n in ngram_len:
+        for t in terms[n]:
+            for idx in substring_index(d, t):
+                if flag and any(check_ngram(doc, idx)):
+                    continue
+
+                doc.append((idx, t.replace(' ', '_')))
+
+        flag = True
+    doc.sort(key=lambda dd: dd[0])
+    return [t[1] for t in doc]
+
+
 def load_terms(terms_file, labels=('keyword', 'related')):
     words_dataset = pd.read_csv(terms_file, delimiter='\t',
                                 encoding='utf-8')
@@ -61,6 +105,21 @@ def load_terms(terms_file, labels=('keyword', 'related')):
         good_set.add(x[0])
 
     return good_set
+
+
+def generate_filtered_docs_ngrams(terms_file, preproc_file):
+    terms = load_ngrams(terms_file)
+    ngram_len = sorted(terms, reverse=True)
+    dataset = pd.read_csv(preproc_file, delimiter='\t', encoding='utf-8')
+    dataset.fillna('', inplace=True)
+    documents = dataset['abstract_lem'].to_list()
+    titles = dataset['title'].to_list()
+    docs = []
+    with Pool() as pool:
+        docs = pool.starmap(filter_doc, zip(documents, repeat(ngram_len),
+                                            repeat(terms)))
+
+    return docs, titles
 
 
 def generate_filtered_docs(terms_file, preproc_file):
