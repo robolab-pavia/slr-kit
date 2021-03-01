@@ -37,11 +37,13 @@ def init_argparser():
  to each document in <dataset>/<prefix>_docs-topics.json"""
     parser = argparse.ArgumentParser(description='Performs the LDA on a dataset',
                                      epilog=epilog)
-    parser.add_argument('dataset', action="store", type=Path,
+    parser.add_argument('dataset', action='store', type=Path,
                         help='path to the directory where the files of the '
                              'dataset to elaborate are stored.')
-    parser.add_argument('prefix', action="store", type=str,
+    parser.add_argument('prefix', action='store', type=str,
                         help='prefix used when searching files.')
+    parser.add_argument('--ngrams', action='store_true',
+                        help='if set use all the ngrams')
     return parser
 
 
@@ -142,19 +144,10 @@ def main():
 
     terms_file = args.dataset / f'{args.prefix}_terms.csv'
     preproc_file = args.dataset / f'{args.prefix}_preproc.csv'
-    docs, titles = generate_filtered_docs(terms_file, preproc_file)
-    # good_docs = generate_raw_docs()
-    # good_docs = good_docs[:2000]
-    # sys.exit(1)
-
-    # Compute bigrams.
-    # Add bigrams and trigrams to docs (only ones that appear 20 times or more).
-    # bigram = Phrases(docs, min_count=20)
-    # for idx in range(len(docs)):
-    #     for token in bigram[docs[idx]]:
-    #         if '_' in token:
-    #             # Token is a bigram, add to document.
-    #             docs[idx].append(token)
+    if args.ngrams:
+        docs, titles = generate_filtered_docs_ngrams(terms_file, preproc_file)
+    else:
+        docs, titles = generate_filtered_docs(terms_file, preproc_file)
 
     # We remove rare words and common words based on their *document frequency*.
     # Below we remove words that appear in less than 20 documents or in more than
