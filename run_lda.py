@@ -45,6 +45,9 @@ def init_argparser():
                         help='prefix used when searching files.')
     parser.add_argument('--ngrams', action='store_true',
                         help='if set use all the ngrams')
+    parser.add_argument('--model', action='store_true',
+                        help='if set the lda model is saved to directory '
+                             '<dataset>/<prefix>_lda_model')
     return parser
 
 
@@ -191,7 +194,7 @@ def main():
         eval_every = 1  # Don't evaluate model perplexity, takes too much time.
 
     # Make a index to word dictionary.
-    temp = dictionary[0]  # This is only to "load" the dictionary.
+    _ = dictionary[0]  # This is only to "load" the dictionary.
     id2word = dictionary.id2token
 
     model = LdaModel(
@@ -241,6 +244,11 @@ def main():
     docs_file = args.dataset / f'{args.prefix}_docs-topics.json'
     with open(docs_file, 'w') as file:
         json.dump(docs_topics, file, indent='\t')
+
+    if args.model:
+        lda_path: Path = args.dataset / f'{args.prefix}_lda_model'
+        lda_path.mkdir(exist_ok=True)
+        model.save(str(lda_path / 'model'))
 
 
 if __name__ == '__main__':
