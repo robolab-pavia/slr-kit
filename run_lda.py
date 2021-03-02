@@ -11,6 +11,7 @@ import json
 import logging
 from itertools import repeat
 from multiprocessing import Pool
+from os import cpu_count
 from pathlib import Path
 
 import pandas as pd
@@ -205,14 +206,14 @@ def main():
         eval_every=eval_every
     )
 
-    cm = CoherenceModel(model=model, corpus=corpus, coherence='u_mass',
-                        processes=6)
+    cm = CoherenceModel(model=model, texts=docs, dictionary=dictionary,
+                        coherence='c_v', processes=cpu_count())
     # Average topic coherence is the sum of topic coherences of all topics,
     # divided by the number of topics.
     avg_topic_coherence = cm.get_coherence()
+    coherence = cm.get_coherence_per_topic()
     print(f'Average topic coherence: {avg_topic_coherence:.4f}.')
     topics = {}
-    coherence = cm.get_coherence_per_topic()
     for i in range(model.num_topics):
         topic = model.show_topic(i)
         t_dict = {
