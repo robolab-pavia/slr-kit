@@ -34,7 +34,7 @@ def init_argparser():
     """
     epilog = """"'The program uses two files: <dataset>/<prefix>_preproc.csv and
  '<dataset>/<prefix>_terms.csv.
- It outputs the topics in <dataset>/<prefix>_topics.json and the topics assigned
+ It outputs the topics in <dataset>/<prefix>_terms-topics.json and the topics assigned
  to each document in <dataset>/<prefix>_docs-topics.json"""
     parser = argparse.ArgumentParser(description='Performs the LDA on a dataset',
                                      epilog=epilog)
@@ -220,7 +220,7 @@ def main():
         }
         topics[i] = t_dict
 
-    topic_file = args.dataset / f'{args.prefix}_topics.json'
+    topic_file = args.dataset / f'{args.prefix}_terms-topics.json'
     with open(topic_file, 'w') as file:
         json.dump(topics, file, indent='\t')
 
