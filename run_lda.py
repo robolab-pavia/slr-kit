@@ -51,14 +51,6 @@ def init_argparser():
     return parser
 
 
-def generate_raw_docs():
-    dataset = pd.read_csv('rts_preproc.csv', delimiter='\t', encoding='utf-8')
-    dataset.fillna('', inplace=True)
-    documents = dataset['abstract_lem'].to_list()
-    docs = [d.split(' ') for d in documents]
-    return docs
-
-
 def load_ngrams(terms_file, labels=('keyword', 'related')):
     words_dataset = pd.read_csv(terms_file, delimiter='\t',
                                 encoding='utf-8')
