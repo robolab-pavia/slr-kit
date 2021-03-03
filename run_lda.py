@@ -209,12 +209,14 @@ def main():
     coherence = cm.get_coherence_per_topic()
     print(f'Average topic coherence: {avg_topic_coherence:.4f}.')
     topics = {}
-    for i in range(model.num_topics):
+    topics_order = list(range(model.num_topics))
+    topics_order.sort(key=lambda x: coherence[x], reverse=True)
+    for i in topics_order:
         topic = model.show_topic(i)
         t_dict = {
             'name': f'Topic {i}',
             'terms_probability': {t[0]: float(t[1]) for t in topic},
-            'coherence': float(coherence[i]),
+            'coherence': f'{float(coherence[i]):.5f}',
         }
         topics[i] = t_dict
 
@@ -226,6 +228,7 @@ def main():
     for i, (title, d) in enumerate(zip(titles, docs)):
         bow = dictionary.doc2bow(d)
         t = model.get_document_topics(bow)
+        t.sort(key=lambda x: x[1], reverse=True)
         d_t = {
             'id': i,
             'title': title,
