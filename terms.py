@@ -323,10 +323,15 @@ class TermList:
                 except KeyError:
                     idx = i
 
+                try:
+                    count = int(row['count'])
+                except KeyError:
+                    count = -1
+
                 item = Term(
                     index=idx,
                     string=row['keyword'],
-                    count=row['count'],
+                    count=count,
                     label=label,
                     order=order,
                     related=related
@@ -352,27 +357,34 @@ class TermList:
             raise InvalidServiceDataError('the loaded data is not a list')
 
         for t in self.items:
-            if not t.is_classified():
-                t.order = -1
-                t.related = ''
-                continue
-
             d = data.get(t.string)
             if d is not None:
                 try:
-                    if isinstance(d['order'], int):
-                        t.order = d['order']
+                    if t.is_classified():
+                        if isinstance(d['order'], int):
+                            t.order = d['order']
+                        else:
+                            s = f"'order' field of the {t.string} entry is not an int"
+                            raise InvalidServiceDataError(s)
+
+                        if isinstance(d['related'], str):
+                            t.related = d['related']
+                        else:
+                            s = f"'related' field of the {t.string} entry is not a str"
+                            raise InvalidServiceDataError(s)
                     else:
-                        s = f"'order' field of the {t.string} entry is not an int"
-                        raise InvalidServiceDataError(s)
-                    if isinstance(d['related'], str):
-                        t.related = d['related']
+                        t.order = -1
+                        t.related = ''
+
+                    if isinstance(d['count'], int):
+                        t.count = d['count']
                     else:
-                        s = f"'relate' field of the {t.string} entry is not a str"
+                        s = f"'count' field of the {t.string} entry is not an int"
                         raise InvalidServiceDataError(s)
                 except KeyError as ke:
-                    s = f'Missing {repr(ke.args[0])} in {repr(t.string)} entry'
-                    raise InvalidServiceDataError(s)
+                    if ke.args[0] != 'count':
+                        s = f'Missing {repr(ke.args[0])} in {repr(t.string)} entry'
+                        raise InvalidServiceDataError(s)
                 except TypeError:
                     s = f'{repr(t.string)} is not a dict'
                     raise InvalidServiceDataError(s)
