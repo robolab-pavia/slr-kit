@@ -318,8 +318,13 @@ class TermList:
                     print('\n{} does not contains the field "label"\n'.format(infile))
                     raise
 
+                try:
+                    idx = int(row['id'])
+                except KeyError:
+                    idx = i
+
                 item = Term(
-                    index=i,
+                    index=idx,
                     string=row['keyword'],
                     count=row['count'],
                     label=label,
@@ -407,11 +412,12 @@ class TermList:
         with tempfile.NamedTemporaryFile('w', dir=path, prefix='.fawoc.temp.',
                                          encoding='utf-8', delete=False) as out:
             writer = csv.DictWriter(out, delimiter='\t', quotechar='"',
-                                    fieldnames=['keyword', 'count', 'label'],
+                                    fieldnames=['id', 'keyword', 'count', 'label'],
                                     quoting=csv.QUOTE_MINIMAL)
             writer.writeheader()
             for w in items:
                 item = {
+                    'id': w.index,
                     'keyword': w.string,
                     'count': w.count,
                     'label': w.label.label_name,
