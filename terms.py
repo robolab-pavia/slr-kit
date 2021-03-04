@@ -308,15 +308,8 @@ class TermList:
                     order = int(order_value)
 
                 related = row.get('related', '')
-                try:
-                    lbl_name = row['label']
-                    if lbl_name is None:
-                        lbl_name = ''
-
-                    label = Label.get_from_name(lbl_name)
-                except KeyError:
-                    print('\n{} does not contains the field "label"\n'.format(infile))
-                    raise
+                lbl_name = row.get('label', '')
+                label = Label.get_from_name(lbl_name)
 
                 try:
                     idx = int(row['id'])
