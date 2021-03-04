@@ -1135,6 +1135,9 @@ def main():
         msg = f'File {jsonfile} not found. Service data not loaded.'
         debug_logger.info(msg)
 
+    # now order is properly loaded - sort terms by order
+    terms.sort_by_order()
+
     profiler_logger.info("CLASSIFIED: {}".format(terms.count_classified()))
     # check the last_review file
     try:

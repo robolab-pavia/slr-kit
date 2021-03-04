@@ -329,7 +329,6 @@ class TermList:
                 items.append(item)
 
         self.csv_header = header
-        items.sort(key=lambda t: t.order)
         self.items = items
         return header, items
 
