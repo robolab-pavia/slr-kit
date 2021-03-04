@@ -347,6 +347,11 @@ class TermList:
             raise InvalidServiceDataError('the loaded data is not a list')
 
         for t in self.items:
+            if not t.is_classified():
+                t.order = -1
+                t.related = ''
+                continue
+
             d = data.get(t.string)
             if d is not None:
                 try:
