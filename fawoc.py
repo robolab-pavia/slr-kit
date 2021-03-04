@@ -1132,7 +1132,7 @@ def main():
     try:
         terms.load_service_data(jsonfile)
     except FileNotFoundError:
-        msg = f'File {jsonfile} not file. Service data not loaded.'
+        msg = f'File {jsonfile} not found. Service data not loaded.'
         debug_logger.info(msg)
 
     profiler_logger.info("CLASSIFIED: {}".format(terms.count_classified()))
