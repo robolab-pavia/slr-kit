@@ -399,11 +399,11 @@ class TermList:
         path = str(Path(jsonfile).resolve().parent)
         data = {}
         for t in self.items:
-            if t.label != Label.NONE and not (t.order == -1 and t.related == ''):
-                data[t.string] = {
-                    'order': t.order,
-                    'related': t.related,
-                }
+            data[t.string] = {
+                'order': t.order,
+                'related': t.related,
+                'count': t.count
+            }
         with tempfile.NamedTemporaryFile('w', dir=path, prefix='.fawoc.temp.',
                                          encoding='utf-8', delete=False) as out:
             json.dump(data, out)
@@ -424,14 +424,13 @@ class TermList:
         with tempfile.NamedTemporaryFile('w', dir=path, prefix='.fawoc.temp.',
                                          encoding='utf-8', delete=False) as out:
             writer = csv.DictWriter(out, delimiter='\t', quotechar='"',
-                                    fieldnames=['id', 'keyword', 'count', 'label'],
+                                    fieldnames=['id', 'keyword', 'label'],
                                     quoting=csv.QUOTE_MINIMAL)
             writer.writeheader()
             for w in items:
                 item = {
                     'id': w.index,
                     'keyword': w.string,
-                    'count': w.count,
                     'label': w.label.label_name,
                 }
                 writer.writerow(item)
