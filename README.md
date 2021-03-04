@@ -108,6 +108,20 @@ Extracts terms from `dataset_preproc.csv` and store them in `dataset_terms.csv`:
 gen-n-grams.py dataset_preproc.csv > dataset_terms.csv
 ```
 
+## `cumulative-frequency.py`
+
+- ACTION: Extracts the terms ({1,2,3,4}-grams) from the abstracts, and produces a lineplot of most N frequent terms over the number of papers.
+- INPUT: The CSV file produced by `preprocess.py` (it works on the column `abstract_lem`).
+- OUTPUT: A png file showing the plot and/or the dataset used to build that png
+
+### Example of usage
+
+Extracts terms from `dataset_preproc.csv` and prints the chart on `./n-grams_frequency/dataset_preproc_N-gram.png`:
+
+```
+cumulative-frequency.py --datafile dataset_preproc.csv --top 5 --savefig
+```
+
 ## `fawoc.py`, the FAst WOrd Classifier
 
 - ACTION: GUI program for the fast classification of terms.
@@ -160,6 +174,30 @@ dtm.py dataset_occ_keyword.json > dataset_dtm.csv
 
 ```
 cosine_similarity.py dataset_dtm.csv > dataset_cosine_similarity.csv
+```
+
+## `embeddings.py`
+
+- ACTION: Create words embeddings based on Word2Vec and computed documents similarity
+- INPUT: CSV with corpus preprocessed (`preprocess.py) , CSV file with document-terms matrix
+- OUTPUT: CSV file with the similarity of documents vectors
+
+### Example of usage
+
+```
+ebbedings.py dataset_preproc.csv dataset_dtm.csv > dataset_w2v_similarity.csv
+```
+
+## `supervised_clustering.py`
+
+- ACTION: Perform semi-supervised clustering with pairwise constraints
+- INPUT: JSON file with a precomputed ground-truth from `parse_pairings.py`
+- OUTPUT: CSV file with documents divided into clusters
+
+### Example of usage
+
+```
+supervised_clustering.py ground_truth.json > pckmeans_clusters.csv
 ```
 
 # Additional scripts
@@ -219,3 +257,26 @@ NOTE: At the moment, this script works on the complete lemmatized abstracts. It 
 - INPUT:
 - OUTPUT:
 
+## `parse_pairings.py`
+
+- ACTION: Parse a file of a manual clustering session to create a ground-truth for a semi-supervised clustering
+- INPUT: Text file where each line represents a cluster and documents ID with format: 'cluster_label:2,3,5,34,[...]'
+- OUTPUT: JSON file with format: 'id' : ['label1', 'label2'] (a document may belong to multiple clusters)
+
+### Example of usage
+
+```
+parse_pairings.py manual_pairings.txt > ground_truth.json
+```
+
+## `evaluate_clusters.py`
+
+- ACTION: Analyze clustering performance comparing results with a ground truth
+- INPUT: Clusters and manually labeled documents (from `parse_pairings.py`)
+- OUTPUT: Multiple files with confusion matrices, pairs overlappings and other metrics
+
+### Example of usage
+
+```
+evaluate_clusters.py pckmeans_clusters.csv ground_truth.json
+```

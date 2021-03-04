@@ -33,6 +33,12 @@ def main():
         entries = readris(bibliography_file)
         risdf = pd.DataFrame(entries)
 
+    # The number of citations lies in 'notes' column as element of a list
+    # These 3 lines extract that information
+    citationSeries = pd.DataFrame(risdf['notes'].tolist(), index= risdf.index)[0]
+    citationSeriesN = citationSeries.str.extract(r'((?<=:)\d+)').astype(float)
+    risdf['citations'] = citationSeriesN.astype(float).fillna(0)
+
     if args.columns is not None:
         cols = args.columns.split(',')
         # checks if help was requested
