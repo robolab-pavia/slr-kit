@@ -866,8 +866,7 @@ class Fawoc:
         Saves the terms to file
         """
         self.terms.to_tsv(self.args.datafile)
-        jsonfile = f'{self.args.datafile}.json'
-        self.terms.save_service_data(jsonfile)
+        self.terms.save_service_data(self.args.datafile)
 
     def get_stats_strings(self):
         """
@@ -1128,12 +1127,7 @@ def main():
     args.datafile = datafile_path
     terms = TermList()
     _, _ = terms.from_tsv(args.datafile)
-    jsonfile = '.'.join([args.datafile, 'json'])
-    try:
-        terms.load_service_data(jsonfile)
-    except FileNotFoundError:
-        msg = f'File {jsonfile} not found. Service data not loaded.'
-        debug_logger.info(msg)
+    terms.load_service_data(args.datafile)
 
     # now order is properly loaded - sort terms by order
     terms.sort_by_order()
@@ -1183,7 +1177,7 @@ def main():
 
     if not args.dry_run:
         terms.to_tsv(args.datafile)
-        terms.save_service_data(jsonfile)
+        terms.save_service_data(args.datafile)
 
 
 if __name__ == "__main__":
