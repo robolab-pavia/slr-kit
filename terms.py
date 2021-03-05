@@ -1,6 +1,7 @@
 import csv
 import enum
 import json
+import pathlib
 from pathlib import Path
 import tempfile
 from dataclasses import dataclass
@@ -335,22 +336,52 @@ class TermList:
         self.items = items
         return header, items
 
-    def load_service_data(self, jsonfile):
+    def load_service_data(self, tsvfile):
         """
-        Loads the order and related fields from the specified json file
+        Loads the service data of fawoc from the fawoc_data files
 
-        :param jsonfile: path to the json file containing the service data
-        :type jsonfile: str or Path
+        It uses the path of the tsv file loaded by fawoc to find the fawoc_data
+        files. In particular it uses the path in tsvfile stripped by the
+        extension as base_path. Then it adds the suffix '_fawoc_data' to it.
+        The new path, with the '.tsv' extension, is loaded for the invariant
+        data (like the 'count' field).
+        The variable data ('order' and 'related') is loaded from the new path
+        with the '.json' extension.
+
+        :param tsvfile: path to the tsv file loaded by fawoc
+        :type tsvfile: str or Path
         :raise InvalidServiceDataError: if the json data is not valid
         """
-        with open(jsonfile, 'r') as file:
-            data = json.load(file)
+        path = pathlib.Path(tsvfile)
+        p = path.parent
+        name = '_'.join([path.stem, 'fawoc_data.tsv'])
+        try:
+            with open(p / name, newline='', encoding='utf-8') as csv_file:
+                csv_reader = csv.DictReader(csv_file, delimiter='\t')
+                fawoc_data = {int(row['id']): row for row in csv_reader}
+        except FileNotFoundError:
+            fawoc_data = {}
 
-        if not isinstance(data, dict):
-            raise InvalidServiceDataError('the loaded data is not a list')
+        name = '_'.join([path.stem, 'fawoc_data.json'])
+        try:
+            with open(p / name, 'r') as file:
+                data = json.load(file)
 
+            if not isinstance(data, dict):
+                raise InvalidServiceDataError('the loaded data is not a list')
+
+            data = {int(k): v for k, v in data.items()}
+        except FileNotFoundError:
+            data = {}
         for t in self.items:
-            d = data.get(t.string)
+            # try to get data from the fawoc_data service file
+            try:
+                t.count = int(fawoc_data[t.index]['count'])
+            except KeyError:
+                # if here, we use the value set before
+                pass
+
+            d = data.get(t.index)
             if d is not None:
                 try:
                     if t.is_classified():
@@ -369,15 +400,9 @@ class TermList:
                         t.order = -1
                         t.related = ''
 
-                    if isinstance(d['count'], int):
-                        t.count = d['count']
-                    else:
-                        s = f"'count' field of the {t.string} entry is not an int"
-                        raise InvalidServiceDataError(s)
                 except KeyError as ke:
-                    if ke.args[0] != 'count':
-                        s = f'Missing {repr(ke.args[0])} in {repr(t.string)} entry'
-                        raise InvalidServiceDataError(s)
+                    s = f'Missing {repr(ke.args[0])} in {repr(t.string)} entry'
+                    raise InvalidServiceDataError(s)
                 except TypeError:
                     s = f'{repr(t.string)} is not a dict'
                     raise InvalidServiceDataError(s)
