@@ -891,8 +891,9 @@ class Fawoc:
         n_noise = self.classified.count_by_label(Label.NOISE)
         n_not_relevant = self.classified.count_by_label(Label.NOT_RELEVANT)
         n_autonoise = self.classified.count_by_label(Label.AUTONOISE)
+        n_barrier = self.classified.count_by_label(Label.BARRIER)
         n_completed = n_relevant + n_keywords + n_noise + n_not_relevant
-        n_completed += n_later + n_autonoise
+        n_completed += n_later + n_autonoise + n_barrier
         stats_strings.append(f'Total words:  {self.n_terms:7}')
 
         avg = avg_or_zero(n_completed, self.n_terms)
@@ -907,11 +908,14 @@ class Fawoc:
         avg = avg_or_zero(n_noise, n_completed)
         stats_strings.append(f'Noise:        {n_noise:7} ({avg:6.2f}%)')
 
+        avg = avg_or_zero(n_autonoise, n_completed)
+        stats_strings.append(f'Autonoise:    {n_autonoise:7} ({avg:6.2f}%)')
+
         avg = avg_or_zero(n_not_relevant, n_completed)
         stats_strings.append(f'Not relevant: {n_not_relevant:7} ({avg:6.2f}%)')
 
-        avg = avg_or_zero(n_autonoise, n_completed)
-        stats_strings.append(f'Autonoise:    {n_autonoise:7} ({avg:6.2f}%)')
+        avg = avg_or_zero(n_barrier, n_completed)
+        stats_strings.append(f'Barrier:      {n_barrier:7} ({avg:6.2f}%)')
 
         avg = avg_or_zero(n_later, n_completed)
         stats_strings.append(f'Postponed:    {n_later:7} ({avg:6.2f}%)')
@@ -1086,16 +1090,19 @@ def fawoc_main(terms, args, review, last_reviews, logger=None, profiler=None):
                 w.related = ''
 
     win_width = args.width
-    rows = 9
+    rows = 10
     terms_rows = 28
 
     gui = Gui(win_width, terms_rows, rows, review)
     fawoc = Fawoc(args, terms, review, gui, profiler, logger)
 
-    classifing_keys = [Label.KEYWORD.key,
-                       Label.NOT_RELEVANT.key,
-                       Label.NOISE.key,
-                       Label.RELEVANT.key]
+    classifing_keys = [
+        Label.KEYWORD.key,
+        Label.NOT_RELEVANT.key,
+        Label.NOISE.key,
+        Label.RELEVANT.key,
+        Label.BARRIER.key,
+    ]
 
     fawoc.add_key_binding(classifing_keys, lambda e: classify_kb(e, fawoc))
     fawoc.add_key_binding(['a'], lambda e: autonoise_kb(e, fawoc))
