@@ -302,13 +302,6 @@ class TermList:
             header = csv_reader.fieldnames
             items = []
             for i, row in enumerate(csv_reader):
-                order_value = row.get('order', '')
-                if order_value == '':
-                    order = -1
-                else:
-                    order = int(order_value)
-
-                related = row.get('related', '')
                 lbl_name = row.get('label', '')
                 label = Label.get_from_name(lbl_name)
 
@@ -316,6 +309,19 @@ class TermList:
                     idx = int(row['id'])
                 except KeyError:
                     idx = i
+
+                # order and related are usually read from the service data file
+                # and count is read from the fawoc_data tsv file, but we try to
+                # read them here in case fawoc is run with an older tsv file,
+                # without the fawoc service files. In this way we are able to
+                # convert old files to the new format
+                order_value = row.get('order', '')
+                if order_value == '':
+                    order = -1
+                else:
+                    order = int(order_value)
+
+                related = row.get('related', '')
 
                 try:
                     count = int(row['count'])
