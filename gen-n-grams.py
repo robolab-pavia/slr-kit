@@ -1,3 +1,5 @@
+import pathlib
+
 import pandas
 # Libraries for text preprocessing
 import re
@@ -144,12 +146,31 @@ def main():
 
     # write to output, either a file or stdout (default)
     # TODO: use pandas to_csv instead of explicit csv row output
-    output_file = open(args.output, 'w',
-                       encoding='utf-8') if args.output is not None else sys.stdout
-    writer = csv.writer(output_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-    writer.writerow(['keyword', 'count', 'label'])
-    for item in all_terms:
-        writer.writerow([item[0], item[1], ''])
+    if args.output is not None:
+        output_file = open(args.output, 'w', encoding='utf-8')
+        out = pathlib.Path(args.output).stem
+        name = '_'.join([out, 'fawoc_data.tsv'])
+        fawoc_file = open(name, 'w')
+    else:
+        output_file = sys.stdout
+        fawoc_file = open('fawoc_data.tsv', 'w')
+
+    fawoc_data = []
+    writer = csv.writer(output_file, delimiter='\t', quotechar='"',
+                        quoting=csv.QUOTE_MINIMAL)
+    writer.writerow(['id', 'keyword', 'label'])
+    for i, item in enumerate(all_terms):
+        writer.writerow([i, item[0], ''])
+        fawoc_data.append({
+            'id': i,
+            'count': int(item[1]),
+        })
+    fawoc_data_writer = csv.DictWriter(fawoc_file, delimiter='\t',
+                                       quotechar='"', quoting=csv.QUOTE_MINIMAL,
+                                       fieldnames=fawoc_data[0].keys())
+    fawoc_data_writer.writeheader()
+    fawoc_data_writer.writerows(fawoc_data)
+    fawoc_file.close()
     if output_file is not sys.stdout:
         output_file.close()
 
