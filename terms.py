@@ -1,14 +1,27 @@
 import csv
 import enum
+import json
+import pathlib
 from pathlib import Path
 import tempfile
 from dataclasses import dataclass
 import utils
-#import logging
+# import logging
 import time
 
-#debug_logger = utils.setup_logger('debug_logger', 'slr-kit.log',
+
+class Error(Exception):
+    def __str__(self):
+        s = super(Error, self).__str__()
+        return f'{self.__class__.__name__} {s}'
+
+
+class InvalidServiceDataError(Error):
+    pass
+
+# debug_logger = utils.setup_logger('debug_logger', 'slr-kit.log',
 #                            level=logging.DEBUG)
+
 
 class Label(enum.Enum):
     """
@@ -154,7 +167,7 @@ class TermList:
         if not isinstance(other, TermList):
             return NotImplemented
 
-        #items = [w for w in self.items if w not in other.items]
+        # items = [w for w in self.items if w not in other.items]
         filt = {x.string: None for x in other.items}
         items = [w for w in self.items if w.string not in filt]
         return TermList(items)
@@ -242,7 +255,7 @@ class TermList:
         elif not isinstance(label, (list, tuple)):
             raise TypeError('label has wrong type {}'.format(type(label)))
 
-        #debug_logger.debug("--- len {}".format(len(self.items)))
+        # debug_logger.debug("--- len {}".format(len(self.items)))
         items = []
         for t in self.items:
             if t.label in label:
@@ -289,76 +302,184 @@ class TermList:
             header = csv_reader.fieldnames
             items = []
             for i, row in enumerate(csv_reader):
+                lbl_name = row.get('label', '')
+                label = Label.get_from_name(lbl_name)
+
                 try:
-                    order_value = row['order']
-                    if order_value == '':
-                        order = -1
-                    else:
-                        order = int(order_value)
+                    idx = int(row['id'])
                 except KeyError:
+                    idx = i
+
+                # order and related are usually read from the service data file
+                # and count is read from the fawoc_data tsv file, but we try to
+                # read them here in case fawoc is run with an older tsv file,
+                # without the fawoc service files. In this way we are able to
+                # convert old files to the new format
+                order_value = row.get('order', '')
+                if order_value == '':
                     order = -1
+                else:
+                    order = int(order_value)
 
                 related = row.get('related', '')
-                try:
-                    lbl_name = row['label']
-                    if lbl_name is None:
-                        lbl_name = ''
 
-                    label = Label.get_from_name(lbl_name)
+                try:
+                    count = int(row['count'])
                 except KeyError:
-                    print('\n{} does not contains the field "label"\n'.format(infile))
-                    raise
+                    count = -1
 
                 item = Term(
-                    index=i,
+                    index=idx,
                     string=row['keyword'],
-                    count=row['count'],
+                    count=count,
                     label=label,
                     order=order,
                     related=related
                 )
                 items.append(item)
 
-        if 'related' not in header:
-            header.append('related')
-
-        if 'order' not in csv_reader.fieldnames:
-            header.append('order')
-
         self.csv_header = header
-        items.sort(key=lambda t: t.order)
         self.items = items
         return header, items
+
+    def load_service_data(self, tsvfile):
+        """
+        Loads the service data of fawoc from the fawoc_data files
+
+        It uses the path of the tsv file loaded by fawoc to find the fawoc_data
+        files. In particular it uses the path in tsvfile stripped by the
+        extension as base_path. Then it adds the suffix '_fawoc_data' to it.
+        The new path, with the '.tsv' extension, is loaded for the invariant
+        data (like the 'count' field).
+        The variable data ('order' and 'related') is loaded from the new path
+        with the '.json' extension.
+
+        :param tsvfile: path to the tsv file loaded by fawoc
+        :type tsvfile: str or Path
+        :raise InvalidServiceDataError: if the json data is not valid
+        """
+        path = pathlib.Path(tsvfile)
+        p = path.parent
+        name = '_'.join([path.stem, 'fawoc_data.tsv'])
+        try:
+            with open(p / name, newline='', encoding='utf-8') as csv_file:
+                csv_reader = csv.DictReader(csv_file, delimiter='\t')
+                fawoc_data = {int(row['id']): row for row in csv_reader}
+        except FileNotFoundError:
+            fawoc_data = {}
+
+        name = '_'.join([path.stem, 'fawoc_data.json'])
+        try:
+            with open(p / name, 'r') as file:
+                data = json.load(file)
+
+            if not isinstance(data, dict):
+                raise InvalidServiceDataError('the loaded data is not a list')
+
+            data = {int(k): v for k, v in data.items()}
+        except FileNotFoundError:
+            data = {}
+        for t in self.items:
+            # try to get data from the fawoc_data service file
+            try:
+                t.count = int(fawoc_data[t.index]['count'])
+            except KeyError:
+                # if here, we use the value set before
+                pass
+
+            d = data.get(t.index)
+            if d is not None:
+                try:
+                    if t.is_classified():
+                        if isinstance(d['order'], int):
+                            t.order = d['order']
+                        else:
+                            s = f"'order' field of the {t.string} entry is not an int"
+                            raise InvalidServiceDataError(s)
+
+                        if isinstance(d['related'], str):
+                            t.related = d['related']
+                        else:
+                            s = f"'related' field of the {t.string} entry is not a str"
+                            raise InvalidServiceDataError(s)
+                    else:
+                        t.order = -1
+                        t.related = ''
+
+                except KeyError as ke:
+                    s = f'Missing {repr(ke.args[0])} in {repr(t.string)} entry'
+                    raise InvalidServiceDataError(s)
+                except TypeError:
+                    s = f'{repr(t.string)} is not a dict'
+                    raise InvalidServiceDataError(s)
+
+    def save_service_data(self, tsvfile):
+        """
+        Saves the service data of fawoc to the fawoc_data files
+
+        See the docstring of load_service_data for info about the fawoc_data files
+
+        :param tsvfile: path to the tsv file loaded by fawoc
+        :type tsvfile: str or Path
+        """
+        file = Path(tsvfile).resolve()
+        path = file.parent
+        name = '_'.join([file.stem, 'fawoc_data.tsv'])
+        service_tsv = path / name
+        name = '_'.join([file.stem, 'fawoc_data.json'])
+        service_json = path / name
+        save_other_data = not service_tsv.exists()
+        service_data = {}
+        other_data = []
+        for t in self.items:
+            if save_other_data:
+                other_data.append({
+                    'id': t.index,
+                    'count': t.count,
+                })
+            if t.is_classified():
+                service_data[t.index] = {
+                    'order': t.order,
+                    'related': t.related,
+                }
+        if save_other_data:
+            with open(service_tsv, 'w', newline='', encoding='utf-8') as f:
+                csv_writer = csv.DictWriter(f, other_data[0].keys(),
+                                            delimiter='\t', quotechar='"',
+                                            quoting=csv.QUOTE_MINIMAL)
+                csv_writer.writeheader()
+                csv_writer.writerows(other_data)
+
+        with tempfile.NamedTemporaryFile('w', dir=str(path), encoding='utf-8',
+                                         prefix='.fawoc.temp.',
+                                         delete=False) as out:
+            json.dump(service_data, out)  # , indent='\t')
+            temp = Path(out.name)
+
+        temp.replace(service_json)
 
     def to_tsv(self, outfile):
         """
         Saves the terms in a tsv file
 
+        No service data (order and related) are written.
         :param outfile: path to the tsv file to write the terms
         :type outfile: str
         """
         items = sorted(self.items, key=lambda t: t.index)
-        # with open(outfile, mode='w') as out:
         path = str(Path(outfile).resolve().parent)
-        with tempfile.NamedTemporaryFile('w', dir=path,
-                                         prefix='.fawoc.temp.',
-                                         encoding='utf-8',
-                                         delete=False) as out:
-            writer = csv.DictWriter(out, fieldnames=self.csv_header,
-                                    delimiter='\t', quotechar='"',
+        with tempfile.NamedTemporaryFile('w', dir=path, prefix='.fawoc.temp.',
+                                         encoding='utf-8', delete=False) as out:
+            writer = csv.DictWriter(out, delimiter='\t', quotechar='"',
+                                    fieldnames=['id', 'keyword', 'label'],
                                     quoting=csv.QUOTE_MINIMAL)
             writer.writeheader()
             for w in items:
-                if w.order >= 0:
-                    order = str(w.order)
-                else:
-                    order = ''
-
-                item = {'keyword': w.string,
-                        'count': w.count,
-                        'label': w.label.label_name,
-                        'order': order,
-                        'related': w.related}
+                item = {
+                    'id': w.index,
+                    'keyword': w.string,
+                    'label': w.label.label_name,
+                }
                 writer.writerow(item)
 
             temp = Path(out.name)
@@ -448,7 +569,7 @@ class TermList:
         """
         containing = []
         not_containing = []
-        t0=time.time()
+        t0 = time.time()
         for w in self.items:
             if w.label != label or w.order >= 0:
                 continue
@@ -462,8 +583,8 @@ class TermList:
         nc = TermList(not_containing)
         co.sort_by_index()
         nc.sort_by_index()
-        t1=time.time()
-        #debug_logger.debug("dur {}".format(t1-t0))
+        t1 = time.time()
+        # debug_logger.debug("dur {}".format(t1-t0))
         return co, nc
 
     def count_classified(self):
