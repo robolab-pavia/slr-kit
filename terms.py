@@ -407,27 +407,50 @@ class TermList:
                     s = f'{repr(t.string)} is not a dict'
                     raise InvalidServiceDataError(s)
 
-    def save_service_data(self, jsonfile):
+    def save_service_data(self, tsvfile):
         """
-        Saves the order and related fields in the specified json file
+        Saves the service data of fawoc to the fawoc_data files
 
-        :param jsonfile: path to the json file in which to save the service data
-        :type jsonfile: str or Path
+        See the docstring of load_service_data for info about the fawoc_data files
+
+        :param tsvfile: path to the tsv file loaded by fawoc
+        :type tsvfile: str or Path
         """
-        path = str(Path(jsonfile).resolve().parent)
-        data = {}
+        file = Path(tsvfile).resolve()
+        path = file.parent
+        name = '_'.join([file.stem, 'fawoc_data.tsv'])
+        service_tsv = path / name
+        name = '_'.join([file.stem, 'fawoc_data.json'])
+        service_json = path / name
+        save_other_data = not service_tsv.exists()
+        service_data = {}
+        other_data = []
         for t in self.items:
-            data[t.string] = {
-                'order': t.order,
-                'related': t.related,
-                'count': t.count
-            }
-        with tempfile.NamedTemporaryFile('w', dir=path, prefix='.fawoc.temp.',
-                                         encoding='utf-8', delete=False) as out:
-            json.dump(data, out)
+            if save_other_data:
+                other_data.append({
+                    'id': t.index,
+                    'count': t.count,
+                })
+            if t.is_classified():
+                service_data[t.index] = {
+                    'order': t.order,
+                    'related': t.related,
+                }
+        if save_other_data:
+            with open(service_tsv, 'w', newline='', encoding='utf-8') as f:
+                csv_writer = csv.DictWriter(f, other_data[0].keys(),
+                                            delimiter='\t', quotechar='"',
+                                            quoting=csv.QUOTE_MINIMAL)
+                csv_writer.writeheader()
+                csv_writer.writerows(other_data)
+
+        with tempfile.NamedTemporaryFile('w', dir=str(path), encoding='utf-8',
+                                         prefix='.fawoc.temp.',
+                                         delete=False) as out:
+            json.dump(service_data, out)  # , indent='\t')
             temp = Path(out.name)
 
-        temp.replace(jsonfile)
+        temp.replace(service_json)
 
     def to_tsv(self, outfile):
         """
