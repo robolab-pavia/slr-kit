@@ -25,6 +25,8 @@ debug_logger = setup_logger('debug_logger', 'slr-kit.log',
                             level=logging.DEBUG)
 
 DEBUG = False
+# number of classification before an actual save
+SAVE_COUNT_THRESHOLD = 10
 
 
 class TermLexer(Lexer):
@@ -609,6 +611,7 @@ class Fawoc:
 
         self.gui.set_terms(self.to_classify, self.sort_word_key)
         self.gui.set_stats(self.get_stats_strings())
+        self.save_count = 0
 
     def add_key_binding(self, keys, handler):
         """
@@ -861,12 +864,18 @@ class Fawoc:
         self.profiler.info("WORD '{}' UNDONE".format(self.last_word.string))
         self.last_word = self.terms.get_last_classified_term()
 
-    def save_terms(self):
+    def save_terms(self, bypass=False):
         """
         Saves the terms to file
+
+        :param bypass: if True, the method saves the data without check on save_count
+        :type bypass: bool
         """
-        self.terms.to_tsv(self.args.datafile)
-        self.terms.save_service_data(self.args.datafile)
+        self.save_count += 1
+        if bypass or self.save_count >= SAVE_COUNT_THRESHOLD:
+            self.terms.to_tsv(self.args.datafile)
+            self.terms.save_service_data(self.args.datafile)
+            self.save_count = 0
 
     def get_stats_strings(self):
         """
@@ -1033,7 +1042,8 @@ def save_kb(event: KeyPressEvent, fawoc: Fawoc):
     :param fawoc: fawoc object
     :type fawoc: Fawoc
     """
-    fawoc.save_terms()
+    if not fawoc.args.dry_run:
+        fawoc.save_terms(bypass=True)
 
 
 def quit_kb(event: KeyPressEvent):
