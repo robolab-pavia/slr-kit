@@ -114,13 +114,14 @@ def main():
     fawoc_data = []
     writer = csv.writer(output_file, delimiter='\t', quotechar='"',
                         quoting=csv.QUOTE_MINIMAL)
-    writer.writerow(['id', 'keyword', 'label'])
+    writer.writerow(['id', 'term', 'label'])
     index = 0
     for terms in list_of_grams:
         for key in terms:
             writer.writerow([index, key, ''])
             fawoc_data.append({
                 'id': index,
+                'term': key,
                 'count': int(terms[key]),
             })
             index += 1
