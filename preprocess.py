@@ -3,7 +3,7 @@ import pandas
 import re
 import nltk
 # nltk.download('stopwords')
-from nltk.corpus import stopwords
+#from nltk.corpus import stopwords
 from nltk.stem.porter import PorterStemmer
 from nltk.tokenize import RegexpTokenizer
 #nltk.download('wordnet')
@@ -37,11 +37,9 @@ def load_stop_words(input_file, language='english'):
     stop_words_list = [w for w in stop_words_list if w != '']
     stop_words_list = [w for w in stop_words_list if w[0] != '#']
     # Creating a list of stop words and adding custom stopwords
-    stop_words = set(stopwords.words("english"))
+    # stop_words = set(stopwords.words("english"))
     # Creating a list of custom stopwords
-    new_words = stop_words_list
-    stop_words = stop_words.union(new_words)
-    return list(stop_words)
+    return set(stop_words_list)
 
 
 def preprocess_item(item, stop_words):
@@ -59,8 +57,14 @@ def preprocess_item(item, stop_words):
     ps=PorterStemmer()
     # Lemmatisation
     lem = WordNetLemmatizer()
-    text = [lem.lemmatize(word) for word in text if not word in stop_words] 
-    return text
+    #text = [lem.lemmatize(word) for word in text if not word in stop_words] 
+    text2 = []
+    for word in text:
+        if not word in stop_words:
+            text2.append(lem.lemmatize(word))
+        else:
+            text2.append('XXX')
+    return text2
 
 
 def process_corpus(dataset, stop_words):
