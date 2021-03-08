@@ -12,14 +12,14 @@ from utils import setup_logger
 def init_argparser():
     """Initialize the command line parser."""
     parser = argparse.ArgumentParser()
-    parser.add_argument('datafile', action="store", type=str,
-                        help="Input CSV data file")
+    parser.add_argument('datafile', action='store', type=str,
+                        help='Input CSV data file')
     parser.add_argument('--output', '-o', metavar='FILENAME',
                         help='Output file name')
-    parser.add_argument('--n-grams', '-n', metavar='N', dest='n_grams', default=4,
-                        help='Maximum size of n-grams number')
-    parser.add_argument('--min-frequency', '-m', metavar='N', dest='min_frequency',
-                        default=5,
+    parser.add_argument('--n-grams', '-n', metavar='N', dest='n_grams',
+                        default=4, help='Maximum size of n-grams number')
+    parser.add_argument('--min-frequency', '-m', metavar='N',
+                        dest='min_frequency', default=5,
                         help='Minimum frequency of the n-grams')
     return parser
 
@@ -44,7 +44,9 @@ def get_n_grams(corpus, n_terms=1, min_frequency=5, barrier=None):
             else:
                 terms[term] = 1
     limited_terms = {k: v for k, v in terms.items() if v >= min_frequency}
-    sorted_dict = {k: v for k, v in sorted(limited_terms.items(), key=lambda item: item[1], reverse=True)}
+    sorted_dict = {k: v for k, v in sorted(limited_terms.items(),
+                                           key=lambda item: item[1],
+                                           reverse=True)}
     return sorted_dict
 
 
@@ -59,8 +61,9 @@ def convert_int_parameter(args, arg_name, default=None):
     if arg_string is not None:
         try:
             value = int(arg_string)
-        except:
-            print('Invalid value for parameter "{}": "{}"'.format(arg_name, arg_string))
+        except ValueError:
+            msg = 'Invalid value for parameter "{}": "{}"'
+            print(msg.format(arg_name, arg_string))
             sys.exit(1)
     else:
         value = default
@@ -84,19 +87,18 @@ def main():
     dataset = pandas.read_csv(args.datafile, delimiter='\t', encoding='utf-8')
     dataset.fillna('', inplace=True)
     if target_column not in dataset:
-        print('File "{}" must contain a column labelled as "{}".'.format(args.datafile, target_column))
+        msg = 'File "{}" must contain a column labelled as "{}".'
+        print(msg.format(args.datafile, target_column))
         sys.exit(1)
-    debug_logger.debug("Dataset loaded {} items".format(len(dataset[target_column])))
-    #logging.debug(dataset.head())
 
+    msg = 'Dataset loaded {} items'
+    debug_logger.debug(msg.format(len(dataset[target_column])))
     corpus = dataset[target_column].to_list()
-
-    # logging.debug(corpus[2])
 
     list_of_grams = []
     for n in range(1, n_grams + 1):
-        top_terms = get_n_grams(corpus, n_terms=n, min_frequency=min_frequency, barrier='XXX')
-        #print(len(top_terms))
+        top_terms = get_n_grams(corpus, n_terms=n, min_frequency=min_frequency,
+                                barrier='XXX')
         list_of_grams.append(top_terms)
 
     if args.output is not None:
@@ -123,13 +125,6 @@ def main():
             })
             index += 1
 
-
-    #for i, item in enumerate(all_terms):
-    #    writer.writerow([i, item[0], ''])
-    #    fawoc_data.append({
-    #        'id': i,
-    #        'count': int(item[1]),
-    #    })
     fawoc_data_writer = csv.DictWriter(fawoc_file, delimiter='\t',
                                        quotechar='"', quoting=csv.QUOTE_MINIMAL,
                                        fieldnames=fawoc_data[0].keys())
@@ -140,5 +135,5 @@ def main():
         output_file.close()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
