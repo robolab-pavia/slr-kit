@@ -122,7 +122,11 @@ class TermLexer(Lexer):
                 else:
                     fmt.append(('', line))
             else:
-                for begin, end in substring_index(line, self.word):
+                if len(self.word) == 2 and self.word[-1] == ' ':
+                    word = self.word[0]
+                else:
+                    word = self.word
+                for begin, end in substring_index(line, word):
                     if begin > prev:
                         fmt.append((f'{fmt_first}', line[prev:begin]))
 
