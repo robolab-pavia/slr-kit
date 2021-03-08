@@ -99,7 +99,6 @@ def main():
         #print(len(top_terms))
         list_of_grams.append(top_terms)
 
-
     if args.output is not None:
         output_file = open(args.output, 'w', encoding='utf-8')
         out = pathlib.Path(args.output).stem
@@ -136,23 +135,6 @@ def main():
     fawoc_data_writer.writeheader()
     fawoc_data_writer.writerows(fawoc_data)
     fawoc_file.close()
-    if output_file is not sys.stdout:
-        output_file.close()
-
-
-    return
-
-
-
-    # write to output, either a file or stdout (default)
-    # TODO: use pandas to_csv instead of explicit csv row output
-    output_file = open(args.output, 'w',
-                       encoding='utf-8') if args.output is not None else sys.stdout
-    writer = csv.writer(output_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-    writer.writerow(['keyword', 'count', 'label'])
-    for terms in list_of_grams:
-        for key in terms:
-            writer.writerow([key, terms[key], ''])
     if output_file is not sys.stdout:
         output_file.close()
 
