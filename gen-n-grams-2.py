@@ -101,9 +101,10 @@ def main():
 
     if args.output is not None:
         output_file = open(args.output, 'w', encoding='utf-8')
-        out = pathlib.Path(args.output).stem
+        path = pathlib.Path(args.output)
+        out = path.stem
         name = '_'.join([out, 'fawoc_data.tsv'])
-        fawoc_file = open(name, 'w')
+        fawoc_file = open(path.parent / name, 'w')
     else:
         output_file = sys.stdout
         fawoc_file = open('fawoc_data.tsv', 'w')
