@@ -66,6 +66,9 @@ class TermLexer(Lexer):
     @word.setter
     def word(self, word: str):
         self._word = word
+        if len(word) == 1:
+            self._word += ' '
+
         self._handle_inv()
 
     @property
@@ -110,7 +113,7 @@ class TermLexer(Lexer):
 
             fmt_first = ''
             if i == 1 and self._highlight_first:
-                fmt_first = 'underline'
+                fmt_first = 'bold'
 
             prev = 0
             if self.whole_line:
@@ -300,7 +303,11 @@ class Win:
             attr = []
 
         for w in terms:
-            text.append(w.string)
+            if len(w.string) == 1:
+                text.append(w.string + ' ')
+            else:
+                text.append(w.string)
+
             if self.attr_name == 'count':
                 attr.append(('', f'{w.count}\n'))
             else:
