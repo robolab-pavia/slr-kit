@@ -4,6 +4,7 @@ from itertools import repeat, product
 from multiprocessing import Pool
 from pathlib import Path
 from timeit import default_timer as timer
+from typing import Optional, List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -15,6 +16,12 @@ from psutil import cpu_count
 from utils import substring_index
 
 PHYSICAL_CPU = cpu_count(logical=False)
+
+# these globals are used by the multiprocess workers used in compute_optimal_model
+_corpus_sets: Optional[List[List[Tuple[int, int]]]] = None
+_dictionary: Optional[Dictionary] = None
+_texts: Optional[List[List[str]]] = None
+_seed: Optional[int] = None
 
 
 class _ValidateInt(argparse.Action):
@@ -161,12 +168,6 @@ def prepare_corpus(docs, no_above, no_below):
     corpus = [dictionary.doc2bow(doc) for doc in docs]
     _ = dictionary[0]  # This is only to "load" the dictionary.
     return corpus, dictionary
-
-
-_corpus_sets = None
-_dictionary = None
-_texts = None
-_seed = None
 
 
 def init_train(corpus_sets, dictionary, texts, seed):
