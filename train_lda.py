@@ -185,7 +185,7 @@ def train(c_idx, n_topics, _a, _b):
     start = timer()
     model = LdaModel(_corpus_sets[c_idx], num_topics=n_topics,
                      id2word=_dictionary, chunksize=len(_corpus_sets[c_idx]),
-                     passes=1, random_state=_seed,
+                     passes=10, random_state=_seed,
                      minimum_probability=0.0, alpha=_a, eta=_b, )
     # computes coherence score for that model
     cv_model = CoherenceModel(model=model, texts=_texts,
