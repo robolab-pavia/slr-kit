@@ -85,7 +85,7 @@ def init_argparser():
     return parser
 
 
-def load_ngrams(terms_file, labels=('keyword', 'related')):
+def load_ngrams(terms_file, labels=('keyword', 'relevant')):
     words_dataset = pd.read_csv(terms_file, delimiter='\t',
                                 encoding='utf-8')
     terms = words_dataset['keyword'].to_list()
@@ -125,7 +125,7 @@ def filter_doc(d, ngram_len, terms):
     return [t[1] for t in doc]
 
 
-def load_terms(terms_file, labels=('keyword', 'related')):
+def load_terms(terms_file, labels=('keyword', 'relevant')):
     words_dataset = pd.read_csv(terms_file, delimiter='\t',
                                 encoding='utf-8')
     terms = words_dataset['keyword'].to_list()
