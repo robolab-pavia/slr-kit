@@ -66,8 +66,11 @@ def init_argparser():
                         action=_ValidateInt,
                         help='Step in range(min,max,step) for topics retrieving '
                              '(default: %(default)s)')
-    parser.add_argument('--plot', '-p', action='store_true',
+    parser.add_argument('--plot-show', action='store_true',
                         help='if set, it plots the coherence')
+    parser.add_argument('--plot-save', action='store_true',
+                        help='if set, it saves the plot of the coherence as '
+                             '<dataset>/<prefix>_lda_plot.pdf')
     parser.add_argument('--result', '-r', metavar='FILENAME',
                         type=argparse.FileType('w'), default='-',
                         help='Where to save the training results in CSV format.'
@@ -344,7 +347,7 @@ def main():
             lda_path.mkdir(exist_ok=True)
             model.save(str(lda_path / 'model'))
 
-    if args.plot:
+    if args.plot_show or args.plot_save:
         max_cv = results.groupby('topics')['coherence'].idxmax()
         plt.plot(results.loc[max_cv, 'topics'], results.loc[max_cv, 'coherence'],
                  marker='o', linestyle='solid')
@@ -353,7 +356,12 @@ def main():
         plt.xlabel("Number of Topics")
         plt.ylabel("Coherence score")
         plt.grid()
-        plt.show()
+        if args.plot_show:
+            plt.show()
+
+        if args.plot_save:
+            fig_file = args.dataset / f'{args.prefix}_lda_plot.pdf'
+            plt.savefig(str(fig_file), dpi=1000)
 
 
 if __name__ == '__main__':
