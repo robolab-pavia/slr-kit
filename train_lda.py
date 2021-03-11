@@ -1,4 +1,5 @@
 import argparse
+import json
 import sys
 from itertools import repeat, product
 from multiprocessing import Pool
@@ -261,6 +262,40 @@ def compute_optimal_model(dictionary, corpus, texts,
     return pd.DataFrame(model_results)
 
 
+def output_topics(model, docs, titles, args):
+    cm = CoherenceModel(model=model, texts=docs, dictionary=model.id2word,
+                        coherence='c_v', processes=PHYSICAL_CPU)
+    coherence = cm.get_coherence_per_topic()
+    topics = {}
+    topics_order = list(range(model.num_topics))
+    topics_order.sort(key=lambda x: coherence[x], reverse=True)
+    for i in topics_order:
+        topic = model.show_topic(i)
+        t_dict = {
+            'name': f'Topic {i}',
+            'terms_probability': {t[0]: float(t[1]) for t in topic},
+            'coherence': f'{float(coherence[i]):.5f}',
+        }
+        topics[i] = t_dict
+    topic_file = args.dataset / f'{args.prefix}_terms-topics.json'
+    with open(topic_file, 'w') as file:
+        json.dump(topics, file, indent='\t')
+    docs_topics = []
+    for i, (title, d) in enumerate(zip(titles, docs)):
+        bow = model.id2word.doc2bow(d)
+        t = model.get_document_topics(bow)
+        t.sort(key=lambda x: x[1], reverse=True)
+        d_t = {
+            'id': i,
+            'title': title,
+            'topics': {tu[0]: float(tu[1]) for tu in t},
+        }
+        docs_topics.append(d_t)
+    docs_file = args.dataset / f'{args.prefix}_docs-topics.json'
+    with open(docs_file, 'w') as file:
+        json.dump(docs_topics, file, indent='\t')
+
+
 def main():
     args = init_argparser().parse_args()
     terms_file = args.dataset / f'{args.prefix}_terms.csv'
@@ -294,16 +329,20 @@ def main():
     print('Best model:')
     print(best)
 
-    if args.model:
+    if args.output or args.model:
         model = LdaModel(corpus, num_topics=best['topics'],
                          id2word=dictionary, chunksize=len(corpus),
                          passes=10, random_state=_seed,
                          minimum_probability=0.0,
                          alpha=best['alpha'], eta=best['beta'])
 
-        lda_path: Path = args.dataset / f'{args.prefix}_lda_model'
-        lda_path.mkdir(exist_ok=True)
-        model.save(str(lda_path / 'model'))
+        if args.output:
+            output_topics(model, docs, titles, args)
+
+        if args.model:
+            lda_path: Path = args.dataset / f'{args.prefix}_lda_model'
+            lda_path.mkdir(exist_ok=True)
+            model.save(str(lda_path / 'model'))
 
     if args.plot:
         max_cv = results.groupby('topics')['coherence'].idxmax()
