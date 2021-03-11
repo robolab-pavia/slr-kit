@@ -67,6 +67,10 @@ def init_argparser():
                              '(default: %(default)s)')
     parser.add_argument('--plot', '-p', action='store_true',
                         help='if set, it plots the coherence')
+    parser.add_argument('--result', '-r', metavar='FILENAME',
+                        type=argparse.FileType('w'), default='-',
+                        help='Where to save the training results in CSV format.'
+                             ' If omitted or -, stdout is used.')
     parser.add_argument('--output', '-o', action='store_true',
                         help='if set, it stores the topic description in '
                              '<dataset>/<prefix>_topics.json, and the document '
@@ -283,7 +287,12 @@ def main():
     corpus, dictionary = prepare_corpus(docs, no_above, no_below)
     results = compute_optimal_model(dictionary, corpus, docs, topics_range,
                                     alpha, beta)
-    print(results)
+
+    results.to_csv(args.result, index=False)
+    best = results.loc[results['coherence'].idxmax()]
+
+    print('Best model:')
+    print(best)
 
     if args.plot:
         max_cv = results.groupby('topics')['coherence'].idxmax()
