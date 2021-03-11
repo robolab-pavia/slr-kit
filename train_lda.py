@@ -66,6 +66,8 @@ def init_argparser():
                         action=_ValidateInt,
                         help='Step in range(min,max,step) for topics retrieving '
                              '(default: %(default)s)')
+    parser.add_argument('--seed', type=int, action=_ValidateInt,
+                        help='Seed to be used in training')
     parser.add_argument('--plot-show', action='store_true',
                         help='if set, it plots the coherence')
     parser.add_argument('--plot-save', action='store_true',
@@ -324,7 +326,7 @@ def main():
     beta.append('auto')
     corpus, dictionary = prepare_corpus(docs, no_above, no_below)
     results = compute_optimal_model(dictionary, corpus, docs, topics_range,
-                                    alpha, beta)
+                                    alpha, beta, args.seed)
 
     results.to_csv(args.result, index=False)
     best = results.loc[results['coherence'].idxmax()]
