@@ -51,7 +51,7 @@ def init_argparser():
     parser.add_argument('--ngrams', action='store_true',
                         help='if set use all the ngrams')
     parser.add_argument('--model', action='store_true',
-                        help='if set the lda model is saved to directory '
+                        help='if set, the best lda model is saved to directory '
                              '<dataset>/<prefix>_lda_model')
     parser.add_argument('--min-topics', '-m', type=int, default=5,
                         action=_ValidateInt,
@@ -293,6 +293,17 @@ def main():
 
     print('Best model:')
     print(best)
+
+    if args.model:
+        model = LdaModel(corpus, num_topics=best['topics'],
+                         id2word=dictionary, chunksize=len(corpus),
+                         passes=10, random_state=_seed,
+                         minimum_probability=0.0,
+                         alpha=best['alpha'], eta=best['beta'])
+
+        lda_path: Path = args.dataset / f'{args.prefix}_lda_model'
+        lda_path.mkdir(exist_ok=True)
+        model.save(str(lda_path / 'model'))
 
     if args.plot:
         max_cv = results.groupby('topics')['coherence'].idxmax()
