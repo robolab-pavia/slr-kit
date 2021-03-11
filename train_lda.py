@@ -202,6 +202,7 @@ def compute_optimal_model(dictionary, corpus, texts,
     """
     Train several models iterating over the specified number of topics and performs
     LDA hyper-parameters alpha and beta tuning
+
     :param dictionary: Gensim dictionary from FAWOC classification
     :type dictionary: Dictionary
     :param corpus: Gensim corpus
@@ -219,7 +220,7 @@ def compute_optimal_model(dictionary, corpus, texts,
     :param seed: random number generator seed
     :type seed: int or None
     :return: Dataframe with the model performances
-    :rtype: pd.Dataframe
+    :rtype: pd.DataFrame
     """
     # corpus must be the last element!
     corpus_sets = [corpus]
