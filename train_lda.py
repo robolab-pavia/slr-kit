@@ -286,18 +286,14 @@ def main():
     print(results)
 
     if args.plot:
-        for r in results.groupby(['corpus', 'alpha', 'beta']):
-            df = r[1]
-            label = f'corpus {r[0][0]}, alpha {r[0][1]}, beta {r[0][2]}'
-            plt.plot(df['topics'], df['coherence'], label=label, marker='o',
-                     linestyle='solid')
+        max_cv = results.groupby('topics')['coherence'].idxmax()
+        plt.plot(results.loc[max_cv, 'topics'], results.loc[max_cv, 'coherence'],
+                 marker='o', linestyle='solid')
 
-            plt.xticks(df['topics'])
-            plt.xlabel("Number of Topics")
-            plt.ylabel("Coherence score")
-            plt.grid()
-            plt.legend(loc='best')
-
+        plt.xticks(topics_range)
+        plt.xlabel("Number of Topics")
+        plt.ylabel("Coherence score")
+        plt.grid()
         plt.show()
 
 
