@@ -147,7 +147,10 @@ def generate_filtered_docs_ngrams(terms_file, preproc_file):
     dataset.fillna('', inplace=True)
     titles = dataset['title'].to_list()
     for lbl in labels:
-        terms = load_ngrams(terms_file)
+        terms = load_ngrams(terms_file, lbl)
+        if all(len(t) == 0 for t in terms.values()):
+            continue
+
         ngram_len = sorted(terms, reverse=True)
         documents = dataset['abstract_lem'].to_list()
         with Pool() as pool:
@@ -164,7 +167,10 @@ def generate_filtered_docs(terms_file, preproc_file):
     dataset.fillna('', inplace=True)
     titles = dataset['title'].to_list()
     for lbl in labels:
-        terms = load_terms(terms_file)
+        terms = load_terms(terms_file, lbl)
+        if len(terms) == 0:
+            continue
+
         documents = dataset['abstract_lem'].to_list()
         docs = [d.split(' ') for d in documents]
 
