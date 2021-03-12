@@ -21,9 +21,6 @@ from gensim.models.coherencemodel import CoherenceModel
 
 from utils import substring_index
 
-logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s',
-                    level=logging.DEBUG)
-
 
 def init_argparser():
     """
