@@ -40,11 +40,30 @@ def init_argparser():
                              'dataset to elaborate are stored.')
     parser.add_argument('prefix', action='store', type=str,
                         help='prefix used when searching files.')
+    parser.add_argument('--topics', action='store', type=int, default=20,
+                        help='Number of topics. If omitted %(default)s is used')
+    parser.add_argument('--alpha', action='store', type=str, default='auto',
+                        help='alpha parameter of LDA. If omitted %(default)s is'
+                             ' used')
+    parser.add_argument('--beta', action='store', type=str, default='auto',
+                        help='beta parameter of LDA. If omitted %(default)s is '
+                             'used')
+    parser.add_argument('--no_below', action='store', type=int, default=20,
+                        help='Keep tokens which are contained in at least'
+                             'this number of documents. If omitted %(default)s '
+                             'is used')
+    parser.add_argument('--no_above', action='store', type=float, default=0.5,
+                        help='Keep tokens which are contained in no more than '
+                             'this fraction of documents (fraction of total '
+                             'corpus size, not an absolute number). If omitted '
+                             '%(default)s is used')
     parser.add_argument('--ngrams', action='store_true',
                         help='if set use all the ngrams')
     parser.add_argument('--model', action='store_true',
                         help='if set the lda model is saved to directory '
                              '<dataset>/<prefix>_lda_model')
+    parser.add_argument('--no-relevant', action='store_true',
+                        help='if set, use only the term labelled as keyword')
     return parser
 
 
