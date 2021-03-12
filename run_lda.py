@@ -170,21 +170,9 @@ def main():
     else:
         docs, titles = generate_filtered_docs(terms_file, preproc_file, labels)
 
-    # Remove rare and common tokens.
-    # Create a dictionary representation of the documents.
     dictionary = Dictionary(docs)
-
-    # Filter out words that occur less than 20 documents, or more than 50% of
-    # the documents.
     dictionary.filter_extremes(no_below=20, no_above=0.5)
-
-    # Finally, we transform the documents to a vectorized form. We simply
-    # compute the frequency of each word, including the bigrams.
-
-    # Bag-of-words representation of the documents.
     corpus = [dictionary.doc2bow(doc) for doc in docs]
-
-    # Let's see how many tokens and documents we have to train on.
 
     print('Number of unique tokens: %d' % len(dictionary))
     print('Number of documents: %d' % len(corpus))
