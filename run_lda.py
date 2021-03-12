@@ -18,6 +18,7 @@ import pandas as pd
 from gensim.corpora import Dictionary
 from gensim.models import LdaModel
 from gensim.models.coherencemodel import CoherenceModel
+from gensim.test.utils import datapath
 
 from utils import substring_index
 
@@ -59,8 +60,18 @@ def init_argparser():
                              '%(default)s is used')
     parser.add_argument('--ngrams', action='store_true',
                         help='if set use all the ngrams')
+    # parser.add_argument('--model', action='store_true',
+    #                     help='if set the lda model is saved to directory '
+    #                          '<dataset>/<prefix>_lda_model. The model is saved '
+    #                          'with name "model.')
     parser.add_argument('--no-relevant', action='store_true',
                         help='if set, use only the term labelled as keyword')
+    parser.add_argument('--load-model', action='store',
+                        help='Path to a directory where a previously trained '
+                             'model is saved. Inside this directory the model '
+                             'named "model" is searched. the loaded model is '
+                             'used with the dataset file to generate the topics'
+                             ' and the topic document association')
     return parser
 
 
@@ -167,35 +178,36 @@ def main():
     else:
         docs, titles = generate_filtered_docs(terms_file, preproc_file, labels)
 
-    dictionary = Dictionary(docs)
-    dictionary.filter_extremes(no_below=20, no_above=0.5)
-    corpus = [dictionary.doc2bow(doc) for doc in docs]
+    if args.load_model is not None:
+        lda_path = Path(args.load_model)
+        model = LdaModel.load(datapath(str(lda_path / 'model')))
+        dictionary = model.id2word
+    else:
+        # Make a index to word dictionary.
+        dictionary = Dictionary(docs)
+        dictionary.filter_extremes(no_below=args.no_below, no_above=args.no_above)
+        _ = dictionary[0]  # This is only to "load" the dictionary.
+        id2word = dictionary.id2token
+        corpus = [dictionary.doc2bow(doc) for doc in docs]
+        # Train LDA model.
+        # Set training parameters.
+        num_topics = args.topics
+        chunksize = len(corpus)
+        alpha = args.alpha
+        beta = args.beta
 
-    print('Number of unique tokens: %d' % len(dictionary))
-    print('Number of documents: %d' % len(corpus))
-
-    # Train LDA model.
-    # Set training parameters.
-    num_topics = args.topics
-    chunksize = len(corpus)
-    alpha = args.alpha
-    beta = args.beta
-
-    # Make a index to word dictionary.
-    _ = dictionary[0]  # This is only to "load" the dictionary.
-    id2word = dictionary.id2token
-
-    model = LdaModel(
-        corpus=corpus,
-        id2word=id2word,
-        chunksize=chunksize,
-        alpha=alpha,
-        eta=beta,
-        num_topics=num_topics,
-    )
+        model = LdaModel(
+            corpus=corpus,
+            id2word=id2word,
+            chunksize=chunksize,
+            alpha=alpha,
+            eta=beta,
+            num_topics=num_topics,
+        )
 
     cm = CoherenceModel(model=model, texts=docs, dictionary=dictionary,
                         coherence='c_v', processes=cpu_count())
+
     # Average topic coherence is the sum of topic coherences of all topics,
     # divided by the number of topics.
     avg_topic_coherence = cm.get_coherence()
@@ -233,6 +245,10 @@ def main():
     with open(docs_file, 'w') as file:
         json.dump(docs_topics, file, indent='\t')
 
+    # if args.model:
+    #     lda_path: Path = args.dataset / f'{args.prefix}_lda_model'
+    #     lda_path.mkdir(exist_ok=True)
+    #     model.save(str(lda_path / 'model'))
 
 
 if __name__ == '__main__':
