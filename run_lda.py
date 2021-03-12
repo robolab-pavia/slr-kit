@@ -121,8 +121,9 @@ def load_terms(terms_file, labels=('keyword', 'relevant')):
     return good_set
 
 
-def generate_filtered_docs_ngrams(terms_file, preproc_file):
-    terms = load_ngrams(terms_file)
+def generate_filtered_docs_ngrams(terms_file, preproc_file,
+                                  labels=('keyword', 'relevant')):
+    terms = load_ngrams(terms_file, labels)
     ngram_len = sorted(terms, reverse=True)
     dataset = pd.read_csv(preproc_file, delimiter='\t', encoding='utf-8')
     dataset.fillna('', inplace=True)
@@ -136,8 +137,9 @@ def generate_filtered_docs_ngrams(terms_file, preproc_file):
     return docs, titles
 
 
-def generate_filtered_docs(terms_file, preproc_file):
-    terms = load_terms(terms_file)
+def generate_filtered_docs(terms_file, preproc_file,
+                           labels=('keyword', 'relevant')):
+    terms = load_terms(terms_file, labels)
     dataset = pd.read_csv(preproc_file, delimiter='\t', encoding='utf-8')
     dataset.fillna('', inplace=True)
     documents = dataset['abstract_lem'].to_list()
@@ -156,16 +158,17 @@ def main():
 
     terms_file = args.dataset / f'{args.prefix}_terms.csv'
     preproc_file = args.dataset / f'{args.prefix}_preproc.csv'
-    if args.ngrams:
-        docs, titles = generate_filtered_docs_ngrams(terms_file, preproc_file)
-    else:
-        docs, titles = generate_filtered_docs(terms_file, preproc_file)
 
-    # We remove rare words and common words based on their *document frequency*.
-    # Below we remove words that appear in less than 20 documents or in more than
-    # 50% of the documents. Consider trying to remove words only based on their
-    # frequency, or maybe combining that with this approach.
-    #
+    if args.no_relevant:
+        labels = ('keyword', )
+    else:
+        labels = ('keyword', 'relevant')
+
+    if args.ngrams:
+        docs, titles = generate_filtered_docs_ngrams(terms_file, preproc_file,
+                                                     labels)
+    else:
+        docs, titles = generate_filtered_docs(terms_file, preproc_file, labels)
 
     # Remove rare and common tokens.
     # Create a dictionary representation of the documents.
