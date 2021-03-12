@@ -185,8 +185,8 @@ def generate_filtered_docs(terms_file, preproc_file):
 
 def prepare_corpus(docs, no_above, no_below):
     dictionary = Dictionary(docs)
-    # Filter out words that occur less than 20 documents, or more than 50% of
-    # the documents.
+    # Filter out words that occur less than no_above documents, or more than
+    # no_below % of the documents.
     dictionary.filter_extremes(no_below=no_below, no_above=no_above)
     # Finally, we transform the documents to a vectorized form. We simply
     # compute the frequency of each word, including the bigrams.
@@ -211,7 +211,7 @@ def train(c_idx, n_topics, _a, _b):
     model = LdaModel(corpus, num_topics=n_topics,
                      id2word=dictionary, chunksize=len(corpus),
                      passes=10, random_state=_seed,
-                     minimum_probability=0.0, alpha=_a, eta=_b, )
+                     minimum_probability=0.0, alpha=_a, eta=_b)
     # computes coherence score for that model
     cv_model = CoherenceModel(model=model, texts=texts,
                               dictionary=dictionary, coherence='c_v',
@@ -243,6 +243,8 @@ def compute_optimal_model(corpora, topics_range, alpha, beta, seed=None):
     """
     model_results = {
         'corpus': [],
+        'no_below': [],
+        'no_above': [],
         'topics': [],
         'alpha': [],
         'beta': [],
@@ -264,7 +266,9 @@ def compute_optimal_model(corpora, topics_range, alpha, beta, seed=None):
         for res in results:
             c, n, a, b, cv, t = res
             # Save the model results
-            model_results['corpus'].append(c)
+            model_results['corpus'].append(c[0])
+            model_results['no_below'].append(c[1])
+            model_results['no_above'].append(c[2])
             model_results['topics'].append(n)
             model_results['alpha'].append(a)
             model_results['beta'].append(b)
@@ -322,9 +326,10 @@ def main():
     else:
         docs, titles = generate_filtered_docs(terms_file, preproc_file)
 
-    no_below = 20
-    no_above = 0.5
-    topics_range = range(args.min_topics, args.max_topics, args.step_topics)
+    no_below_list = [1, 20, 40, 100, len(titles)//10]
+    no_above_list = [0.5, 0.6, 0.75, 1.0]
+    topics_range = range(args.min_topics, args.max_topics + args.step_topics,
+                         args.step_topics)
     # Alpha parameter
     alpha = list(np.arange(0.01, 1, 0.1))
     alpha.append('symmetric')
@@ -334,8 +339,9 @@ def main():
     beta.append('auto')
     corpora = {}
     for k, d in docs.items():
-        corpus, dictionary = prepare_corpus(d, no_above, no_below)
-        corpora[k] = (corpus, dictionary, d)
+        for no_below, no_above in product(no_below_list, no_above_list):
+            corpus, dictionary = prepare_corpus(d, no_above, no_below)
+            corpora[(k, no_below, no_above)] = (corpus, dictionary, d)
 
     results = compute_optimal_model(corpora, topics_range, alpha, beta,
                                     args.seed)
