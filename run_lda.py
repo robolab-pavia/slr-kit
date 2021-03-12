@@ -191,18 +191,10 @@ def main():
 
     # Train LDA model.
     # Set training parameters.
-    if False:
-        num_topics = 20
-        chunksize = 4000
-        passes = 20
-        iterations = 600
-        eval_every = None  # Don't evaluate model perplexity, takes too much time.
-    else:
-        num_topics = 30
-        chunksize = 10000
-        passes = 20
-        iterations = 600
-        eval_every = 1  # Don't evaluate model perplexity, takes too much time.
+    num_topics = args.topics
+    chunksize = len(corpus)
+    alpha = args.alpha
+    beta = args.beta
 
     # Make a index to word dictionary.
     _ = dictionary[0]  # This is only to "load" the dictionary.
@@ -212,12 +204,9 @@ def main():
         corpus=corpus,
         id2word=id2word,
         chunksize=chunksize,
-        alpha='auto',
-        eta='auto',
-        iterations=iterations,
+        alpha=alpha,
+        eta=beta,
         num_topics=num_topics,
-        passes=passes,
-        eval_every=eval_every
     )
 
     cm = CoherenceModel(model=model, texts=docs, dictionary=dictionary,
