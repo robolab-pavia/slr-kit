@@ -5,7 +5,7 @@ from itertools import repeat, product
 from multiprocessing import Pool
 from pathlib import Path
 from timeit import default_timer as timer
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,9 +19,8 @@ from utils import substring_index
 PHYSICAL_CPU = cpu_count(logical=False)
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
-_corpus_sets: Optional[List[List[Tuple[int, int]]]] = None
-_dictionary: Optional[Dictionary] = None
-_texts: Optional[List[List[str]]] = None
+_corpora: Optional[Dict[Tuple[str], Tuple[List[Tuple[int, int]],
+                                          Dictionary, List[List[str]]]]] = None
 _seed: Optional[int] = None
 
 
@@ -73,6 +72,8 @@ def init_argparser():
     parser.add_argument('--plot-save', action='store_true',
                         help='if set, it saves the plot of the coherence as '
                              '<dataset>/<prefix>_lda_plot.pdf')
+    parser.add_argument('--keyword-only', action='store_true',
+                        help='if set, it uses only the keyword term')
     parser.add_argument('--result', '-r', metavar='FILENAME',
                         type=argparse.FileType('w'), default='-',
                         help='Where to save the training results in CSV format.'
@@ -140,30 +141,39 @@ def load_terms(terms_file, labels=('keyword', 'relevant')):
 
 
 def generate_filtered_docs_ngrams(terms_file, preproc_file):
-    terms = load_ngrams(terms_file)
-    ngram_len = sorted(terms, reverse=True)
+    labels = [('keyword', 'relevant'), ('keyword',)]
+    docs = {}
     dataset = pd.read_csv(preproc_file, delimiter='\t', encoding='utf-8')
     dataset.fillna('', inplace=True)
-    documents = dataset['abstract_lem'].to_list()
     titles = dataset['title'].to_list()
-    with Pool() as pool:
-        docs = pool.starmap(filter_doc, zip(documents, repeat(ngram_len),
-                                            repeat(terms)))
+    for lbl in labels:
+        terms = load_ngrams(terms_file)
+        ngram_len = sorted(terms, reverse=True)
+        documents = dataset['abstract_lem'].to_list()
+        with Pool() as pool:
+            docs[lbl] = pool.starmap(filter_doc, zip(documents,
+                                                     repeat(ngram_len),
+                                                     repeat(terms)))
     return docs, titles
 
 
 def generate_filtered_docs(terms_file, preproc_file):
-    terms = load_terms(terms_file)
+    labels = [('keyword', 'relevant'), ('keyword',)]
+    good_docs = {}
     dataset = pd.read_csv(preproc_file, delimiter='\t', encoding='utf-8')
     dataset.fillna('', inplace=True)
-    documents = dataset['abstract_lem'].to_list()
     titles = dataset['title'].to_list()
-    docs = [d.split(' ') for d in documents]
+    for lbl in labels:
+        terms = load_terms(terms_file)
+        documents = dataset['abstract_lem'].to_list()
+        docs = [d.split(' ') for d in documents]
 
-    good_docs = []
-    for doc in docs:
-        gd = [t for t in doc if t in terms]
-        good_docs.append(gd)
+        gd = []
+        for doc in docs:
+            gd.append([t for t in doc if t in terms])
+
+        good_docs[lbl] = gd
+
     return good_docs, titles
 
 
@@ -180,45 +190,38 @@ def prepare_corpus(docs, no_above, no_below):
     return corpus, dictionary
 
 
-def init_train(corpus_sets, dictionary, texts, seed):
-    global _corpus_sets, _dictionary, _texts, _seed
-    _corpus_sets = corpus_sets
-    _dictionary = dictionary
-    _texts = texts
+def init_train(corpora, seed):
+    global _corpora, _seed
+    _corpora = corpora
     _seed = seed
 
 
 # c_idx is the corpus index, n_topics is the number of topics,
 # a is alpha and _b is beta
 def train(c_idx, n_topics, _a, _b):
-    global _corpus_sets, _dictionary, _texts, _seed
+    global _corpora, _seed
     start = timer()
-    model = LdaModel(_corpus_sets[c_idx], num_topics=n_topics,
-                     id2word=_dictionary, chunksize=len(_corpus_sets[c_idx]),
+    corpus, dictionary, texts = _corpora[c_idx]
+    model = LdaModel(corpus, num_topics=n_topics,
+                     id2word=dictionary, chunksize=len(corpus),
                      passes=10, random_state=_seed,
                      minimum_probability=0.0, alpha=_a, eta=_b, )
     # computes coherence score for that model
-    cv_model = CoherenceModel(model=model, texts=_texts,
-                              dictionary=_dictionary, coherence='c_v',
+    cv_model = CoherenceModel(model=model, texts=texts,
+                              dictionary=dictionary, coherence='c_v',
                               processes=1)
     c_v = cv_model.get_coherence()
     stop = timer()
     return c_idx, n_topics, _a, _b, c_v, stop - start
 
 
-def compute_optimal_model(dictionary, corpus, texts,
-                          topics_range, alpha, beta,
-                          seed=None):
+def compute_optimal_model(corpora, topics_range, alpha, beta, seed=None):
     """
     Train several models iterating over the specified number of topics and performs
     LDA hyper-parameters alpha and beta tuning
 
-    :param dictionary: Gensim dictionary from FAWOC classification
-    :type dictionary: Dictionary
-    :param corpus: Gensim corpus
-    :type corpus: list[list[tuple[int, int]]]
-    :param texts: Tokenized text, used for window sliding
-    :type texts: list[list[str]]
+    :param corpora: Gensim corpus
+    :type corpora: dict[tuple[str, ...], tuple[list[tuple[int, int]], Dictionary, list[list[str]]]]
     :param topics_range: range of the topics number to test
     :type topics_range: range
     :param alpha: Alpha parameter values to test. Every value accepted by gensim
@@ -232,25 +235,23 @@ def compute_optimal_model(dictionary, corpus, texts,
     :return: Dataframe with the model performances
     :rtype: pd.DataFrame
     """
-    # corpus must be the last element!
-    corpus_sets = [corpus]
-
     model_results = {
         'corpus': [],
         'topics': [],
         'alpha': [],
         'beta': [],
         'coherence': [],
-        'times': []
+        'times': [],
+        'seed': [],
     }
     # Can take a long time to run
-    corpus_len = len(corpus_sets)
+    corpora_len = len(corpora)
 
     # iterate through all the combinations
 
     with Pool(processes=PHYSICAL_CPU, initializer=init_train,
-              initargs=(corpus_sets, dictionary, texts, seed)) as pool:
-        results = pool.starmap(train, product(range(corpus_len), topics_range,
+              initargs=(corpora, seed)) as pool:
+        results = pool.starmap(train, product(corpora.keys(), topics_range,
                                               alpha, beta))
         # get the coherence score for the given parameters
         # LDA multi-core implementation with maximum number of workers
@@ -263,6 +264,7 @@ def compute_optimal_model(dictionary, corpus, texts,
             model_results['beta'].append(b)
             model_results['coherence'].append(cv)
             model_results['times'].append(t)
+            model_results['seed'].append(seed)
 
     return pd.DataFrame(model_results)
 
@@ -324,9 +326,13 @@ def main():
     # Beta parameter
     beta = list(np.arange(0.01, 1, 0.1))
     beta.append('auto')
-    corpus, dictionary = prepare_corpus(docs, no_above, no_below)
-    results = compute_optimal_model(dictionary, corpus, docs, topics_range,
-                                    alpha, beta, args.seed)
+    corpora = {}
+    for k, d in docs.items():
+        corpus, dictionary = prepare_corpus(d, no_above, no_below)
+        corpora[k] = (corpus, dictionary, d)
+
+    results = compute_optimal_model(corpora, topics_range, alpha, beta,
+                                    args.seed)
 
     results.to_csv(args.result, index=False)
     best = results.loc[results['coherence'].idxmax()]
@@ -335,9 +341,10 @@ def main():
     print(best)
 
     if args.output or args.model:
+        corpus, dictionary, docs = corpora[best['corpus']]
         model = LdaModel(corpus, num_topics=best['topics'],
                          id2word=dictionary, chunksize=len(corpus),
-                         passes=10, random_state=_seed,
+                         passes=10, random_state=best['seed'],
                          minimum_probability=0.0,
                          alpha=best['alpha'], eta=best['beta'])
 
@@ -355,8 +362,8 @@ def main():
                  marker='o', linestyle='solid')
 
         plt.xticks(topics_range)
-        plt.xlabel("Number of Topics")
-        plt.ylabel("Coherence score")
+        plt.xlabel('Number of Topics')
+        plt.ylabel('Coherence score')
         plt.grid()
         if args.plot_show:
             plt.show()
