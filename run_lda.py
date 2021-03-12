@@ -59,9 +59,6 @@ def init_argparser():
                              '%(default)s is used')
     parser.add_argument('--ngrams', action='store_true',
                         help='if set use all the ngrams')
-    parser.add_argument('--model', action='store_true',
-                        help='if set the lda model is saved to directory '
-                             '<dataset>/<prefix>_lda_model')
     parser.add_argument('--no-relevant', action='store_true',
                         help='if set, use only the term labelled as keyword')
     return parser
@@ -236,10 +233,6 @@ def main():
     with open(docs_file, 'w') as file:
         json.dump(docs_topics, file, indent='\t')
 
-    if args.model:
-        lda_path: Path = args.dataset / f'{args.prefix}_lda_model'
-        lda_path.mkdir(exist_ok=True)
-        model.save(str(lda_path / 'model'))
 
 
 if __name__ == '__main__':
