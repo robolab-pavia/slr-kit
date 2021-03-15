@@ -13,3 +13,4 @@ prompt_toolkit
 joblib
 seaborn
 active-semi-supervised-clustering
+psutil
