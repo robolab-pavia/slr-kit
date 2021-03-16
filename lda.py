@@ -1,355 +1,256 @@
+r"""
+LDA Model
+=========
+
+Introduces Gensim's LDA model and demonstrates its use on the NIPS corpus.
+
+"""
+
 import argparse
-import glob
-import logging
-import os.path
+import json
+from itertools import repeat
+from multiprocessing import Pool
+from os import cpu_count
+from pathlib import Path
 
-import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
-import tqdm
-from gensim import corpora, models
-from gensim.models import CoherenceModel
+from gensim.corpora import Dictionary
+from gensim.models import LdaModel
+from gensim.models.coherencemodel import CoherenceModel
 
-from utils import (
-    load_df,
-    setup_logger,
-)
-
-debug_logger = setup_logger('debug_logger', 'slr-kit.log',
-                            level=logging.DEBUG)
+from utils import substring_index
 
 
 def init_argparser():
-    """Initialize the command line parser."""
-    parser = argparse.ArgumentParser(description='Perform LDA for topics modelling')
-    parser.add_argument('infile', action="store", type=str,
-                        help="input CSV file with documents-terms matrix")
-    parser.add_argument('-DM', action='store_true',
-                        help='Delete pre-trained model for new training')
-    parser.add_argument('--min-topics', '-m', type=int, dest='m', metavar='5',
-                        help='Minimum number of topics to retrieve (default: 5)')
-    parser.add_argument('--max-topics', '-M',  type=int, dest='M', metavar='20',
-                        help='Maximum number of topics to retrieve (default: 20)')
-    parser.add_argument('--step-topics', '-s', type=int, dest='s', metavar='1',
-                        help='Step in range(min,max,step) for topics retrieving (default: 1)')
-    parser.add_argument('--plot', '-p', metavar='FILENAME',
-                        help='output file name for coherence plot')
-    parser.add_argument('--topics-terms-matrix', '-twm', metavar='FILENAME', dest='topics_terms_matrix',
-                        help='output file name with (topics x terms) matrix in CSV format')
-    parser.add_argument('--output', '-o', metavar='FILENAME',
-                        help='output file name with (documents x topics) matrix in CSV format')
+    """
+    Initialize the command line parser.
+
+    :return: the command line parser
+    :rtype: argparse.ArgumentParser
+    """
+    epilog = """"'The program uses two files: <dataset>/<prefix>_preproc.csv and
+ '<dataset>/<prefix>_terms.csv.
+ It outputs the topics in <dataset>/<prefix>_terms-topics.json and the topics assigned
+ to each document in <dataset>/<prefix>_docs-topics.json"""
+    parser = argparse.ArgumentParser(description='Performs the LDA on a dataset',
+                                     epilog=epilog)
+    parser.add_argument('dataset', action='store', type=Path,
+                        help='path to the directory where the files of the '
+                             'dataset to elaborate are stored.')
+    parser.add_argument('prefix', action='store', type=str,
+                        help='prefix used when searching files.')
+    parser.add_argument('--topics', action='store', type=int, default=20,
+                        help='Number of topics. If omitted %(default)s is used')
+    parser.add_argument('--alpha', action='store', type=str, default='auto',
+                        help='alpha parameter of LDA. If omitted %(default)s is'
+                             ' used')
+    parser.add_argument('--beta', action='store', type=str, default='auto',
+                        help='beta parameter of LDA. If omitted %(default)s is '
+                             'used')
+    parser.add_argument('--no_below', action='store', type=int, default=20,
+                        help='Keep tokens which are contained in at least'
+                             'this number of documents. If omitted %(default)s '
+                             'is used')
+    parser.add_argument('--no_above', action='store', type=float, default=0.5,
+                        help='Keep tokens which are contained in no more than '
+                             'this fraction of documents (fraction of total '
+                             'corpus size, not an absolute number). If omitted '
+                             '%(default)s is used')
+    parser.add_argument('--seed', type=int, help='Seed to be used in training')
+    parser.add_argument('--ngrams', action='store_true',
+                        help='if set use all the ngrams')
+    parser.add_argument('--model', action='store_true',
+                        help='if set the lda model is saved to directory '
+                             '<dataset>/<prefix>_lda_model. The model is saved '
+                             'with name "model.')
+    parser.add_argument('--no-relevant', action='store_true',
+                        help='if set, use only the term labelled as keyword')
+    parser.add_argument('--load-model', action='store',
+                        help='Path to a directory where a previously trained '
+                             'model is saved. Inside this directory the model '
+                             'named "model" is searched. the loaded model is '
+                             'used with the dataset file to generate the topics'
+                             ' and the topic document association')
     return parser
 
 
-def compute_optimal_model(dictionary, corpus, texts, limit, start, step, alpha, beta):
-    """
-    Train several models iterating over the specified number of topics and performs
-    LDA hyper-parameters alpha and beta tuning
-    :param dictionary: Gensim dictionary from FAWOC classification
-    :param corpus: Gensim corpus
-    :param texts: Tokenized text, used for window sliding
-    :param limit: Maximum number of topics
-    :param start: Minimum number of topics
-    :param step: Step for topics range
-    :param alpha: Alpha parameter values to test
-    :param beta: Beta parameter values to test
-    :return: pandas data-frame with best model performances
-    """
-    # Topics range
-    topics_range = range(start, limit, step)
+def load_ngrams(terms_file, labels=('keyword', 'relevant')):
+    words_dataset = pd.read_csv(terms_file, delimiter='\t',
+                                encoding='utf-8')
+    terms = words_dataset['keyword'].to_list()
+    term_labels = words_dataset['label'].to_list()
+    zipped = zip(terms, term_labels)
+    good = [x[0] for x in zipped if x[1] in labels]
+    ngrams = {1: []}
+    for x in good:
+        n = x.count(' ') + 1
+        try:
+            ngrams[n].append(x)
+        except KeyError:
+            ngrams[n] = [x]
 
-    # Validation sets
-    num_of_docs = len(corpus)
-
-    # corpus must be the last element!
-    corpus_sets = [corpus]  # corpus_sets[ClippedCorpus(corpus, int(num_of_docs * 0.75)), corpus]
-
-    # 'Full' must be the last element!
-    corpus_title = ['Full']  # corpus_title = ['Clipped', 'Full']
-    model_results = {'Validation_Set': [],
-                     'Topics': [],
-                     'Alpha': [],
-                     'Beta': [],
-                     'Coherence': []
-                     }
-    # Can take a long time to run
-    total_iterations = len(corpus_sets) * len(topics_range) * len(alpha) * len(beta)
-
-    progress_bar = tqdm.tqdm(total=total_iterations)
-
-    # iterate through validation corpus
-    for i in range(len(corpus_sets)):
-        # iterate through number of topics
-        for k in topics_range:
-            # iterate through alpha values
-            for a in alpha:
-                # iterate through beta values
-                for b in beta:
-                    # get the coherence score for the given parameters
-                    cv = compute_coherence_values(corpus=corpus_sets[i],
-                                                  dictionary=dictionary,
-                                                  texts=texts,
-                                                  num_topics=k, a=a, b=b)
-                    # Save the model results
-                    model_results['Validation_Set'].append(corpus_title[i])
-                    model_results['Topics'].append(k)
-                    model_results['Alpha'].append(a)
-                    model_results['Beta'].append(b)
-                    model_results['Coherence'].append(cv)
-
-                    progress_bar.update(1)
-
-    df = pd.DataFrame(model_results)
-    df.to_csv('lda_tuning_results.csv', sep='\t', float_format='%.4f', index=False)
-    progress_bar.close()
-
-    return df
+    return ngrams
 
 
-def compute_coherence_values(dictionary, corpus, texts, num_topics, a, b):
-    """
-    Compute c_v coherence for various number of topics
-
-    :param dictionary: Gensim dictionary from FAWOC classification
-    :param corpus: Gensim corpus
-    :param texts: Tokenized text, used for window sliding
-    :param num_topics: Number of topics
-    :param a: Alpha parameter
-    :param b: Eta parameter
-    :return: Coherence value corresponding to the LDA model
-    """
-    model_list = []
-
-    # LDA multi-core implementation with maximum number of workers
-    model = models.LdaMulticore(corpus,
-                                num_topics=num_topics,
-                                id2word=dictionary,
-                                chunksize=100,
-                                passes=10,
-                                random_state=100,
-                                minimum_probability=0.0,  # important to match dimensions
-                                alpha=a,
-                                eta=b)
-    model_list.append(model)
-
-    # computes coherence score for that model
-    cv_model = CoherenceModel(model=model, texts=texts, dictionary=dictionary, coherence='c_v')
-    return cv_model.get_coherence()
+def check_ngram(doc, idx):
+    for dd in doc:
+        r = range(dd[0][0], dd[0][1])
+        yield idx[0] in r or idx[1] in r
 
 
-def get_vocabulary(bow):
-    """
-    Iterate over documents-terms matrix to construct a Gensim dictionary
-    from only classified keywords
-    :param bow: vector as BoW for a document (keyword_id, counts)
-    :return: List of all keywords contained into the document
-    """
-    # TODO: allow the selection of the filename from command line
-    # load the dictionary of keywords [ keyword_id - term ]
-    dictionary = load_df('term-list.csv', required_columns=['id', 'term'])
-    doc = bow.values.tolist()  # convert row to list
-    n_grams = []
-    for i in range(len(doc)):  # for each element
-        if doc[i] != 0:
-            n_grams.append(dictionary.iloc[i, 1])  # match from vocabulary the term with positional index
-    return n_grams
+def filter_doc(d, ngram_len, terms):
+    doc = []
+    flag = False
+    for n in ngram_len:
+        for t in terms[n]:
+            for idx in substring_index(d, t):
+                if flag and any(check_ngram(doc, idx)):
+                    continue
+
+                doc.append((idx, t.replace(' ', '_')))
+
+        flag = True
+    doc.sort(key=lambda dd: dd[0])
+    return [t[1] for t in doc]
+
+
+def load_terms(terms_file, labels=('keyword', 'relevant')):
+    words_dataset = pd.read_csv(terms_file, delimiter='\t',
+                                encoding='utf-8')
+    terms = words_dataset['keyword'].to_list()
+    term_labels = words_dataset['label'].to_list()
+    zipped = zip(terms, term_labels)
+    good = [x for x in zipped if x[1] in labels]
+    good_set = set()
+    for x in good:
+        good_set.add(x[0])
+
+    return good_set
+
+
+def generate_filtered_docs_ngrams(terms_file, preproc_file,
+                                  labels=('keyword', 'relevant')):
+    terms = load_ngrams(terms_file, labels)
+    ngram_len = sorted(terms, reverse=True)
+    dataset = pd.read_csv(preproc_file, delimiter='\t', encoding='utf-8')
+    dataset.fillna('', inplace=True)
+    documents = dataset['abstract_lem'].to_list()
+    titles = dataset['title'].to_list()
+    docs = []
+    with Pool() as pool:
+        docs = pool.starmap(filter_doc, zip(documents, repeat(ngram_len),
+                                            repeat(terms)))
+
+    return docs, titles
+
+
+def generate_filtered_docs(terms_file, preproc_file,
+                           labels=('keyword', 'relevant')):
+    terms = load_terms(terms_file, labels)
+    dataset = pd.read_csv(preproc_file, delimiter='\t', encoding='utf-8')
+    dataset.fillna('', inplace=True)
+    documents = dataset['abstract_lem'].to_list()
+    titles = dataset['title'].to_list()
+    docs = [d.split(' ') for d in documents]
+
+    good_docs = []
+    for doc in docs:
+        gd = [t for t in doc if t in terms]
+        good_docs.append(gd)
+    return good_docs, titles
 
 
 def main():
-    debug_logger.debug('[Latent Dirichlet allocation] Started')
-    parser = init_argparser()
-    args = parser.parse_args()
+    args = init_argparser().parse_args()
 
-    if args.DM:  # user asks to delete the pre-trained model
-        answer = ""
-        while answer not in ["y", "n"]:
-            answer = input("Running with -DM will permanently delete pre-trained model."
-                           " Are you sure? [Y/N]? ").lower()
-            if answer == "y":
-                # Handle errors while calling os.remove()
-                try:
-                    [os.remove(x) for x in glob.glob("model.bin*")]
-                except OSError:
-                    print("Error while deleting pre-trained model")
-                finally:
-                    break
-            else:
-                print("Aborting")
-                exit()
+    terms_file = args.dataset / f'{args.prefix}_terms.csv'
+    preproc_file = args.dataset / f'{args.prefix}_preproc.csv'
 
-    tdm = pd.read_csv(args.infile, delimiter='\t')
-    tdm.fillna('', inplace=True)
-
-    # we want to use the documents-terms matrix so we transpose td-matrix
-    # then a workaround to re-set docs ids as correct data-frame index
-    dtm = tdm.T
-    dtm = dtm.rename(columns=dtm.iloc[0]).drop(dtm.index[0])
-    dtm.index.name = None  # drop 'Unnamed: 0' coming from transposition
-
-    debug_logger.debug('[Latent Dirichlet allocation] Computing LDA')
-
-    documents = []
-    docs_ids = []  # preserve documents IDs (due to some empties abstracts)
-    for index, row in dtm.iterrows():
-        doc = get_vocabulary(row)
-        docs_ids.append(index)
-        documents.append(doc)
-    dictionary = corpora.Dictionary(documents)
-    corpus = [dictionary.doc2bow(doc) for doc in documents]
-
-    # Checks for pre-trained model file named 'model.bin'
-    # if model exists than loads it, otherwise starts training
-    if os.path.isfile('model.bin'):
-        lda = models.LdaModel.load('model.bin')
-        opt_topics_num = lda.num_topics
+    if args.no_relevant:
+        labels = ('keyword', )
     else:
+        labels = ('keyword', 'relevant')
 
-        # Range of topics number to test from arguments or defaults:
-        start = 5
-        limit = 21  # + 1
-        step = 1
-        if args.m:
-            start = int(args.m)
-        if args.M:
-            limit = int(args.M) + 1  # since we are using range(start,limit,step)
-        if args.s:
-            step = int(args.s)
-
-        # Alpha parameter
-        alpha = list(np.arange(0.01, 1, 0.1))
-        alpha.append('symmetric')
-        alpha.append('asymmetric')
-        # Beta parameter
-        beta = list(np.arange(0.01, 1, 0.1))
-        beta.append('auto')
-
-        debug_logger.debug('[Latent Dirichlet allocation] LDA hyper-parameters tuning')
-        # Optimal model selection based on iterated test taking as best model
-        # the one that maximises the coherence score.
-        # Iterates LDA training on multiple models with different num_topics
-        # in range start:limit:step
-        evaluation_df = compute_optimal_model(dictionary=dictionary,
-                                              corpus=corpus,
-                                              texts=documents,
-                                              start=start,
-                                              limit=limit,
-                                              step=step,
-                                              alpha=alpha,
-                                              beta=beta)
-
-        # In case of multiple validation sets extract results only for full corpus
-        corpus_100 = evaluation_df[evaluation_df['Validation_Set'] == 'Full']
-        topics_num = evaluation_df.iloc[[corpus_100['Coherence'].idxmax()]]['Topics'].values[0]
-        opt_model = corpus_100[corpus_100['Topics'] == topics_num]
-
-        # Extract optimum model parameters values
-        opt_topics_num = topics_num
-        opt_alpha = evaluation_df.iloc[[corpus_100['Coherence'].idxmax()]]['Alpha'].values[0]
-        opt_beta = evaluation_df.iloc[[corpus_100['Coherence'].idxmax()]]['Beta'].values[0]
-        opt_c_v = evaluation_df.iloc[[corpus_100['Coherence'].idxmax()]]['Coherence'].values[0]
-
-        # train the optimum model
-        lda = models.LdaMulticore(corpus,
-                                  num_topics=opt_topics_num,
-                                  id2word=dictionary,
-                                  chunksize=100,
-                                  passes=10,
-                                  random_state=100,
-                                  minimum_probability=0.0,
-                                  alpha=opt_alpha,
-                                  eta=opt_beta)
-        lda.save("model.bin")
-
-        if args.plot:
-            # Show graph for coherence and reshape data-frame fot topics-c_v plot
-            idx = corpus_100.groupby('Topics')['Coherence'].idxmax()  # get max score per topics number
-            data = corpus_100.loc[idx]
-
-            x = range(start, limit, step)
-            plt.plot(x, data['Coherence'], color='b',
-                     marker='o', linestyle='solid',
-                     markerfacecolor='w',
-                     markeredgecolor='b')
-            plt.xticks(x)
-            plt.xlabel("Number of Topics")
-            plt.ylabel("Coherence score")
-            plt.legend("coherence_values", loc='best')
-            plt.savefig(args.plot, dpi=300)
-            plt.show()
-
-    # Computing topic distribution and contributions over documents
-    # creates a ( documents x topics ) matrix
-    docs = []
-    dominant_topics = []
-    for i, row in enumerate(lda[corpus]):
-        doc = []
-        row = sorted(row, key=lambda itm: (itm[0]), reverse=False)
-        for j, (topic_num, prop_topic) in enumerate(row):
-            doc.append(prop_topic)  # append doc
-            # print("Doc: %d - Topic: %d - P: %f" % (i, topic_num, prop_topic))
-        dominant_topics.append(doc.index(max(doc)))
-        docs.append(doc)
-
-    # Computing features distribution over topics
-    # creates a ( topics x words ) matrix
-    topics_matrix = lda.show_topics(num_topics=opt_topics_num, formatted=False, num_words=10)
-    topics_matrix = sorted(topics_matrix, key=lambda itm: (itm[0]), reverse=False)
-
-    topics = []
-    topic_num = []
-    for i, row in enumerate(topics_matrix):
-        topic_num.append(row[0])
-        words = []
-        for index, (word, score) in enumerate(row[1]):
-            words.append(word)
-        topics.append(words)
-
-    debug_logger.debug('[Latent Dirichlet allocation] Saving Documents-Topics matrix')
-
-    # Documents-topics matrix data-frame for output
-    df = pd.DataFrame(docs, index=docs_ids)
-    df.insert(0, "dominant_topic", dominant_topics, True)
-    df.fillna(0, inplace=True)
-
-    if not args.output:
-        print("Documents-Topics Matrix")
-        print(df.to_string())
+    if args.ngrams:
+        docs, titles = generate_filtered_docs_ngrams(terms_file, preproc_file,
+                                                     labels)
     else:
-        output_file = open(args.output, 'w', encoding='utf-8', newline='')
-        export_csv = df.to_csv(output_file, header=True, sep='\t', float_format='%.6f')
-        output_file.close()
+        docs, titles = generate_filtered_docs(terms_file, preproc_file, labels)
 
-    # get best document for each topic
-    best_documents = []
-    N = 3  # TODO: maybe from commandline?
-    for column in df.loc[:, df.columns != 'dominant_topic']:
-        sorted_df = df.sort_values(by=[column], ascending=False)
-        top_n = []
-        i = 0
-        for index, row in sorted_df.iterrows():
-            if i < N:  # get only top N
-                top_n.append(index)
-                i = i + 1
-            else:
-                break
-        best_documents.append(top_n)
-
-    debug_logger.debug('[Latent Dirichlet allocation] Saving Topics-Keywords matrix')
-    # Topic-Keyword Matrix
-    df_topic_keywords = pd.DataFrame(topics)
-    df_topic_keywords.insert(0, "topic", topic_num, True)
-    df_topic_keywords.insert(1, "best_doc", best_documents, True)
-
-    if not args.topics_terms_matrix:
-        print("Topics-Terms Matrix")
-        print(df_topic_keywords.to_string())
+    if args.load_model is not None:
+        lda_path = Path(args.load_model)
+        model = LdaModel.load(str(lda_path / 'model'))
+        dictionary = Dictionary.load(str(lda_path / 'model_dictionary'))
     else:
-        output_file = open(args.topics_terms_matrix, 'w', encoding='utf-8', newline='')
-        export_csv = df_topic_keywords.to_csv(output_file, header=True, sep='\t')
-        output_file.close()
+        # Make a index to word dictionary.
+        dictionary = Dictionary(docs)
+        dictionary.filter_extremes(no_below=args.no_below, no_above=args.no_above)
+        _ = dictionary[0]  # This is only to "load" the dictionary.
+        id2word = dictionary.id2token
+        corpus = [dictionary.doc2bow(doc) for doc in docs]
+        # Train LDA model.
+        # Set training parameters.
+        num_topics = args.topics
+        chunksize = len(corpus)
+        alpha = args.alpha
+        beta = args.beta
 
-    debug_logger.debug('[Latent Dirichlet allocation] Terminated')
+        model = LdaModel(
+            corpus=corpus,
+            id2word=id2word,
+            chunksize=chunksize,
+            alpha=alpha,
+            eta=beta,
+            num_topics=num_topics,
+            random_state=args.seed
+        )
+
+    cm = CoherenceModel(model=model, texts=docs, dictionary=dictionary,
+                        coherence='c_v', processes=cpu_count())
+
+    # Average topic coherence is the sum of topic coherences of all topics,
+    # divided by the number of topics.
+    avg_topic_coherence = cm.get_coherence()
+    coherence = cm.get_coherence_per_topic()
+    print(f'Average topic coherence: {avg_topic_coherence:.4f}.')
+    topics = {}
+    topics_order = list(range(model.num_topics))
+    topics_order.sort(key=lambda x: coherence[x], reverse=True)
+    for i in topics_order:
+        topic = model.show_topic(i)
+        t_dict = {
+            'name': f'Topic {i}',
+            'terms_probability': {t[0]: float(t[1]) for t in topic},
+            'coherence': f'{float(coherence[i]):.5f}',
+        }
+        topics[i] = t_dict
+
+    topic_file = args.dataset / f'{args.prefix}_terms-topics.json'
+    with open(topic_file, 'w') as file:
+        json.dump(topics, file, indent='\t')
+
+    docs_topics = []
+    for i, (title, d) in enumerate(zip(titles, docs)):
+        bow = dictionary.doc2bow(d)
+        t = model.get_document_topics(bow)
+        t.sort(key=lambda x: x[1], reverse=True)
+        d_t = {
+            'id': i,
+            'title': title,
+            'topics': {tu[0]: float(tu[1]) for tu in t},
+        }
+        docs_topics.append(d_t)
+
+    docs_file = args.dataset / f'{args.prefix}_docs-topics.json'
+    with open(docs_file, 'w') as file:
+        json.dump(docs_topics, file, indent='\t')
+
+    if args.model:
+        lda_path: Path = args.dataset / f'{args.prefix}_lda_model'
+        lda_path.mkdir(exist_ok=True)
+        model.save(str(lda_path / 'model'))
+        dictionary.save(str(lda_path / 'model_dictionary'))
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
