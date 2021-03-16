@@ -353,7 +353,9 @@ def main():
     print(best)
 
     if args.output or args.model:
-        corpus, dictionary, docs = corpora[best['corpus']]
+        corpus, dictionary, docs = corpora[(best['corpus'],
+                                            best['no_below'],
+                                            best['no_above'])]
         model = LdaModel(corpus, num_topics=best['topics'],
                          id2word=dictionary, chunksize=len(corpus),
                          passes=10, random_state=best['seed'],
