@@ -56,6 +56,7 @@ def init_argparser():
                              'this fraction of documents (fraction of total '
                              'corpus size, not an absolute number). If omitted '
                              '%(default)s is used')
+    parser.add_argument('--seed', type=int, help='Seed to be used in training')
     parser.add_argument('--ngrams', action='store_true',
                         help='if set use all the ngrams')
     parser.add_argument('--model', action='store_true',
@@ -201,6 +202,7 @@ def main():
             alpha=alpha,
             eta=beta,
             num_topics=num_topics,
+            random_state=args.seed
         )
 
     cm = CoherenceModel(model=model, texts=docs, dictionary=dictionary,
