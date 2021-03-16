@@ -8,7 +8,6 @@ Introduces Gensim's LDA model and demonstrates its use on the NIPS corpus.
 
 import argparse
 import json
-import logging
 from itertools import repeat
 from multiprocessing import Pool
 from os import cpu_count
@@ -18,7 +17,6 @@ import pandas as pd
 from gensim.corpora import Dictionary
 from gensim.models import LdaModel
 from gensim.models.coherencemodel import CoherenceModel
-from gensim.test.utils import datapath
 
 from utils import substring_index
 
@@ -60,10 +58,10 @@ def init_argparser():
                              '%(default)s is used')
     parser.add_argument('--ngrams', action='store_true',
                         help='if set use all the ngrams')
-    # parser.add_argument('--model', action='store_true',
-    #                     help='if set the lda model is saved to directory '
-    #                          '<dataset>/<prefix>_lda_model. The model is saved '
-    #                          'with name "model.')
+    parser.add_argument('--model', action='store_true',
+                        help='if set the lda model is saved to directory '
+                             '<dataset>/<prefix>_lda_model. The model is saved '
+                             'with name "model.')
     parser.add_argument('--no-relevant', action='store_true',
                         help='if set, use only the term labelled as keyword')
     parser.add_argument('--load-model', action='store',
@@ -180,7 +178,7 @@ def main():
 
     if args.load_model is not None:
         lda_path = Path(args.load_model)
-        model = LdaModel.load(datapath(str(lda_path / 'model')))
+        model = LdaModel.load(str(lda_path / 'model'))
         dictionary = model.id2word
     else:
         # Make a index to word dictionary.
@@ -245,10 +243,11 @@ def main():
     with open(docs_file, 'w') as file:
         json.dump(docs_topics, file, indent='\t')
 
-    # if args.model:
-    #     lda_path: Path = args.dataset / f'{args.prefix}_lda_model'
-    #     lda_path.mkdir(exist_ok=True)
-    #     model.save(str(lda_path / 'model'))
+    if args.model:
+        lda_path: Path = args.dataset / f'{args.prefix}_lda_model'
+        lda_path.mkdir(exist_ok=True)
+        model.save(str(lda_path / 'model'))
+        dictionary.save(str(lda_path / 'model_dictionary'))
 
 
 if __name__ == '__main__':
