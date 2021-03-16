@@ -179,7 +179,7 @@ def main():
     if args.load_model is not None:
         lda_path = Path(args.load_model)
         model = LdaModel.load(str(lda_path / 'model'))
-        dictionary = model.id2word
+        dictionary = Dictionary.load(str(lda_path / 'model_dictionary'))
     else:
         # Make a index to word dictionary.
         dictionary = Dictionary(docs)
