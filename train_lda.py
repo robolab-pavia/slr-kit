@@ -369,6 +369,7 @@ def main():
             lda_path: Path = args.dataset / f'{args.prefix}_lda_model'
             lda_path.mkdir(exist_ok=True)
             model.save(str(lda_path / 'model'))
+            dictionary.save(str(lda_path / 'model_dictionary'))
 
     if args.plot_show or args.plot_save:
         max_cv = results.groupby('topics')['coherence'].idxmax()
