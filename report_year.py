@@ -7,9 +7,18 @@ from matplotlib import pyplot as plt
 
 def init_argparser():
     parser = argparse.ArgumentParser()
-    # arguments needed
-    parser.add_argument("json_file", type=str, help="the json file with the list of the papers")
-    parser.add_argument("csv_file", type=str, help="the csv file with the papers data")
+    subparsers = parser.add_subparsers(help="sub-command help")
+
+    # parser for "list" command
+    parser_list = subparsers.add_parser("list", help="lists the topics and the main words from the JSON file given")
+    parser_list.add_argument("topics_json", type=str, help="the json file with the list of the topics")
+
+    # parser for "plot" command
+    parser_plot = subparsers.add_parser("plot", help="plots the yearly graph of the topics given")
+    parser_plot.add_argument("topics_list", type=str, help="list of the topics desired e.g. 1,3,10")
+    parser_plot.add_argument("papers_json", type=str, help="the json file with the list of the papers")
+    parser_plot.add_argument("papers_csv", type=str, help="the csv file with the papers data")
+
     return parser
 
 
@@ -58,9 +67,12 @@ def main():
     parser = init_argparser()
     args = parser.parse_args()
 
-    topics_data, papers = file_reader(args.json_file, args.csv_file)
-    topics_dict = dict_builder(topics_data, papers)
-    plotter(topics_dict)
+    if args.__contains__("topics_list"):
+        topics_data, papers = file_reader(args.papers_json, args.papers_csv)
+        topics_dict = dict_builder(topics_data, papers)
+        plotter(topics_dict)
+    elif args.__contains__("topics_json"):
+        print("im here")
 
 
 if __name__ == "__main__":
