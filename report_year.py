@@ -63,6 +63,22 @@ def plotter(topic_dic):
         plt.show()
 
 
+def topic_lister(topics_json):
+    with open(topics_json) as file:
+        topics_data = json.load(file)
+
+    out = ""
+    counter = 0
+
+    for topic in topics_data:
+        out += str(counter) + ") Name: " + topics_data.get(topic).get("name") + " - Main words: "
+        for word in list(topics_data.get(topic).get("terms_probability"))[:5]:
+            out += " " + word
+        print(out)
+        counter += 1
+        out = ""
+
+
 def main():
     parser = init_argparser()
     args = parser.parse_args()
@@ -72,7 +88,7 @@ def main():
         topics_dict = dict_builder(topics_data, papers)
         plotter(topics_dict)
     elif args.__contains__("topics_json"):
-        print("im here")
+        topic_lister(args.topics_json)
 
 
 if __name__ == "__main__":
