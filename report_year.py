@@ -83,11 +83,11 @@ def main():
     parser = init_argparser()
     args = parser.parse_args()
 
-    if args.__contains__("topics_list"):
+    if "topics_list" in args:
         topics_data, papers = file_reader(args.papers_json, args.papers_csv)
         topics_dict = dict_builder(topics_data, papers)
         plotter(topics_dict)
-    elif args.__contains__("topics_json"):
+    elif "topics_json" in args:
         topic_lister(args.topics_json)
 
 
