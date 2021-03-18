@@ -31,6 +31,7 @@ def file_reader(json_path, csv_path):
 
 
 def dict_builder(topics, papers):
+
     papers_data = list(papers)
     papers_dic = dict()
     topic_dic = collections.defaultdict(dict)
@@ -48,19 +49,23 @@ def dict_builder(topics, papers):
     return topic_dic
 
 
-def plotter(topic_dic):
-    plt.style.use("fivethirtyeight")
+def plotter(topic_dic, topics_list):
+    chosen_id = topics_list.split(",")
+    plt.style.use("seaborn-dark")
     for dic in topic_dic:
-        sorted_dic = sorted(topic_dic[dic].items())
-        x, y = zip(*sorted_dic)
+        if dic in chosen_id:
+            sorted_dic = sorted(topic_dic[dic].items())
+            x, y = zip(*sorted_dic)
 
-        plt.grid(True)
-        plt.plot(x, y)
-        plt.title("topic number: " + dic)
-        plt.xlabel("Year")
-        plt.ylabel("# of papers")
-        plt.tight_layout()
-        plt.show()
+            plt.grid(True)
+            plt.plot(x, y, label="topic "+dic)
+
+    plt.legend()
+    plt.title("topics yearly graph ")
+    plt.xlabel("Year")
+    plt.ylabel("# of papers")
+    plt.tight_layout()
+    plt.show()
 
 
 def topic_lister(topics_json):
@@ -86,7 +91,7 @@ def main():
     if "topics_list" in args:
         topics_data, papers = file_reader(args.papers_json, args.papers_csv)
         topics_dict = dict_builder(topics_data, papers)
-        plotter(topics_dict)
+        plotter(topics_dict, args.topics_list)
     elif "topics_json" in args:
         topic_lister(args.topics_json)
 
