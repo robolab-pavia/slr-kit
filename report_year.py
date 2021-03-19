@@ -31,7 +31,7 @@ def file_reader(json_path, csv_path):
 
 
 def dict_builder(topics, papers):
-
+    # creating the dictionary with all the data needed
     papers_data = list(papers)
     papers_dic = dict()
     topic_dic = collections.defaultdict(dict)
@@ -52,6 +52,7 @@ def dict_builder(topics, papers):
 def plotter(topic_dic, topics_list):
     chosen_id = topics_list.split(",")
     plt.style.use("seaborn-dark")
+
     for dic in topic_dic:
         if dic in chosen_id:
             sorted_dic = sorted(topic_dic[dic].items())
@@ -69,6 +70,7 @@ def plotter(topic_dic, topics_list):
 
 
 def topic_lister(topics_json):
+    # function that handles the "list" command
     with open(topics_json) as file:
         topics_data = json.load(file)
 
