@@ -20,6 +20,29 @@ from utils import (
 BARRIER_PLACEHOLDER = 'XXX'
 
 
+class AppendMultipleFilesAction(argparse.Action):
+    def __init__(self, option_strings, dest, nargs=None, **kwargs):
+        if nargs is not None:
+            if ((isinstance(nargs, str) and nargs in ['*', '?'])
+                    or (isinstance(nargs, int) and nargs < 0)):
+                raise ValueError(f'nargs = {nargs} is not allowed')
+
+        super().__init__(option_strings, dest, nargs, **kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        files = getattr(namespace, self.dest, None)
+        if files is None:
+            files = set()
+
+        if not isinstance(values, list):
+            values = [values]
+
+        for v in values:
+            files.add(v)
+
+        setattr(namespace, self.dest, files)
+
+
 def init_argparser():
     """Initialize the command line parser."""
     parser = argparse.ArgumentParser()
@@ -28,6 +51,8 @@ def init_argparser():
     parser.add_argument('--output', '-o', metavar='FILENAME',
                         help='output file name')
     parser.add_argument('--stop-words', '-s', metavar='FILENAME', dest='stop_words_file',
+    parser.add_argument('--stop-words', '-s', action=AppendMultipleFilesAction,
+                        nargs='+', metavar='FILENAME', dest='stop_words_file',
                         help='stop words file name')
     return parser
 
@@ -94,12 +119,13 @@ def main():
     debug_logger.debug("Dataset loaded {} items".format(len(dataset[target_column])))
     #logging.debug(dataset.head())
 
+    stop_words = set()
+
     if args.stop_words_file is not None:
-        stop_words = load_stop_words(args.stop_words_file, language='english')
-        debug_logger.debug("Stopwords loaded and updated")
-    else:
-        stop_words = []
-    # print(stop_words)
+        for sfile in args.stop_words_file:
+            stop_words |= load_stop_words(sfile)
+
+        debug_logger.debug('Stopwords loaded and updated')
 
     corpus = process_corpus(dataset[target_column], stop_words)
     debug_logger.debug("Corpus processed")
