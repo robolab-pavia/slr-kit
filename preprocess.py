@@ -77,8 +77,6 @@ def preprocess_item(item, stop_words):
     text = re.sub('(\\d|\\W)+', ' ', text)
     # Convert to list from string
     text = text.split()
-    # Stemming
-    ps=PorterStemmer()
     # Lemmatisation
     lem = WordNetLemmatizer()
     # text = [lem.lemmatize(word) for word in text if not word in stop_words]
@@ -126,10 +124,6 @@ def main():
     corpus = process_corpus(dataset[target_column], stop_words)
     debug_logger.debug('Corpus processed')
     dataset['abstract_lem'] = corpus
-
-    # View corpus item
-    #print(corpus[0])
-    #print(dataset.iloc[0])
 
     # write to output, either a file or stdout (default)
     if args.output == '-':
