@@ -58,13 +58,10 @@ def init_argparser():
 
 
 def load_stop_words(input_file, language='english'):
-    stop_words_list = []
     with open(input_file, 'r', encoding='utf-8') as f:
-        stop_words_list = f.read().split('\n')
-    stop_words_list = [w for w in stop_words_list if w != '']
-    stop_words_list = [w for w in stop_words_list if w[0] != '#']
-    # Creating a list of stop words and adding custom stopwords
-    # stop_words = set(stopwords.words("english"))
+        stop_words_list = f.read().splitlines()
+
+    stop_words_list = [w for w in stop_words_list if w != '' and w[0] != '#']
     # Creating a list of custom stopwords
     return set(stop_words_list)
 
