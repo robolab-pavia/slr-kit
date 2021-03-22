@@ -1,4 +1,4 @@
-import pandas
+import pandas as pd
 # Libraries for text preprocessing
 import re
 import nltk
@@ -113,7 +113,7 @@ def main():
     # TODO: write log string with values of the parameters used in the execution
 
     # load the dataset
-    dataset = pandas.read_csv(args.datafile, delimiter='\t', encoding='utf-8')
+    dataset = pd.read_csv(args.datafile, delimiter='\t', encoding='utf-8')
     dataset.fillna('', inplace=True)
     assert_column(args.datafile, dataset, target_column)
     debug_logger.debug("Dataset loaded {} items".format(len(dataset[target_column])))
