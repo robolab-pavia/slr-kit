@@ -48,9 +48,9 @@ def init_argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument('datafile', action='store', type=str,
                         help="input CSV data file")
-    parser.add_argument('--output', '-o', metavar='FILENAME',
-                        help='output file name')
-    parser.add_argument('--stop-words', '-s', metavar='FILENAME', dest='stop_words_file',
+    parser.add_argument('--output', '-o', metavar='FILENAME', default='-',
+                        help='output file name. If omitted or %(default)s '
+                             'stdout is used')
     parser.add_argument('--stop-words', '-s', action=AppendMultipleFilesAction,
                         nargs='+', metavar='FILENAME', dest='stop_words_file',
                         help='stop words file name')
@@ -135,9 +135,12 @@ def main():
     #print(dataset.iloc[0])
 
     # write to output, either a file or stdout (default)
-    output_file = open(args.output, 'w',
-                       encoding='utf-8') if args.output is not None else sys.stdout
-    export_csv = dataset.to_csv(output_file, index=None, header=True, sep='\t')
+    if args.output == '-':
+        output_file = sys.stdout
+    else:
+        output_file = open(args.output, 'w', encoding='utf-8')
+
+    dataset.to_csv(output_file, index=None, header=True, sep='\t')
 
 
 if __name__ == '__main__':
