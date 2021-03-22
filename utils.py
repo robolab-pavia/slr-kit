@@ -44,26 +44,30 @@ def load_dtj(infile):
     return dtj
 
 
-def assert_column(infile, dataframe, column_name):
+def assert_column(infile, dataframe, column_names):
     """
-    Check a datafile for the presence of a column.
+    Check a datafile for the presence of columns.
 
-    Many scripts require that a specific column is present
-    in the datafile under processing. This function can be
-    to make sure that the script does not hang due to the
-    absence of the necessary column.
+    Many scripts require that some specific column are
+    present in the datafile under processing. This
+    function can be used to make sure that the script
+    does not hang due to the absence of the necessary
+    columns.
 
     :param infile: name of the input file
     :type infile: str
     :param dataframe: dataframe containing the required column
     :type dataframe: pd.DataFrame or dict
-    :param column_name: name of the required column
-    :type column_name: str
+    :param column_names: name of the required column
+    :type column_names: str or list[str]
     """
-    if column_name not in dataframe:
-        print('File "{}" must contain the "{}" column.'.format(infile,
-                                                               column_name))
-        sys.exit(1)
+    if not isinstance(column_names, list):
+        column_names = [column_names]
+
+    for c in column_names:
+        if c not in dataframe:
+            print(f'File "{infile}" must contain the "{c}" column.')
+            sys.exit(1)
 
 
 def setup_logger(name, log_file,
