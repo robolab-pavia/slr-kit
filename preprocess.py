@@ -17,6 +17,8 @@ from utils import (
     assert_column
 )
 
+BARRIER_PLACEHOLDER = 'XXX'
+
 
 def init_argparser():
     """Initialize the command line parser."""
@@ -63,7 +65,7 @@ def preprocess_item(item, stop_words):
         if not word in stop_words:
             text2.append(lem.lemmatize(word))
         else:
-            text2.append('XXX')
+            text2.append(BARRIER_PLACEHOLDER)
     return text2
 
 
