@@ -6,9 +6,9 @@ def init_argparser():
     parser = argparse.ArgumentParser()
     # arguments needed
     parser.add_argument("first_file", type=str, help="the first json file with the list of topics")
-    parser.add_argument("first_topic", type=str, help="the topic name from the first file")
+    # parser.add_argument("first_topic", type=str, help="the topic name from the first file")
     parser.add_argument("second_file", type=str, help="the second json file with the list of topics")
-    parser.add_argument("second_topic", type=str, help="the topic name from the second file")
+    # parser.add_argument("second_topic", type=str, help="the topic name from the second file")
 
     return parser
 
@@ -43,15 +43,23 @@ def topic_matcher(topic1, topic2):
     return percentage_metric
 
 
+def csv_writer(topics_dict1, topics_dict2):
+
+    for topic1 in topics_dict1:
+        for topic2 in topics_dict2:
+            percentage_metric = topic_matcher(topics_dict1[topic1], topics_dict2[topic2])
+
+            print(topics_dict1[topic1].get("name") + " and " + topics_dict2[topic2].get(
+                "name") + " are " + str(
+                percentage_metric) + " % similar")
+
+
 def main():
     parser = init_argparser()
     args = parser.parse_args()
 
     topics_data1, topics_data2 = json_opener(args.first_file, args.second_file)
-    percentage_metric = topic_matcher(topics_data1[args.first_topic], topics_data2[args.second_topic])
-
-    print(topics_data1[args.first_topic].get("name") + " and " + topics_data2[args.second_topic].get("name") + " are " + str(
-        percentage_metric) + " % similar")
+    csv_writer(topics_data1, topics_data2)
 
 
 if __name__ == "__main__":
