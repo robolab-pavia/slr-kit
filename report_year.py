@@ -50,16 +50,24 @@ def dict_builder(topics, papers):
 
 
 def plotter(topic_dic, topics_list):
-    chosen_id = topics_list.split(",")
     plt.style.use("seaborn-dark")
 
-    for dic in topic_dic:
-        if dic in chosen_id:
+    if topics_list != "all":
+        chosen_id = topics_list.split(",")
+        for dic in topic_dic:
+            if dic in chosen_id:
+                sorted_dic = sorted(topic_dic[dic].items())
+                x, y = zip(*sorted_dic)
+
+                plt.grid(True)
+                plt.plot(x, y, label="topic "+dic)
+    else:
+        for dic in topic_dic:
             sorted_dic = sorted(topic_dic[dic].items())
             x, y = zip(*sorted_dic)
 
             plt.grid(True)
-            plt.plot(x, y, label="topic "+dic)
+            plt.plot(x, y, label="topic " + dic)
 
     plt.legend()
     plt.title("topics yearly graph ")
