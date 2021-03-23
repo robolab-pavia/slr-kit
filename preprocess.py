@@ -66,7 +66,7 @@ def load_stop_words(input_file, language='english'):
     return set(stop_words_list)
 
 
-def preprocess_item(item, stop_words):
+def preprocess_item(item, barrier_words):
     # Remove punctuations
     text = re.sub('[^a-zA-Z]', ' ', item)
     # Convert to lowercase
