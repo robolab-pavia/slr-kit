@@ -1,10 +1,12 @@
+import abc
 import argparse
 import logging
 import re
 import sys
+
 from itertools import repeat
 from multiprocessing import Pool
-from typing import Generator
+from typing import Generator, Tuple
 from timeit import default_timer as timer
 
 import pandas as pd
@@ -19,6 +21,12 @@ PHYSICAL_CPUS = cpu_count(logical=False)
 
 BARRIER_PLACEHOLDER = 'XXX'
 RELEVANT_PREFIX = BARRIER_PLACEHOLDER
+
+
+class Lemmatizer(abc.ABC):
+    @abc.abstractmethod
+    def lemmatize(self, text: str) -> Generator[Tuple[str, str], None, None]:
+        pass
 
 
 def init_argparser():
