@@ -29,6 +29,16 @@ class Lemmatizer(abc.ABC):
         pass
 
 
+class EnglishLemmatizer(Lemmatizer):
+    def __init__(self):
+        self._lem = WordNetLemmatizer()
+
+    def lemmatize(self, text: str) -> Generator[Tuple[str, str], None, None]:
+        text = text.split()
+        for word in text:
+            yield (word, self._lem.lemmatize(word))
+
+
 def init_argparser():
     """Initialize the command line parser."""
     parser = argparse.ArgumentParser()
