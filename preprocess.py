@@ -70,6 +70,9 @@ def init_argparser():
                         help='relevant terms file name')
     parser.add_argument('--acronyms', '-a',
                         help='TSV files with the approved acronyms')
+    parser.add_argument('--language', '-l', default='en',
+                        help='language of text. Must be a ISO 639-1 two-letter '
+                             'code')
     return parser
 
 
@@ -265,6 +268,10 @@ def main():
     parser = init_argparser()
     args = parser.parse_args()
 
+    if args.language not in AVAILABLE_LEMMATIZERS:
+        print(f'Language {args.language!r} is not available', file=sys.stderr)
+        sys.exit(1)
+
     debug_logger = setup_logger('debug_logger', 'slr-kit.log',
                                 level=logging.DEBUG)
     name = 'preprocess'
@@ -305,7 +312,8 @@ def main():
 
     start = timer()
     corpus = process_corpus(dataset[target_column], rel_terms, barrier_words,
-                            acronyms, barrier=BARRIER_PLACEHOLDER,
+                            acronyms, language=args.language,
+                            barrier=BARRIER_PLACEHOLDER,
                             relevant_prefix=RELEVANT_PREFIX)
     stop = timer()
     elapsed_time = stop - start
