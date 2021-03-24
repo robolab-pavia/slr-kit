@@ -39,6 +39,20 @@ class EnglishLemmatizer(Lemmatizer):
             yield (word, self._lem.lemmatize(word))
 
 
+AVAILABLE_LEMMATIZERS = {
+    'en': EnglishLemmatizer,
+}
+
+
+def get_lemmatizer(lang='en'):
+    try:
+        return AVAILABLE_LEMMATIZERS[lang]()
+    except KeyError:
+        pass
+
+    raise ValueError(f'language {lang!r} not available')
+
+
 def init_argparser():
     """Initialize the command line parser."""
     parser = argparse.ArgumentParser()
