@@ -6,7 +6,7 @@ import sys
 
 from itertools import repeat
 from multiprocessing import Pool
-from typing import Generator, Tuple
+from typing import Generator, Tuple, Sequence
 from timeit import default_timer as timer
 
 import pandas as pd
@@ -25,7 +25,7 @@ RELEVANT_PREFIX = BARRIER_PLACEHOLDER
 
 class Lemmatizer(abc.ABC):
     @abc.abstractmethod
-    def lemmatize(self, text: str) -> Generator[Tuple[str, str], None, None]:
+    def lemmatize(self, text: Sequence[str]) -> Generator[Tuple[str, str], None, None]:
         pass
 
 
@@ -33,8 +33,7 @@ class EnglishLemmatizer(Lemmatizer):
     def __init__(self):
         self._lem = WordNetLemmatizer()
 
-    def lemmatize(self, text: str) -> Generator[Tuple[str, str], None, None]:
-        text = text.split()
+    def lemmatize(self, text: Sequence[str]) -> Generator[Tuple[str, str], None, None]:
         for word in text:
             yield (word, self._lem.lemmatize(word))
 
@@ -137,7 +136,7 @@ def replace_ngram(text, n_grams, check_subsequent):
     return text2
 
 
-def preprocess_item(item, relevant_terms, barrier_words, acronyms,
+def preprocess_item(item, relevant_terms, barrier_words, acronyms, language='en',
                     barrier=BARRIER_PLACEHOLDER,
                     relevant_prefix=RELEVANT_PREFIX):
     """
@@ -162,6 +161,8 @@ def preprocess_item(item, relevant_terms, barrier_words, acronyms,
     :param acronyms: the acronyms to replace in each document. Must have two
         columns 'Acronym' and 'Extended'
     :type acronyms: pd.DataFrame
+    :param language: code of the language to be used to lemmatize text
+    :type language: str
     :param barrier: placeholder for the barrier words
     :type barrier: str
     :param relevant_prefix: prefix string used when replacing the relevant terms
@@ -169,6 +170,7 @@ def preprocess_item(item, relevant_terms, barrier_words, acronyms,
     :return: the processed text
     :rtype: list[str]
     """
+    lem = get_lemmatizer(language)
     # Remove punctuations
     text = re.sub('[^a-zA-Z]', ' ', item)
     # Convert to lowercase
@@ -177,20 +179,14 @@ def preprocess_item(item, relevant_terms, barrier_words, acronyms,
     text = re.sub('&lt;/?.*?&gt;', ' &lt;&gt; ', text)
     # Remove special characters and digits
     text = re.sub('(\\d|\\W)+', ' ', text)
-    # Convert to list from string
-    text = text.split()
-    # Lemmatisation
-    lem = WordNetLemmatizer()
-    # text = [lem.lemmatize(word) for word in text if not word in stop_words]
-    text2 = []
+    text = text.split(' ')
 
     # replace acronyms
     acro_gen = ((acro['Acronym'], acro['Extended'])
                 for _, acro in acronyms.iterrows())
     text = replace_ngram(text, acro_gen, True)
 
-    for word in text:
-        text2.append(lem.lemmatize(word))
+    text2 = [lem_word for _, lem_word in lem.lemmatize(text)]
 
     # mark relevant terms
     rel_gen = ((f'{relevant_prefix}_{"_".join(rel)}', rel)
@@ -206,7 +202,7 @@ def preprocess_item(item, relevant_terms, barrier_words, acronyms,
 
 
 def process_corpus(dataset, relevant_terms, barrier_words, acronyms,
-                   barrier=BARRIER_PLACEHOLDER,
+                   language='en', barrier=BARRIER_PLACEHOLDER,
                    relevant_prefix=RELEVANT_PREFIX):
     """
     Process a corpus of documents.
@@ -222,6 +218,8 @@ def process_corpus(dataset, relevant_terms, barrier_words, acronyms,
     :param acronyms: the acronyms to replace in each document. Must have two
         columns 'Acronym' and 'Extended'
     :type acronyms: pd.Dataframe
+    :param language: code of the language to be used to lemmatize text
+    :type language: str
     :param barrier: placeholder for the barrier words
     :type barrier: str
     :param relevant_prefix: prefix used to replace the relevant terms
@@ -234,6 +232,7 @@ def process_corpus(dataset, relevant_terms, barrier_words, acronyms,
                                                    repeat(relevant_terms),
                                                    repeat(barrier_words),
                                                    repeat(acronyms),
+                                                   repeat(language),
                                                    repeat(barrier),
                                                    repeat(relevant_prefix)))
     return corpus
@@ -306,7 +305,8 @@ def main():
 
     start = timer()
     corpus = process_corpus(dataset[target_column], rel_terms, barrier_words,
-                            acronyms, BARRIER_PLACEHOLDER, RELEVANT_PREFIX)
+                            acronyms, barrier=BARRIER_PLACEHOLDER,
+                            relevant_prefix=RELEVANT_PREFIX)
     stop = timer()
     elapsed_time = stop - start
     debug_logger.debug('Corpus processed')
