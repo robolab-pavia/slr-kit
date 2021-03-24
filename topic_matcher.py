@@ -1,5 +1,7 @@
 import json
+import csv
 import argparse
+from operator import itemgetter
 
 
 def init_argparser():
@@ -44,14 +46,17 @@ def topic_matcher(topic1, topic2):
 
 
 def csv_writer(topics_dict1, topics_dict2):
-
+    data = []
     for topic1 in topics_dict1:
         for topic2 in topics_dict2:
             percentage_metric = topic_matcher(topics_dict1[topic1], topics_dict2[topic2])
-
-            print(topics_dict1[topic1].get("name") + " and " + topics_dict2[topic2].get(
-                "name") + " are " + str(
-                percentage_metric) + " % similar")
+            row = [topics_dict1[topic1].get("name"), topics_dict2[topic2].get("name"), percentage_metric]
+            data.append(row)
+    data = sorted(data, key=itemgetter(2), reverse=True)
+    with open("matching.csv", "w", newline='') as csv_file:
+        writer = csv.writer(csv_file, delimiter=',')
+        for line in data:
+            writer.writerow(line)
 
 
 def main():
