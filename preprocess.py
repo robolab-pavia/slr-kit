@@ -58,7 +58,7 @@ def init_argparser():
     parser.add_argument('datafile', action='store', type=str,
                         help="input CSV data file")
     parser.add_argument('--output', '-o', metavar='FILENAME', default='-',
-                        help='output file name. If omitted or %(default)s '
+                        help='output file name. If omitted or %(default)r '
                              'stdout is used')
     parser.add_argument('--barrier-words', '-b',
                         action=AppendMultipleFilesAction, nargs='+',
@@ -73,6 +73,9 @@ def init_argparser():
     parser.add_argument('--language', '-l', default='en',
                         help='language of text. Must be a ISO 639-1 two-letter '
                              'code')
+    parser.add_argument('--column', '-c', default='abstract',
+                        help='Column in datafile to process. '
+                             'If omitted %(default)r is used.')
     return parser
 
 
@@ -264,7 +267,6 @@ def load_relevant_terms(input_file):
 
 
 def main():
-    target_column = 'abstract'
     parser = init_argparser()
     args = parser.parse_args()
 
@@ -272,6 +274,7 @@ def main():
         print(f'Language {args.language!r} is not available', file=sys.stderr)
         sys.exit(1)
 
+    target_column = args.column
     debug_logger = setup_logger('debug_logger', 'slr-kit.log',
                                 level=logging.DEBUG)
     name = 'preprocess'
@@ -318,7 +321,8 @@ def main():
     stop = timer()
     elapsed_time = stop - start
     debug_logger.debug('Corpus processed')
-    dataset['abstract_lem'] = corpus
+    lemmatized_col = f'{target_column}_lem'
+    dataset[lemmatized_col] = corpus
 
     # write to output, either a file or stdout (default)
     if args.output == '-':
