@@ -50,7 +50,13 @@ def csv_writer(topics_dict1, topics_dict2):
     for topic1 in topics_dict1:
         for topic2 in topics_dict2:
             percentage_metric = topic_matcher(topics_dict1[topic1], topics_dict2[topic2])
-            row = [topics_dict1[topic1].get("name"), topics_dict2[topic2].get("name"), percentage_metric]
+            topic1_words = ""
+            topic2_words = ""
+            for word1 in list(topics_dict1.get(topic1).get("terms_probability"))[:5]:
+                topic1_words += word1 + " "
+            for word2 in list(topics_dict2.get(topic2).get("terms_probability"))[:5]:
+                topic2_words += word2 + " "
+            row = [topics_dict1[topic1].get("name"), topics_dict2[topic2].get("name"), percentage_metric, topic1_words, topic2_words]
             data.append(row)
     data = sorted(data, key=itemgetter(2), reverse=True)
     with open("matching.csv", "w", newline='') as csv_file:
