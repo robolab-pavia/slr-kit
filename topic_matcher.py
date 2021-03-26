@@ -2,6 +2,7 @@ import json
 import csv
 import argparse
 from operator import itemgetter
+import os.path
 
 
 def init_argparser():
@@ -11,6 +12,13 @@ def init_argparser():
     parser.add_argument("second_file", type=str, help="the second json file with the list of topics")
 
     return parser
+
+
+def is_valid_file(parser, arg):
+    if not os.path.exists(arg):
+        parser.error("The file %s does not exist!" % arg)
+    else:
+        return True
 
 
 def json_opener(path1, path2):
@@ -83,8 +91,9 @@ def main():
     parser = init_argparser()
     args = parser.parse_args()
 
-    topics_data1, topics_data2 = json_opener(args.first_file, args.second_file)
-    csv_writer(topics_data1, topics_data2)
+    if is_valid_file(parser, args.first_file) and is_valid_file(parser, args.second_file):
+        topics_data1, topics_data2 = json_opener(args.first_file, args.second_file)
+        csv_writer(topics_data1, topics_data2)
 
 
 if __name__ == "__main__":
