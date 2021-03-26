@@ -42,9 +42,9 @@ def is_valid_list(plot_list, topics_dict):
         except:
             print("Error: Please insert a valid list of topics ids separated by a comma, e.g. 1,3,10 or 'all' ")
         else:
-            try:
-                all(i < max_id for i in split_list)
-            except:
+            if all(int(i) < max_id for i in split_list):
+                return True
+            else:
                 print("Error: The maximum topic id is: ", max_id-1)
 
 
