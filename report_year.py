@@ -3,6 +3,7 @@ import csv
 import collections
 import argparse
 from matplotlib import pyplot as plt
+import os.path
 
 
 def init_argparser():
@@ -20,6 +21,14 @@ def init_argparser():
     parser_plot.add_argument("papers_csv", type=str, help="the csv file with the papers data")
 
     return parser
+
+
+def is_valid_file(parser, arg):
+    if not os.path.exists(arg):
+        parser.error("The file %s does not exist!" % arg)
+        return False
+    else:
+        return True
 
 
 def file_reader(json_path, csv_path):
@@ -99,11 +108,13 @@ def main():
     args = parser.parse_args()
 
     if "topics_list" in args:
-        topics_data, papers = file_reader(args.papers_json, args.papers_csv)
-        topics_dict = dict_builder(topics_data, papers)
-        plotter(topics_dict, args.topics_list)
+        if is_valid_file(parser, args.papers_json) and is_valid_file(parser, args.papers_csv):
+            topics_data, papers = file_reader(args.papers_json, args.papers_csv)
+            topics_dict = dict_builder(topics_data, papers)
+            plotter(topics_dict, args.topics_list)
     elif "topics_json" in args:
-        topic_lister(args.topics_json)
+        if is_valid_file(parser, args.topics_json):
+            topic_lister(args.topics_json)
 
 
 if __name__ == "__main__":
