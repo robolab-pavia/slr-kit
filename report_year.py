@@ -25,10 +25,27 @@ def init_argparser():
 
 def is_valid_file(parser, arg):
     if not os.path.exists(arg):
-        parser.error("The file %s does not exist!" % arg)
+        parser.error("Error: The file %s does not exist!" % arg)
         return False
     else:
         return True
+
+
+def is_valid_list(plot_list, topics_dict):
+    if plot_list == "all":
+        return True
+    else:
+        split_list = plot_list.split(",")
+        max_id = len(topics_dict)
+        try:
+            [int(x.strip()) for x in split_list]
+        except:
+            print("Error: Please insert a valid list of topics ids separated by a comma, e.g. 1,3,10 or 'all' ")
+        else:
+            try:
+                all(i < max_id for i in split_list)
+            except:
+                print("Error: The maximum topic id is: ", max_id-1)
 
 
 def file_reader(json_path, csv_path):
@@ -44,6 +61,7 @@ def dict_builder(topics, papers):
     papers_data = list(papers)
     papers_dic = dict()
     topic_dic = collections.defaultdict(dict)
+
     for paper in papers_data[1:]:
         key = int(paper[0])
         data = int(paper[2])
@@ -111,7 +129,8 @@ def main():
         if is_valid_file(parser, args.papers_json) and is_valid_file(parser, args.papers_csv):
             topics_data, papers = file_reader(args.papers_json, args.papers_csv)
             topics_dict = dict_builder(topics_data, papers)
-            plotter(topics_dict, args.topics_list)
+            if is_valid_list(args.topics_list, topics_dict):
+                plotter(topics_dict, args.topics_list)
     elif "topics_json" in args:
         if is_valid_file(parser, args.topics_json):
             topic_lister(args.topics_json)
