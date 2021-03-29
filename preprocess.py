@@ -10,6 +10,7 @@ from typing import Generator, Tuple, Sequence
 from timeit import default_timer as timer
 
 import pandas as pd
+import treetaggerwrapper as ttagger
 from nltk.stem.wordnet import WordNetLemmatizer
 from psutil import cpu_count
 
@@ -38,8 +39,23 @@ class EnglishLemmatizer(Lemmatizer):
             yield (word, self._lem.lemmatize(word))
 
 
+class ItalianLemmatizer(Lemmatizer):
+    def __init__(self, treetagger_dir=None):
+        self._ttagger = ttagger.TreeTagger(TAGLANG='it', TAGDIR=treetagger_dir)
+
+    def lemmatize(self, text: Sequence[str]) -> Generator[Tuple[str, str], None, None]:
+        tags = self._ttagger.tag_text(' '.join(text))
+        for t in tags:
+            sp = t.split('\t')
+            if sp[0].lower() in ['sai'] and sp[2] != 'sapere':
+                yield (sp[0], 'sapere')
+            else:
+                yield (sp[0], sp[2])
+
+
 AVAILABLE_LEMMATIZERS = {
     'en': EnglishLemmatizer,
+    'it': ItalianLemmatizer,
 }
 
 
