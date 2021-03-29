@@ -49,6 +49,8 @@ class ItalianLemmatizer(Lemmatizer):
             sp = t.split('\t')
             if sp[0].lower() in ['sai'] and sp[2] != 'sapere':
                 yield (sp[0], 'sapere')
+            elif sp[2] == 'essere|stare':
+                yield (sp[0], 'stare')
             else:
                 yield (sp[0], sp[2])
 
