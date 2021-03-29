@@ -193,8 +193,8 @@ def preprocess_item(item, relevant_terms, barrier_words, acronyms, language='en'
     :rtype: list[str]
     """
     lem = get_lemmatizer(language)
-    # Remove punctuations
-    text = re.sub('[^a-zA-Z]', ' ', item)
+    # Remove punctuations (but not accented letters)
+    text = re.sub('[^a-zA-ZàèéìòùÀÈÉÌÒÙ]', ' ', item)
     # Convert to lowercase
     text = text.lower()
     # Remove tags
