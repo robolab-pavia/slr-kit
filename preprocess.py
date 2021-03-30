@@ -51,6 +51,10 @@ def init_argparser():
     parser.add_argument('--stop-words', '-s', action=AppendMultipleFilesAction,
                         nargs='+', metavar='FILENAME', dest='stop_words_file',
                         help='stop words file name')
+    parser.add_argument('--relevant-word', '-r', nargs='+', metavar='FILENAME',
+                        dest='relevant_words_file',
+                        action=AppendMultipleFilesAction,
+                        help='relevant words file name')
     return parser
 
 
@@ -99,6 +103,17 @@ def process_corpus(dataset, stop_words):
     return corpus
 
 
+def load_relevant_words(input_file):
+    with open(input_file, 'r', encoding='utf-8') as f:
+        rel_words_list = f.read().splitlines()
+
+    rel_words_list = {tuple(w.split(' '))
+                      for w in rel_words_list
+                      if w != '' and w[0] != '#'}
+
+    return rel_words_list
+
+
 def main():
     target_column = 'abstract'
     parser = init_argparser()
@@ -121,6 +136,13 @@ def main():
             stop_words |= load_stop_words(sfile)
 
         debug_logger.debug('Stopwords loaded and updated')
+
+    rel_words = set()
+    if args.relevant_words_file is not None:
+        for rfile in args.relevant_words_file:
+            rel_words |= load_relevant_words(rfile)
+
+        debug_logger.debug('Relevant words loaded and updated')
 
     corpus = process_corpus(dataset[target_column], stop_words)
     debug_logger.debug('Corpus processed')
