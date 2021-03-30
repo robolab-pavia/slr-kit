@@ -9,6 +9,8 @@ import argparse
 from utils import setup_logger
 
 BARRIER_PLACEHOLDER = 'XXX'
+RELEVANT_PREFIX = BARRIER_PLACEHOLDER
+
 
 def init_argparser():
     """Initialize the command line parser."""
@@ -25,25 +27,34 @@ def init_argparser():
     return parser
 
 
-def get_n_grams(corpus, n_terms=1, min_frequency=5, barrier=None):
-    """Extracts n-grams from the corpus.
+def get_n_grams(corpus, n_terms=1, min_frequency=5, barrier=None,
+                relevant_prefix=None):
+    """
+    Extracts n-grams from the corpus.
 
     The output is a dict of n-grams, wher each dict item key
     is the n-gram and the value its the frequency, sorted by frequency.
     """
     terms = {}
+    if relevant_prefix is None:
+        # no prefix, use something that startswith can't find
+        relevant_prefix = ' '
+
     for doc in corpus:
         doc_list = doc.split(' ')
         for i in range(len(doc_list) - n_terms + 1):
             words = doc_list[i:i+n_terms]
-            # skip the terms that contain a barrier
-            if barrier in words:
+            # skip the terms that contain a barrier or a relevant term
+            if any(word == barrier or word.startswith(relevant_prefix)
+                   for word in words):
                 continue
+
             term = ' '.join(words)
             if term in terms:
                 terms[term] += 1
             else:
                 terms[term] = 1
+
     limited_terms = {k: v for k, v in terms.items() if v >= min_frequency}
     sorted_dict = {k: v for k, v in sorted(limited_terms.items(),
                                            key=lambda item: item[1],
@@ -99,7 +110,8 @@ def main():
     list_of_grams = []
     for n in range(1, n_grams + 1):
         top_terms = get_n_grams(corpus, n_terms=n, min_frequency=min_frequency,
-                                barrier=BARRIER_PLACEHOLDER)
+                                barrier=BARRIER_PLACEHOLDER,
+                                relevant_prefix=RELEVANT_PREFIX)
         list_of_grams.append(top_terms)
 
     if args.output is not None:
