@@ -8,6 +8,7 @@ import logging
 import argparse
 from utils import setup_logger
 
+BARRIER_PLACEHOLDER = 'XXX'
 
 def init_argparser():
     """Initialize the command line parser."""
@@ -98,7 +99,7 @@ def main():
     list_of_grams = []
     for n in range(1, n_grams + 1):
         top_terms = get_n_grams(corpus, n_terms=n, min_frequency=min_frequency,
-                                barrier='XXX')
+                                barrier=BARRIER_PLACEHOLDER)
         list_of_grams.append(top_terms)
 
     if args.output is not None:
