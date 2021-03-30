@@ -15,6 +15,7 @@ from utils import (
 )
 
 BARRIER_PLACEHOLDER = 'XXX'
+RELEVANT_PREFIX = BARRIER_PLACEHOLDER
 
 
 class AppendMultipleFilesAction(argparse.Action):
@@ -67,7 +68,7 @@ def load_stop_words(input_file, language='english'):
     return stop_words_list
 
 
-def preprocess_item(item, barrier_words):
+def preprocess_item(item, relevant_words, barrier_words):
     # Remove punctuations
     text = re.sub('[^a-zA-Z]', ' ', item)
     # Convert to lowercase
@@ -85,7 +86,21 @@ def preprocess_item(item, barrier_words):
     for word in text:
         text2.append(lem.lemmatize(word))
 
-    # TODO: mark relevant words
+    # mark relevant words
+    for rel in relevant_words:
+        end = False
+        index = -1
+        placeholder = f'{RELEVANT_PREFIX}_{"_".join(rel)}'
+        length = len(rel)
+        while not end:
+            try:
+                # index + 1 to skip the previous match
+                index = text2.index(rel[0], index + 1)
+                if tuple(text2[index:index+length]) == rel:
+                    # found!
+                    text2[index:index+length] = [placeholder]
+            except ValueError:
+                end = True
 
     for i, word in enumerate(text2):
         if word in barrier_words:
@@ -94,10 +109,10 @@ def preprocess_item(item, barrier_words):
     return text2
 
 
-def process_corpus(dataset, stop_words):
+def process_corpus(dataset, rel_words, stop_words):
     corpus = []
     for item in dataset:
-        text = preprocess_item(item, stop_words)
+        text = preprocess_item(item, rel_words, stop_words)
         text = ' '.join(text)
         corpus.append(text)
     return corpus
@@ -144,7 +159,7 @@ def main():
 
         debug_logger.debug('Relevant words loaded and updated')
 
-    corpus = process_corpus(dataset[target_column], stop_words)
+    corpus = process_corpus(dataset[target_column], rel_words, stop_words)
     debug_logger.debug('Corpus processed')
     dataset['abstract_lem'] = corpus
 
