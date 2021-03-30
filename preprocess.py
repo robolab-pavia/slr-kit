@@ -2,6 +2,7 @@ import argparse
 import logging
 import re
 import sys
+from timeit import default_timer as timer
 
 import pandas as pd
 # nltk.download('stopwords')
@@ -159,7 +160,10 @@ def main():
 
         debug_logger.debug('Relevant words loaded and updated')
 
+    start = timer()
     corpus = process_corpus(dataset[target_column], rel_words, stop_words)
+    stop = timer()
+    elapsed_time = stop - start
     debug_logger.debug('Corpus processed')
     dataset['abstract_lem'] = corpus
 
@@ -170,6 +174,7 @@ def main():
         output_file = open(args.output, 'w', encoding='utf-8')
 
     dataset.to_csv(output_file, index=None, header=True, sep='\t')
+    print('Elapsed time:', elapsed_time, file=sys.stderr)
 
 
 if __name__ == '__main__':
