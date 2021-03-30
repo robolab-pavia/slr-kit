@@ -82,10 +82,14 @@ def preprocess_item(item, barrier_words):
     # text = [lem.lemmatize(word) for word in text if not word in stop_words]
     text2 = []
     for word in text:
-        if word not in barrier_words:
-            text2.append(lem.lemmatize(word))
-        else:
-            text2.append(BARRIER_PLACEHOLDER)
+        text2.append(lem.lemmatize(word))
+
+    # TODO: mark relevant words
+
+    for i, word in enumerate(text2):
+        if word in barrier_words:
+            text2[i] = BARRIER_PLACEHOLDER
+
     return text2
 
 
