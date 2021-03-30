@@ -5,9 +5,6 @@ import sys
 from timeit import default_timer as timer
 
 import pandas as pd
-# nltk.download('stopwords')
-# from nltk.corpus import stopwords
-# nltk.download('wordnet')
 from nltk.stem.wordnet import WordNetLemmatizer
 
 from utils import (
