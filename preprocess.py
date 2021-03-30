@@ -61,9 +61,9 @@ def load_stop_words(input_file, language='english'):
     with open(input_file, 'r', encoding='utf-8') as f:
         stop_words_list = f.read().splitlines()
 
-    stop_words_list = [w for w in stop_words_list if w != '' and w[0] != '#']
+    stop_words_list = {w for w in stop_words_list if w != '' and w[0] != '#'}
     # Creating a list of custom stopwords
-    return set(stop_words_list)
+    return stop_words_list
 
 
 def preprocess_item(item, barrier_words):
