@@ -1,17 +1,14 @@
-import pandas as pd
-# Libraries for text preprocessing
+import argparse
+import logging
 import re
-import nltk
+import sys
+
+import pandas as pd
 # nltk.download('stopwords')
 # from nltk.corpus import stopwords
-from nltk.stem.porter import PorterStemmer
-from nltk.tokenize import RegexpTokenizer
 # nltk.download('wordnet')
 from nltk.stem.wordnet import WordNetLemmatizer
 
-import sys
-import logging
-import argparse
 from utils import (
     setup_logger,
     assert_column
