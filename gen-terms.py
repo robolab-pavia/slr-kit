@@ -32,8 +32,25 @@ def get_n_grams(corpus, n_terms=1, min_frequency=5, barrier=None,
     """
     Extracts n-grams from the corpus.
 
-    The output is a dict of n-grams, wher each dict item key
+    The output is a dict of n-grams, where each dict item key
     is the n-gram and the value its the frequency, sorted by frequency.
+
+    :param corpus: the text to extract terms from
+    :type corpus: list[str]
+    :param n_terms: maximum length of an n-gram in number of words
+    :type n_terms: int
+    :param min_frequency: min. number of occurrences. n-grams with less than
+        this frequency are discarded
+    :type min_frequency: int
+    :param barrier: placeholder for the barrier word. No n-gram with this
+        placeholder is returned
+    :type barrier: str or None
+    :param relevant_prefix: prefix used to mark the relevant terms. No n-gram
+        containing a word with this prefix is returned
+    :type relevant_prefix: str or None
+    :return: the n-grams as a dict with the n-gram itself as the key and its
+        frequency as the value
+    :rtype: dict[str, int]
     """
     terms = {}
     if relevant_prefix is None:
