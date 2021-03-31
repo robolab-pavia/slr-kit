@@ -18,6 +18,14 @@ RELEVANT_PREFIX = BARRIER_PLACEHOLDER
 
 
 class AppendMultipleFilesAction(argparse.Action):
+    """
+    Action for argparse that collects multiple option arguments as a set
+
+    This can be used to implement a option that can have multiple arguments.
+    The option itself may be given multiple time on the command line.
+    All the arguments are collected in a set of string.
+    """
+
     def __init__(self, option_strings, dest, nargs=None, **kwargs):
         if nargs is not None:
             if ((isinstance(nargs, str) and nargs in ['*', '?'])
@@ -62,6 +70,16 @@ def init_argparser():
 
 
 def load_barrier_words(input_file):
+    """
+    Loads a list of barrier words from a file
+
+    This functions skips all the lines that starts with a '#'.
+
+    :param input_file: file to read
+    :type input_file: str
+    :return: the loaded words as a set of string
+    :rtype: set[str]
+    """
     with open(input_file, 'r', encoding='utf-8') as f:
         stop_words_list = f.read().splitlines()
 
@@ -117,6 +135,35 @@ def replace_ngram(text, n_grams, check_subsequent):
 def preprocess_item(item, relevant_terms, barrier_words, acronyms,
                     barrier=BARRIER_PLACEHOLDER,
                     relevant_prefix=RELEVANT_PREFIX):
+    """
+    Preprocess the text of a document.
+
+    It lemmatizes the text. Then it searches for the relevant terms. Each
+    relevant term found is replaced with a string composed with the
+    relevant_prefix, an '_' and then all the words composing the term separated
+    with '_'.
+    It searches for the acronyms, changing the words composing them with the
+    corresponding abbreviation.
+    It also filters the barrier words changing them with the barrier string as
+    placeholder.
+
+    :param item: the text to process
+    :type item: str
+    :param relevant_terms: the relevant words to search. Each n-gram must be a
+        tuple of strings
+    :type relevant_terms: set[tuple[str]]
+    :param barrier_words: the barrier words to filter
+    :type barrier_words: set[str]
+    :param acronyms: the acronyms to replace in each document. Must have two
+        columns 'Acronym' and 'Extended'
+    :type acronyms: pd.DataFrame
+    :param barrier: placeholder for the barrier words
+    :type barrier: str
+    :param relevant_prefix: prefix string used when replacing the relevant terms
+    :type relevant_prefix: str
+    :return: the processed text
+    :rtype: list[str]
+    """
     # Remove punctuations
     text = re.sub('[^a-zA-Z]', ' ', item)
     # Convert to lowercase
@@ -155,6 +202,27 @@ def preprocess_item(item, relevant_terms, barrier_words, acronyms,
 def process_corpus(dataset, relevant_terms, barrier_words, acronyms,
                    barrier=BARRIER_PLACEHOLDER,
                    relevant_prefix=RELEVANT_PREFIX):
+    """
+    Process a corpus of documents.
+
+    Each documents is processed using the preprocess_item function
+
+    :param dataset: the corpus of documents
+    :type dataset: pd.Sequence
+    :param relevant_terms: the related terms to search in each document
+    :type relevant_terms: set[tuple[str]]
+    :param barrier_words: the barrier words to filter in each document
+    :type barrier_words: set[str]
+    :param acronyms: the acronyms to replace in each document. Must have two
+        columns 'Acronym' and 'Extended'
+    :type acronyms: pd.Dataframe
+    :param barrier: placeholder for the barrier words
+    :type barrier: str
+    :param relevant_prefix: prefix used to replace the relevant terms
+    :type relevant_prefix: str
+    :return: the corpus processed
+    :rtype: list[str]
+    """
     corpus = []
     for item in dataset:
         text = preprocess_item(item, relevant_terms, barrier_words, acronyms,
@@ -166,6 +234,17 @@ def process_corpus(dataset, relevant_terms, barrier_words, acronyms,
 
 
 def load_relevant_terms(input_file):
+    """
+    Loads a list of relevant terms from a file
+
+    This functions skips all the lines that starts with a '#'.
+    Each term is split in a tuple of strings
+
+    :param input_file: file to read
+    :type input_file: str
+    :return: the loaded terms as a set of tuples of strings
+    :rtype: set[tuple[str]]
+    """
     with open(input_file, 'r', encoding='utf-8') as f:
         rel_words_list = f.read().splitlines()
 
