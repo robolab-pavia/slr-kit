@@ -56,6 +56,8 @@ def init_argparser():
                         dest='relevant_terms_file',
                         action=AppendMultipleFilesAction,
                         help='relevant terms file name')
+    parser.add_argument('--acronyms', '-a',
+                        help='TSV files with the approved acronyms')
     return parser
 
 
@@ -190,6 +192,18 @@ def main():
             barrier_words |= load_barrier_words(sfile)
 
         debug_logger.debug('Barrier words loaded and updated')
+
+    if args.acronyms is not None:
+        conv = {
+            'Acronym': lambda s: s.lower(),
+            'Extended': lambda s: tuple(s.lower().split(' ')),
+        }
+        acronyms = pd.read_csv(args.acronyms, delimiter='\t', encoding='utf-8',
+                               converters=conv)
+        assert_column(args.acronyms, acronyms, ['Acronym', 'Extended'])
+        debug_logger.debug('Acronyms loaded and updated')
+    else:
+        acronyms = pd.DataFrame()
 
     rel_terms = set()
     if args.relevant_terms_file is not None:
