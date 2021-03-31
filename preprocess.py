@@ -47,9 +47,10 @@ def init_argparser():
     parser.add_argument('--output', '-o', metavar='FILENAME', default='-',
                         help='output file name. If omitted or %(default)s '
                              'stdout is used')
-    parser.add_argument('--stop-words', '-s', action=AppendMultipleFilesAction,
-                        nargs='+', metavar='FILENAME', dest='stop_words_file',
-                        help='stop words file name')
+    parser.add_argument('--barrier-words', '-b',
+                        action=AppendMultipleFilesAction, nargs='+',
+                        metavar='FILENAME', dest='barrier_words_file',
+                        help='barrier words file name')
     parser.add_argument('--relevant-word', '-r', nargs='+', metavar='FILENAME',
                         dest='relevant_words_file',
                         action=AppendMultipleFilesAction,
@@ -57,7 +58,7 @@ def init_argparser():
     return parser
 
 
-def load_stop_words(input_file, language='english'):
+def load_barrier_words(input_file):
     with open(input_file, 'r', encoding='utf-8') as f:
         stop_words_list = f.read().splitlines()
 
@@ -107,12 +108,13 @@ def preprocess_item(item, relevant_words, barrier_words):
     return text2
 
 
-def process_corpus(dataset, rel_words, stop_words):
+def process_corpus(dataset, rel_words, barrier_words):
     corpus = []
     for item in dataset:
-        text = preprocess_item(item, rel_words, stop_words)
+        text = preprocess_item(item, rel_words, barrier_words)
         text = ' '.join(text)
         corpus.append(text)
+
     return corpus
 
 
@@ -142,13 +144,13 @@ def main():
     assert_column(args.datafile, dataset, target_column)
     debug_logger.debug('Dataset loaded {} items'.format(len(dataset[target_column])))
 
-    stop_words = set()
+    barrier_words = set()
 
-    if args.stop_words_file is not None:
-        for sfile in args.stop_words_file:
-            stop_words |= load_stop_words(sfile)
+    if args.barrier_words_file is not None:
+        for sfile in args.barrier_words_file:
+            barrier_words |= load_barrier_words(sfile)
 
-        debug_logger.debug('Stopwords loaded and updated')
+        debug_logger.debug('Barrier words loaded and updated')
 
     rel_words = set()
     if args.relevant_words_file is not None:
@@ -158,7 +160,7 @@ def main():
         debug_logger.debug('Relevant words loaded and updated')
 
     start = timer()
-    corpus = process_corpus(dataset[target_column], rel_words, stop_words)
+    corpus = process_corpus(dataset[target_column], rel_words, barrier_words)
     stop = timer()
     elapsed_time = stop - start
     debug_logger.debug('Corpus processed')
