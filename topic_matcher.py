@@ -10,6 +10,7 @@ def init_argparser():
     # arguments needed
     parser.add_argument("first_file", type=str, help="the first json file with the list of topics")
     parser.add_argument("second_file", type=str, help="the second json file with the list of topics")
+    parser.add_argument('output', type=str, help='output file name in CSV format')
 
     return parser
 
@@ -53,7 +54,7 @@ def topic_matcher(topic1, topic2):
     return percentage_metric
 
 
-def csv_writer(topics_dict1, topics_dict2):
+def csv_writer(topics_dict1, topics_dict2, filename):
     data = []
 
     for topic1 in topics_dict1:
@@ -75,7 +76,7 @@ def csv_writer(topics_dict1, topics_dict2):
 
     data = sorted(data, key=itemgetter(4), reverse=True)
 
-    with open("matching.csv", "w", newline='') as csv_file:
+    with open(filename, "w", newline='') as csv_file:
         writer = csv.writer(csv_file, delimiter=',')
         writer.writerow(["id A",
                          "id B",
@@ -94,7 +95,7 @@ def main():
 
     if is_valid_file(parser, args.first_file) and is_valid_file(parser, args.second_file):
         topics_data1, topics_data2 = json_opener(args.first_file, args.second_file)
-        csv_writer(topics_data1, topics_data2)
+        csv_writer(topics_data1, topics_data2, args.output)
 
 
 if __name__ == "__main__":
