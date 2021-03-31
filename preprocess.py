@@ -2,16 +2,21 @@ import argparse
 import logging
 import re
 import sys
+from itertools import repeat
+from multiprocessing import Pool
 from typing import Generator
 from timeit import default_timer as timer
 
 import pandas as pd
 from nltk.stem.wordnet import WordNetLemmatizer
+from psutil import cpu_count
 
 from utils import (
     setup_logger,
     assert_column
 )
+
+PHYSICAL_CPUS = cpu_count(logical=False)
 
 BARRIER_PLACEHOLDER = 'XXX'
 RELEVANT_PREFIX = BARRIER_PLACEHOLDER
@@ -196,6 +201,7 @@ def preprocess_item(item, relevant_terms, barrier_words, acronyms,
         if word in barrier_words:
             text2[i] = barrier
 
+    text2 = ' '.join(text2)
     return text2
 
 
@@ -223,13 +229,13 @@ def process_corpus(dataset, relevant_terms, barrier_words, acronyms,
     :return: the corpus processed
     :rtype: list[str]
     """
-    corpus = []
-    for item in dataset:
-        text = preprocess_item(item, relevant_terms, barrier_words, acronyms,
-                               barrier, relevant_prefix)
-        text = ' '.join(text)
-        corpus.append(text)
-
+    with Pool(processes=PHYSICAL_CPUS) as pool:
+        corpus = pool.starmap(preprocess_item, zip(dataset,
+                                                   repeat(relevant_terms),
+                                                   repeat(barrier_words),
+                                                   repeat(acronyms),
+                                                   repeat(barrier),
+                                                   repeat(relevant_prefix)))
     return corpus
 
 
