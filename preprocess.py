@@ -112,7 +112,9 @@ def replace_ngram(text, n_grams, check_subsequent):
     return text2
 
 
-def preprocess_item(item, relevant_terms, barrier_words):
+def preprocess_item(item, relevant_terms, barrier_words,
+                    barrier=BARRIER_PLACEHOLDER,
+                    relevant_prefix=RELEVANT_PREFIX):
     # Remove punctuations
     text = re.sub('[^a-zA-Z]', ' ', item)
     # Convert to lowercase
@@ -131,21 +133,24 @@ def preprocess_item(item, relevant_terms, barrier_words):
         text2.append(lem.lemmatize(word))
 
     # mark relevant terms
-    rel_gen = ((f'{RELEVANT_PREFIX}_{"_".join(rel)}', rel)
+    rel_gen = ((f'{relevant_prefix}_{"_".join(rel)}', rel)
                for rel in relevant_terms)
     text2 = replace_ngram(text2, rel_gen, False)
 
     for i, word in enumerate(text2):
         if word in barrier_words:
-            text2[i] = BARRIER_PLACEHOLDER
+            text2[i] = barrier
 
     return text2
 
 
-def process_corpus(dataset, relevant_terms, barrier_words):
+def process_corpus(dataset, relevant_terms, barrier_words,
+                   barrier=BARRIER_PLACEHOLDER,
+                   relevant_prefix=RELEVANT_PREFIX):
     corpus = []
     for item in dataset:
-        text = preprocess_item(item, relevant_terms, barrier_words)
+        text = preprocess_item(item, relevant_terms, barrier_words,
+                               barrier, relevant_prefix)
         text = ' '.join(text)
         corpus.append(text)
 
@@ -194,7 +199,8 @@ def main():
         debug_logger.debug('Relevant words loaded and updated')
 
     start = timer()
-    corpus = process_corpus(dataset[target_column], rel_terms, barrier_words)
+    corpus = process_corpus(dataset[target_column], rel_terms, barrier_words,
+                            BARRIER_PLACEHOLDER, RELEVANT_PREFIX)
     stop = timer()
     elapsed_time = stop - start
     debug_logger.debug('Corpus processed')
