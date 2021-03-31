@@ -51,10 +51,10 @@ def init_argparser():
                         action=AppendMultipleFilesAction, nargs='+',
                         metavar='FILENAME', dest='barrier_words_file',
                         help='barrier words file name')
-    parser.add_argument('--relevant-word', '-r', nargs='+', metavar='FILENAME',
-                        dest='relevant_words_file',
+    parser.add_argument('--relevant-term', '-r', nargs='+', metavar='FILENAME',
+                        dest='relevant_terms_file',
                         action=AppendMultipleFilesAction,
-                        help='relevant words file name')
+                        help='relevant terms file name')
     return parser
 
 
@@ -67,7 +67,7 @@ def load_barrier_words(input_file):
     return stop_words_list
 
 
-def preprocess_item(item, relevant_words, barrier_words):
+def preprocess_item(item, relevant_terms, barrier_words):
     # Remove punctuations
     text = re.sub('[^a-zA-Z]', ' ', item)
     # Convert to lowercase
@@ -85,8 +85,8 @@ def preprocess_item(item, relevant_words, barrier_words):
     for word in text:
         text2.append(lem.lemmatize(word))
 
-    # mark relevant words
-    for rel in relevant_words:
+    # mark relevant terms
+    for rel in relevant_terms:
         end = False
         index = -1
         placeholder = f'{RELEVANT_PREFIX}_{"_".join(rel)}'
@@ -95,9 +95,9 @@ def preprocess_item(item, relevant_words, barrier_words):
             try:
                 # index + 1 to skip the previous match
                 index = text2.index(rel[0], index + 1)
-                if tuple(text2[index:index+length]) == rel:
+                if tuple(text2[index:index + length]) == rel:
                     # found!
-                    text2[index:index+length] = [placeholder]
+                    text2[index:index + length] = [placeholder]
             except ValueError:
                 end = True
 
@@ -108,17 +108,17 @@ def preprocess_item(item, relevant_words, barrier_words):
     return text2
 
 
-def process_corpus(dataset, rel_words, barrier_words):
+def process_corpus(dataset, relevant_terms, barrier_words):
     corpus = []
     for item in dataset:
-        text = preprocess_item(item, rel_words, barrier_words)
+        text = preprocess_item(item, relevant_terms, barrier_words)
         text = ' '.join(text)
         corpus.append(text)
 
     return corpus
 
 
-def load_relevant_words(input_file):
+def load_relevant_terms(input_file):
     with open(input_file, 'r', encoding='utf-8') as f:
         rel_words_list = f.read().splitlines()
 
@@ -152,15 +152,15 @@ def main():
 
         debug_logger.debug('Barrier words loaded and updated')
 
-    rel_words = set()
-    if args.relevant_words_file is not None:
-        for rfile in args.relevant_words_file:
-            rel_words |= load_relevant_words(rfile)
+    rel_terms = set()
+    if args.relevant_terms_file is not None:
+        for rfile in args.relevant_terms_file:
+            rel_terms = load_relevant_terms(rfile)
 
         debug_logger.debug('Relevant words loaded and updated')
 
     start = timer()
-    corpus = process_corpus(dataset[target_column], rel_words, barrier_words)
+    corpus = process_corpus(dataset[target_column], rel_terms, barrier_words)
     stop = timer()
     elapsed_time = stop - start
     debug_logger.debug('Corpus processed')
