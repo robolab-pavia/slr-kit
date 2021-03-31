@@ -305,7 +305,7 @@ evaluate_clusters.py pckmeans_clusters.csv ground_truth.json
 ### Example of usage
 
 ```
-topic_matcher.py energy1_terms-topics.json energy2_terms-topics.json
+topic_matcher.py energy1_terms-topics.json energy2_terms-topics.json > matching.csv
 ```
 
 ## `report_year.py`
