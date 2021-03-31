@@ -114,7 +114,7 @@ def replace_ngram(text, n_grams, check_subsequent):
     return text2
 
 
-def preprocess_item(item, relevant_terms, barrier_words,
+def preprocess_item(item, relevant_terms, barrier_words, acronyms,
                     barrier=BARRIER_PLACEHOLDER,
                     relevant_prefix=RELEVANT_PREFIX):
     # Remove punctuations
@@ -131,6 +131,12 @@ def preprocess_item(item, relevant_terms, barrier_words,
     lem = WordNetLemmatizer()
     # text = [lem.lemmatize(word) for word in text if not word in stop_words]
     text2 = []
+
+    # replace acronyms
+    acro_gen = ((acro['Acronym'], acro['Extended'])
+                for _, acro in acronyms.iterrows())
+    text = replace_ngram(text, acro_gen, True)
+
     for word in text:
         text2.append(lem.lemmatize(word))
 
@@ -146,12 +152,12 @@ def preprocess_item(item, relevant_terms, barrier_words,
     return text2
 
 
-def process_corpus(dataset, relevant_terms, barrier_words,
+def process_corpus(dataset, relevant_terms, barrier_words, acronyms,
                    barrier=BARRIER_PLACEHOLDER,
                    relevant_prefix=RELEVANT_PREFIX):
     corpus = []
     for item in dataset:
-        text = preprocess_item(item, relevant_terms, barrier_words,
+        text = preprocess_item(item, relevant_terms, barrier_words, acronyms,
                                barrier, relevant_prefix)
         text = ' '.join(text)
         corpus.append(text)
@@ -214,7 +220,7 @@ def main():
 
     start = timer()
     corpus = process_corpus(dataset[target_column], rel_terms, barrier_words,
-                            BARRIER_PLACEHOLDER, RELEVANT_PREFIX)
+                            acronyms, BARRIER_PLACEHOLDER, RELEVANT_PREFIX)
     stop = timer()
     elapsed_time = stop - start
     debug_logger.debug('Corpus processed')
