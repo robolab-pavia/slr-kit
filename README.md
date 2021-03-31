@@ -295,3 +295,28 @@ parse_pairings.py manual_pairings.txt > ground_truth.json
 ```
 evaluate_clusters.py pckmeans_clusters.csv ground_truth.json
 ```
+
+## `topic_matcher.py`
+
+- ACTION: Analyze similarity between every pair of topics from 2 json files listing the list of topics
+- INPUT: 2 Json files containing list of topics with relative words
+- OUTPUT: CSV file containing list of topics pairs with similarity metric in decreasing order
+
+### Example of usage
+
+```
+topic_matcher.py energy1_terms-topics.json energy2_terms-topics.json
+```
+
+## `report_year.py`
+
+- ACTION: Analyse the yearly appearance of the chosen topics OR lists the topics with their most significant keywords from a chosen Json file
+- INPUT: Respectively: A Json file listing every paper with its relatives topics and a csv file with data of every paper OR json file with list of topics
+- OUTPUT: Respectively: A graph for the chosen topics OR a list of the topics with their most significant keywords
+
+### Example of usage
+
+```
+report_year.py plot 1,2,5,39 energy_docs-topics.json energy_preproc.csv
+report_year.py list energy_terms-topics.json
+```
