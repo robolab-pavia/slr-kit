@@ -2,6 +2,7 @@ import argparse
 import logging
 import re
 import sys
+from typing import Generator
 from timeit import default_timer as timer
 
 import pandas as pd
@@ -67,6 +68,50 @@ def load_barrier_words(input_file):
     return stop_words_list
 
 
+def replace_ngram(text, n_grams, check_subsequent):
+    """
+    Replace the given n-grams with a placeholder in the specified text
+
+    The n-grams and their placeholder are taken from the generator n_grams, that
+    must be a generator that yields a tuple (placeholder, n-gram). Each n-gram
+    must be a tuple of strings.
+    The function can also check if the toke immediately after the replaced
+    n-gram is equal to the placeholder to remove it. This is useful for acronyms
+    because, usually the abbreviation immediately follows the extended acronym.
+
+    :param text: the text to search
+    :type text: list[str]
+    :param n_grams: generator that yields n-grams and their placeholder
+    :type n_grams: Generator[tuple[str, tuple[str]], Any, None]
+    :param check_subsequent: if True, check the token immediately after the
+        found n-gram. If it is equal to the placeholder, this token is removed.
+    :return: the transformed text
+    :rtype: list[str]
+    """
+    text2 = list(text)
+    for placeholder, ngram in n_grams:
+        end = False
+        index = -1
+        length = len(ngram)
+        while not end:
+            try:
+                # index + 1 to skip the previous match
+                index = text2.index(ngram[0], index + 1)
+                if tuple(text2[index:index + length]) == ngram:
+                    # found!
+                    text2[index:index + length] = [placeholder]
+                    try:
+                        if check_subsequent and text2[index + 1] == placeholder:
+                            del text2[index + 1]
+                    except IndexError:
+                        # reached the end of the list: stop the loop
+                        end = True
+            except ValueError:
+                end = True
+
+    return text2
+
+
 def preprocess_item(item, relevant_terms, barrier_words):
     # Remove punctuations
     text = re.sub('[^a-zA-Z]', ' ', item)
@@ -86,20 +131,9 @@ def preprocess_item(item, relevant_terms, barrier_words):
         text2.append(lem.lemmatize(word))
 
     # mark relevant terms
-    for rel in relevant_terms:
-        end = False
-        index = -1
-        placeholder = f'{RELEVANT_PREFIX}_{"_".join(rel)}'
-        length = len(rel)
-        while not end:
-            try:
-                # index + 1 to skip the previous match
-                index = text2.index(rel[0], index + 1)
-                if tuple(text2[index:index + length]) == rel:
-                    # found!
-                    text2[index:index + length] = [placeholder]
-            except ValueError:
-                end = True
+    rel_gen = ((f'{RELEVANT_PREFIX}_{"_".join(rel)}', rel)
+               for rel in relevant_terms)
+    text2 = replace_ngram(text2, rel_gen, False)
 
     for i, word in enumerate(text2):
         if word in barrier_words:
