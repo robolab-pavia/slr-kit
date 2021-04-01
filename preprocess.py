@@ -317,6 +317,7 @@ def main():
 
     dataset.to_csv(output_file, index=None, header=True, sep='\t')
     print('Elapsed time:', elapsed_time, file=sys.stderr)
+    debug_logger.info(f'elapsed time: {elapsed_time}')
     log_end(debug_logger, name)
 
 
