@@ -11,10 +11,7 @@ import pandas as pd
 from nltk.stem.wordnet import WordNetLemmatizer
 from psutil import cpu_count
 
-from utils import (
-    setup_logger,
-    assert_column
-)
+from utils import setup_logger, assert_column, log_end, log_start
 
 PHYSICAL_CPUS = cpu_count(logical=False)
 
@@ -268,7 +265,8 @@ def main():
 
     debug_logger = setup_logger('debug_logger', 'slr-kit.log',
                                 level=logging.DEBUG)
-    # TODO: write log string with values of the parameters used in the execution
+    name = 'preprocess'
+    log_start(args, debug_logger, name)
 
     # load the dataset
     dataset = pd.read_csv(args.datafile, delimiter='\t', encoding='utf-8')
@@ -319,6 +317,7 @@ def main():
 
     dataset.to_csv(output_file, index=None, header=True, sep='\t')
     print('Elapsed time:', elapsed_time, file=sys.stderr)
+    log_end(debug_logger, name)
 
 
 if __name__ == '__main__':
