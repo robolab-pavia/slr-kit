@@ -1,3 +1,4 @@
+import argparse
 import logging
 import os
 import string
@@ -178,3 +179,34 @@ def log_start(args, debug_logger, name):
 
 def log_end(debug_logger, name):
     debug_logger.info(f'=== {name} ended ===')
+
+
+class AppendMultipleFilesAction(argparse.Action):
+    """
+    Action for argparse that collects multiple option arguments as a set
+
+    This can be used to implement a option that can have multiple arguments.
+    The option itself may be given multiple time on the command line.
+    All the arguments are collected in a set of string.
+    """
+
+    def __init__(self, option_strings, dest, nargs=None, **kwargs):
+        if nargs is not None:
+            if ((isinstance(nargs, str) and nargs in ['*', '?'])
+                    or (isinstance(nargs, int) and nargs < 0)):
+                raise ValueError(f'nargs = {nargs} is not allowed')
+
+        super().__init__(option_strings, dest, nargs, **kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        files = getattr(namespace, self.dest, None)
+        if files is None:
+            files = set()
+
+        if not isinstance(values, list):
+            values = [values]
+
+        for v in values:
+            files.add(v)
+
+        setattr(namespace, self.dest, files)
