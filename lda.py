@@ -10,7 +10,6 @@ import argparse
 import json
 from itertools import repeat
 from multiprocessing import Pool
-from os import cpu_count
 from pathlib import Path
 
 import pandas as pd
@@ -18,6 +17,7 @@ from gensim.corpora import Dictionary
 from gensim.models import LdaModel
 from gensim.models.coherencemodel import CoherenceModel
 
+from lda_utils import PHYSICAL_CPUS, load_documents
 from utils import substring_index
 
 
@@ -132,12 +132,9 @@ def generate_filtered_docs_ngrams(terms_file, preproc_file,
                                   labels=('keyword', 'relevant')):
     terms = load_ngrams(terms_file, labels)
     ngram_len = sorted(terms, reverse=True)
-    dataset = pd.read_csv(preproc_file, delimiter='\t', encoding='utf-8')
-    dataset.fillna('', inplace=True)
-    documents = dataset['abstract_lem'].to_list()
-    titles = dataset['title'].to_list()
-    docs = []
-    with Pool() as pool:
+    target_col = 'abstract_lem'
+    documents, titles = load_documents(preproc_file, target_col)
+    with Pool(processes=PHYSICAL_CPUS) as pool:
         docs = pool.starmap(filter_doc, zip(documents, repeat(ngram_len),
                                             repeat(terms)))
 
@@ -147,10 +144,8 @@ def generate_filtered_docs_ngrams(terms_file, preproc_file,
 def generate_filtered_docs(terms_file, preproc_file,
                            labels=('keyword', 'relevant')):
     terms = load_terms(terms_file, labels)
-    dataset = pd.read_csv(preproc_file, delimiter='\t', encoding='utf-8')
-    dataset.fillna('', inplace=True)
-    documents = dataset['abstract_lem'].to_list()
-    titles = dataset['title'].to_list()
+    target_col = 'abstract_lem'
+    documents, titles = load_documents(preproc_file, target_col)
     docs = [d.split(' ') for d in documents]
 
     good_docs = []
@@ -206,7 +201,7 @@ def main():
         )
 
     cm = CoherenceModel(model=model, texts=docs, dictionary=dictionary,
-                        coherence='c_v', processes=cpu_count())
+                        coherence='c_v', processes=PHYSICAL_CPUS)
 
     # Average topic coherence is the sum of topic coherences of all topics,
     # divided by the number of topics.

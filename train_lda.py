@@ -12,11 +12,9 @@ import numpy as np
 import pandas as pd
 from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel, LdaModel
-from psutil import cpu_count
 
+from lda_utils import PHYSICAL_CPUS, load_documents
 from utils import substring_index
-
-PHYSICAL_CPU = cpu_count(logical=False)
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
 _corpora: Optional[Dict[Tuple[str], Tuple[List[Tuple[int, int]],
@@ -143,16 +141,14 @@ def load_terms(terms_file, labels=('keyword', 'relevant')):
 def generate_filtered_docs_ngrams(terms_file, preproc_file):
     labels = [('keyword', 'relevant'), ('keyword',)]
     docs = {}
-    dataset = pd.read_csv(preproc_file, delimiter='\t', encoding='utf-8')
-    dataset.fillna('', inplace=True)
-    titles = dataset['title'].to_list()
+    target_col = 'abstract_lem'
+    documents, titles = load_documents(preproc_file, target_col)
     for lbl in labels:
         terms = load_ngrams(terms_file, lbl)
         if all(len(t) == 0 for t in terms.values()):
             continue
 
         ngram_len = sorted(terms, reverse=True)
-        documents = dataset['abstract_lem'].to_list()
         with Pool() as pool:
             docs[lbl] = pool.starmap(filter_doc, zip(documents,
                                                      repeat(ngram_len),
@@ -163,15 +159,13 @@ def generate_filtered_docs_ngrams(terms_file, preproc_file):
 def generate_filtered_docs(terms_file, preproc_file):
     labels = [('keyword', 'relevant'), ('keyword',)]
     good_docs = {}
-    dataset = pd.read_csv(preproc_file, delimiter='\t', encoding='utf-8')
-    dataset.fillna('', inplace=True)
-    titles = dataset['title'].to_list()
+    target_col = 'abstract_lem'
+    documents, titles = load_documents(preproc_file, target_col)
     for lbl in labels:
         terms = load_terms(terms_file, lbl)
         if len(terms) == 0:
             continue
 
-        documents = dataset['abstract_lem'].to_list()
         docs = [d.split(' ') for d in documents]
 
         gd = []
@@ -257,7 +251,7 @@ def compute_optimal_model(corpora, topics_range, alpha, beta, seed=None):
 
     # iterate through all the combinations
 
-    with Pool(processes=PHYSICAL_CPU, initializer=init_train,
+    with Pool(processes=PHYSICAL_CPUS, initializer=init_train,
               initargs=(corpora, seed)) as pool:
         results = pool.starmap(train, product(corpora.keys(), topics_range,
                                               alpha, beta))
@@ -281,7 +275,7 @@ def compute_optimal_model(corpora, topics_range, alpha, beta, seed=None):
 
 def output_topics(model, docs, titles, args):
     cm = CoherenceModel(model=model, texts=docs, dictionary=model.id2word,
-                        coherence='c_v', processes=PHYSICAL_CPU)
+                        coherence='c_v', processes=PHYSICAL_CPUS)
     coherence = cm.get_coherence_per_topic()
     topics = {}
     topics_order = list(range(model.num_topics))
