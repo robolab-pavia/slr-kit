@@ -1,4 +1,5 @@
 import logging
+import os
 import string
 import json
 import sys
@@ -164,3 +165,13 @@ def substring_check(haystack, needle, delim=string.whitespace):
         return True
     else:
         return False
+
+
+def log_start(args, debug_logger, name):
+    debug_logger.info(f'=== {name} started ===')
+    debug_logger.info(f'cwd {os.getcwd()}')
+    msg = 'arguments:'
+    for k, v in vars(args).items():
+        msg = f'{msg} {k!r}: {v!r}'
+    debug_logger.info(msg)
+
