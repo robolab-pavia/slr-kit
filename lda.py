@@ -18,7 +18,7 @@ from gensim.models import LdaModel
 from gensim.models.coherencemodel import CoherenceModel
 
 from lda_utils import PHYSICAL_CPUS, load_documents
-from utils import substring_index
+from utils import substring_index, AppendMultipleFilesAction
 
 
 def init_argparser():
@@ -39,6 +39,10 @@ def init_argparser():
                              'dataset to elaborate are stored.')
     parser.add_argument('prefix', action='store', type=str,
                         help='prefix used when searching files.')
+    parser.add_argument('--additional-terms', '-T',
+                        action=AppendMultipleFilesAction, nargs='+',
+                        metavar='FILENAME', dest='additional_file',
+                        help='Additional keyword file name')
     parser.add_argument('--topics', action='store', type=int, default=20,
                         help='Number of topics. If omitted %(default)s is used')
     parser.add_argument('--alpha', action='store', type=str, default='auto',
@@ -129,8 +133,12 @@ def load_terms(terms_file, labels=('keyword', 'relevant')):
 
 
 def generate_filtered_docs_ngrams(terms_file, preproc_file,
-                                  labels=('keyword', 'relevant')):
-    terms = load_ngrams(terms_file, labels)
+                                  labels=('keyword', 'relevant'),
+                                  additional=None):
+    if additional is None:
+        additional = set()
+
+    terms = load_ngrams(terms_file, labels) | additional
     ngram_len = sorted(terms, reverse=True)
     target_col = 'abstract_lem'
     documents, titles = load_documents(preproc_file, target_col)
@@ -142,8 +150,11 @@ def generate_filtered_docs_ngrams(terms_file, preproc_file,
 
 
 def generate_filtered_docs(terms_file, preproc_file,
-                           labels=('keyword', 'relevant')):
-    terms = load_terms(terms_file, labels)
+                           labels=('keyword', 'relevant'), additional=None):
+    if additional is None:
+        additional = set()
+
+    terms = load_terms(terms_file, labels) | additional
     target_col = 'abstract_lem'
     documents, titles = load_documents(preproc_file, target_col)
     docs = [d.split(' ') for d in documents]
@@ -153,6 +164,26 @@ def generate_filtered_docs(terms_file, preproc_file,
         gd = [t for t in doc if t in terms]
         good_docs.append(gd)
     return good_docs, titles
+
+
+def load_additional_terms(input_file):
+    """
+    Loads a list of keyword terms from a file
+
+    This functions skips all the lines that starts with a '#'.
+    Each term is split in a tuple of strings
+
+    :param input_file: file to read
+    :type input_file: str
+    :return: the loaded terms as a set of strings
+    :rtype: set[str]
+    """
+    with open(input_file, 'r', encoding='utf-8') as f:
+        rel_words_list = f.read().splitlines()
+
+    rel_words_list = {w for w in rel_words_list if w != '' and w[0] != '#'}
+
+    return rel_words_list
 
 
 def main():
@@ -166,11 +197,18 @@ def main():
     else:
         labels = ('keyword', 'relevant')
 
+    additional_keyword = set()
+
+    if args.additional_file is not None:
+        for sfile in args.additional_file:
+            additional_keyword |= load_additional_terms(sfile)
+
     if args.ngrams:
         docs, titles = generate_filtered_docs_ngrams(terms_file, preproc_file,
-                                                     labels)
+                                                     labels, additional_keyword)
     else:
-        docs, titles = generate_filtered_docs(terms_file, preproc_file, labels)
+        docs, titles = generate_filtered_docs(terms_file, preproc_file, labels,
+                                              additional_keyword)
 
     if args.load_model is not None:
         lda_path = Path(args.load_model)

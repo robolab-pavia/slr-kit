@@ -138,13 +138,16 @@ def load_terms(terms_file, labels=('keyword', 'relevant')):
     return good_set
 
 
-def generate_filtered_docs_ngrams(terms_file, preproc_file):
+def generate_filtered_docs_ngrams(terms_file, preproc_file, additional=None):
+    if additional is None:
+        additional = set()
+
     labels = [('keyword', 'relevant'), ('keyword',)]
     docs = {}
     target_col = 'abstract_lem'
     documents, titles = load_documents(preproc_file, target_col)
     for lbl in labels:
-        terms = load_ngrams(terms_file, lbl)
+        terms = load_ngrams(terms_file, lbl) | additional
         if all(len(t) == 0 for t in terms.values()):
             continue
 
@@ -156,13 +159,16 @@ def generate_filtered_docs_ngrams(terms_file, preproc_file):
     return docs, titles
 
 
-def generate_filtered_docs(terms_file, preproc_file):
+def generate_filtered_docs(terms_file, preproc_file, additional=None):
+    if additional is None:
+        additional = set()
+
     labels = [('keyword', 'relevant'), ('keyword',)]
     good_docs = {}
     target_col = 'abstract_lem'
     documents, titles = load_documents(preproc_file, target_col)
     for lbl in labels:
-        terms = load_terms(terms_file, lbl)
+        terms = load_terms(terms_file, lbl) | additional
         if len(terms) == 0:
             continue
 
@@ -307,6 +313,26 @@ def output_topics(model, docs, titles, args):
         json.dump(docs_topics, file, indent='\t')
 
 
+def load_additional_terms(input_file):
+    """
+    Loads a list of keyword terms from a file
+
+    This functions skips all the lines that starts with a '#'.
+    Each term is split in a tuple of strings
+
+    :param input_file: file to read
+    :type input_file: str
+    :return: the loaded terms as a set of strings
+    :rtype: set[str]
+    """
+    with open(input_file, 'r', encoding='utf-8') as f:
+        rel_words_list = f.read().splitlines()
+
+    rel_words_list = {w for w in rel_words_list if w != '' and w[0] != '#'}
+
+    return rel_words_list
+
+
 def main():
     args = init_argparser().parse_args()
     terms_file = args.dataset / f'{args.prefix}_terms.csv'
@@ -315,10 +341,18 @@ def main():
     if args.min_topics >= args.max_topics:
         sys.exit('max_topics must be greater than min_topics')
 
+    additional_keyword = set()
+
+    if args.additional_file is not None:
+        for sfile in args.additional_file:
+            additional_keyword |= load_additional_terms(sfile)
+
     if args.ngrams:
-        docs, titles = generate_filtered_docs_ngrams(terms_file, preproc_file)
+        docs, titles = generate_filtered_docs_ngrams(terms_file, preproc_file,
+                                                     additional_keyword)
     else:
-        docs, titles = generate_filtered_docs(terms_file, preproc_file)
+        docs, titles = generate_filtered_docs(terms_file, preproc_file,
+                                              additional_keyword)
 
     no_below_list = [1, 20, 40, 100, len(titles)//10]
     no_above_list = [0.5, 0.6, 0.75, 1.0]
