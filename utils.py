@@ -175,3 +175,6 @@ def log_start(args, debug_logger, name):
         msg = f'{msg} {k!r}: {v!r}'
     debug_logger.info(msg)
 
+
+def log_end(debug_logger, name):
+    debug_logger.info(f'=== {name} ended ===')
