@@ -17,7 +17,7 @@ from gensim.corpora import Dictionary
 from gensim.models import LdaModel
 from gensim.models.coherencemodel import CoherenceModel
 
-from lda_utils import PHYSICAL_CPUS, load_documents
+from lda_utils import PHYSICAL_CPUS, load_documents, BARRIER_PLACEHOLDER
 from utils import substring_index, AppendMultipleFilesAction
 
 
@@ -75,6 +75,10 @@ def init_argparser():
                              'named "model" is searched. the loaded model is '
                              'used with the dataset file to generate the topics'
                              ' and the topic document association')
+    parser.add_argument('--placeholder', '-p', default=BARRIER_PLACEHOLDER,
+                        help='Placeholder for barrier word. Also used as a '
+                             'prefix for the relevant words. '
+                             'Default: %(default)s')
     return parser
 
 
@@ -134,14 +138,17 @@ def load_terms(terms_file, labels=('keyword', 'relevant')):
 
 def generate_filtered_docs_ngrams(terms_file, preproc_file,
                                   labels=('keyword', 'relevant'),
-                                  additional=None):
+                                  additional=None,
+                                  barrier_placeholder=BARRIER_PLACEHOLDER,
+                                  relevant_prefix=BARRIER_PLACEHOLDER):
     if additional is None:
         additional = set()
 
     terms = load_ngrams(terms_file, labels) | additional
     ngram_len = sorted(terms, reverse=True)
     target_col = 'abstract_lem'
-    documents, titles = load_documents(preproc_file, target_col)
+    documents, titles = load_documents(preproc_file, target_col,
+                                       barrier_placeholder, relevant_prefix)
     with Pool(processes=PHYSICAL_CPUS) as pool:
         docs = pool.starmap(filter_doc, zip(documents, repeat(ngram_len),
                                             repeat(terms)))
@@ -150,13 +157,16 @@ def generate_filtered_docs_ngrams(terms_file, preproc_file,
 
 
 def generate_filtered_docs(terms_file, preproc_file,
-                           labels=('keyword', 'relevant'), additional=None):
+                           labels=('keyword', 'relevant'), additional=None,
+                           barrier_placeholder=BARRIER_PLACEHOLDER,
+                           relevant_prefix=BARRIER_PLACEHOLDER):
     if additional is None:
         additional = set()
 
     terms = load_terms(terms_file, labels) | additional
     target_col = 'abstract_lem'
-    documents, titles = load_documents(preproc_file, target_col)
+    documents, titles = load_documents(preproc_file, target_col,
+                                       barrier_placeholder, relevant_prefix)
     docs = [d.split(' ') for d in documents]
 
     good_docs = []
@@ -192,8 +202,11 @@ def main():
     terms_file = args.dataset / f'{args.prefix}_terms.csv'
     preproc_file = args.dataset / f'{args.prefix}_preproc.csv'
 
+    barrier_placeholder = args.placeholder
+    relevant_prefix = barrier_placeholder
+
     if args.no_relevant:
-        labels = ('keyword', )
+        labels = ('keyword',)
     else:
         labels = ('keyword', 'relevant')
 
@@ -205,10 +218,14 @@ def main():
 
     if args.ngrams:
         docs, titles = generate_filtered_docs_ngrams(terms_file, preproc_file,
-                                                     labels, additional_keyword)
+                                                     labels, additional_keyword,
+                                                     barrier_placeholder,
+                                                     relevant_prefix)
     else:
         docs, titles = generate_filtered_docs(terms_file, preproc_file, labels,
-                                              additional_keyword)
+                                              additional_keyword,
+                                              barrier_placeholder,
+                                              relevant_prefix)
 
     if args.load_model is not None:
         lda_path = Path(args.load_model)

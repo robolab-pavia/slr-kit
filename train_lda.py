@@ -13,7 +13,7 @@ import pandas as pd
 from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel, LdaModel
 
-from lda_utils import PHYSICAL_CPUS, load_documents
+from lda_utils import PHYSICAL_CPUS, load_documents, BARRIER_PLACEHOLDER
 from utils import substring_index
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
@@ -81,6 +81,10 @@ def init_argparser():
                              '<dataset>/<prefix>_topics.json, and the document '
                              'topic assignment in '
                              '<dataset>/<prefix>_docs-topics.json')
+    parser.add_argument('--placeholder', '-p', default=BARRIER_PLACEHOLDER,
+                        help='Placeholder for barrier word. Also used as a '
+                             'prefix for the relevant words. '
+                             'Default: %(default)s')
     return parser
 
 
@@ -138,14 +142,17 @@ def load_terms(terms_file, labels=('keyword', 'relevant')):
     return good_set
 
 
-def generate_filtered_docs_ngrams(terms_file, preproc_file, additional=None):
+def generate_filtered_docs_ngrams(terms_file, preproc_file, additional=None,
+                                  barrier_placeholder=BARRIER_PLACEHOLDER,
+                                  relevant_prefix=BARRIER_PLACEHOLDER):
     if additional is None:
         additional = set()
 
     labels = [('keyword', 'relevant'), ('keyword',)]
     docs = {}
     target_col = 'abstract_lem'
-    documents, titles = load_documents(preproc_file, target_col)
+    documents, titles = load_documents(preproc_file, target_col,
+                                       barrier_placeholder, relevant_prefix)
     for lbl in labels:
         terms = load_ngrams(terms_file, lbl) | additional
         if all(len(t) == 0 for t in terms.values()):
@@ -159,14 +166,17 @@ def generate_filtered_docs_ngrams(terms_file, preproc_file, additional=None):
     return docs, titles
 
 
-def generate_filtered_docs(terms_file, preproc_file, additional=None):
+def generate_filtered_docs(terms_file, preproc_file, additional=None,
+                           barrier_placeholder=BARRIER_PLACEHOLDER,
+                           relevant_prefix=BARRIER_PLACEHOLDER):
     if additional is None:
         additional = set()
 
     labels = [('keyword', 'relevant'), ('keyword',)]
     good_docs = {}
     target_col = 'abstract_lem'
-    documents, titles = load_documents(preproc_file, target_col)
+    documents, titles = load_documents(preproc_file, target_col,
+                                       barrier_placeholder, relevant_prefix)
     for lbl in labels:
         terms = load_terms(terms_file, lbl) | additional
         if len(terms) == 0:
@@ -338,6 +348,9 @@ def main():
     terms_file = args.dataset / f'{args.prefix}_terms.csv'
     preproc_file = args.dataset / f'{args.prefix}_preproc.csv'
 
+    barrier_placeholder = args.placeholder
+    relevant_prefix = barrier_placeholder
+
     if args.min_topics >= args.max_topics:
         sys.exit('max_topics must be greater than min_topics')
 
@@ -349,12 +362,16 @@ def main():
 
     if args.ngrams:
         docs, titles = generate_filtered_docs_ngrams(terms_file, preproc_file,
-                                                     additional_keyword)
+                                                     additional_keyword,
+                                                     barrier_placeholder,
+                                                     relevant_prefix)
     else:
         docs, titles = generate_filtered_docs(terms_file, preproc_file,
-                                              additional_keyword)
+                                              additional_keyword,
+                                              barrier_placeholder,
+                                              relevant_prefix)
 
-    no_below_list = [1, 20, 40, 100, len(titles)//10]
+    no_below_list = [1, 20, 40, 100, len(titles) // 10]
     no_above_list = [0.5, 0.6, 0.75, 1.0]
     topics_range = range(args.min_topics, args.max_topics + args.step_topics,
                          args.step_topics)
