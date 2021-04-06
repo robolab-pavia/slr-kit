@@ -24,6 +24,10 @@ def init_argparser():
     parser.add_argument('--min-frequency', '-m', metavar='N',
                         dest='min_frequency', default=5,
                         help='Minimum frequency of the n-grams')
+    parser.add_argument('--placeholder', '-p', default=BARRIER_PLACEHOLDER,
+                        help='Placeholder for barrier word. Also used as a '
+                             'prefix for the relevant words. '
+                             'Default: %(default)s')
     return parser
 
 
@@ -124,11 +128,14 @@ def main():
     debug_logger.debug(msg.format(len(dataset[target_column])))
     corpus = dataset[target_column].to_list()
 
+    barrier_placeholder = args.placeholder
+    relevant_prefix = barrier_placeholder
+
     list_of_grams = []
     for n in range(1, n_grams + 1):
         top_terms = get_n_grams(corpus, n_terms=n, min_frequency=min_frequency,
-                                barrier=BARRIER_PLACEHOLDER,
-                                relevant_prefix=RELEVANT_PREFIX)
+                                barrier=barrier_placeholder,
+                                relevant_prefix=relevant_prefix)
         list_of_grams.append(top_terms)
 
     if args.output is not None:
