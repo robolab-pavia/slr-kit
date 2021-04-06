@@ -160,6 +160,38 @@ def replace_ngram(text, n_grams, check_subsequent):
     return text2
 
 
+def language_specific_regex(text, lang='en'):
+    # The first step in every language is to change punctuations to barrier.
+    # The barrier placeholder can be anything, so we have to change the
+    # punctuation with something that will survive the special char removal.
+    # '---' it's ok because hyphens are preserved in every language.
+    if lang == 'en':
+        # punctuation
+        out_text = re.sub('[,.;:!?()"\']', ' --- ', text)
+        # Remove special characters (not the hyphen) and digits
+        return re.sub(r'(\d|[^-\w])+', ' ', out_text)
+    if lang == 'it':
+        # punctuation - preserve "'"
+        out_text = re.sub('[,.;:!?()"]', ' --- ', text)
+        # Remove special characters (not the hyphen) and digits. but preserve
+        # accented letters. Also preserve "'" if surrounded by non blank chars
+        return re.sub(r'(\d|[^-\wàèéìòù\']|(?<=\s)\'(?=\S)|(?<=\S)\'(?!\S))+',
+                      ' ', out_text)
+
+
+def regex(text, lang='en'):
+    # Change punctuation and remove special characters (not the hyphen) and
+    # digits. The definition of special character and punctuation, changes with
+    # the language
+    out_text = language_specific_regex(text, lang)
+    # now we can search for ' --- ' and place the barrier placeholder
+    # the positive look-ahead and look-behind are to preserve the spaces
+    out_text = re.sub(r'(?<=\s)---(?=\s)', BARRIER_PLACEHOLDER, out_text)
+    # remove any run of hyphens not surrounded by non space
+    out_text = re.sub(r'(\s+-+\s+|(?<=\S)-+\s+|\s+-+(?=\S))', ' ', out_text)
+    return out_text
+
+
 def preprocess_item(item, relevant_terms, barrier_words, acronyms, language='en',
                     barrier=BARRIER_PLACEHOLDER,
                     relevant_prefix=RELEVANT_PREFIX):
@@ -185,8 +217,6 @@ def preprocess_item(item, relevant_terms, barrier_words, acronyms, language='en'
     :param acronyms: the acronyms to replace in each document. Must have two
         columns 'Acronym' and 'Extended'
     :type acronyms: pd.DataFrame
-    :param language: code of the language to be used to lemmatize text
-    :type language: str
     :param barrier: placeholder for the barrier words
     :type barrier: str
     :param relevant_prefix: prefix string used when replacing the relevant terms
@@ -195,14 +225,10 @@ def preprocess_item(item, relevant_terms, barrier_words, acronyms, language='en'
     :rtype: list[str]
     """
     lem = get_lemmatizer(language)
-    # Remove punctuations (but not accented letters)
-    text = re.sub('[^a-zA-ZàèéìòùÀÈÉÌÒÙ]', ' ', item)
     # Convert to lowercase
-    text = text.lower()
-    # Remove tags
-    text = re.sub('&lt;/?.*?&gt;', ' &lt;&gt; ', text)
-    # Remove special characters and digits
-    text = re.sub('(\\d|\\W)+', ' ', text)
+    text = item.lower()
+    # apply some regex to clean the text
+    text = regex(text, language)
     text = text.split(' ')
 
     # replace acronyms
