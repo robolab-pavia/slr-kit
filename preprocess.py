@@ -137,14 +137,19 @@ def preprocess_item(item, relevant_terms, barrier_words, acronyms,
     :return: the processed text
     :rtype: list[str]
     """
-    # Remove punctuations
-    text = re.sub('[^a-zA-Z]', ' ', item)
     # Convert to lowercase
-    text = text.lower()
-    # Remove tags
-    text = re.sub('&lt;/?.*?&gt;', ' &lt;&gt; ', text)
-    # Remove special characters and digits
-    text = re.sub('(\\d|\\W)+', ' ', text)
+    text = item.lower()
+    # Change punctuations to barrier. The barrier placeholder can be anything,
+    # so we have to change the punctuation with something that will survive the
+    # special char removal. '---' it's ok because hyphens are preserved
+    text = re.sub('[,.;:!?()]', ' --- ', text)
+    # Remove special characters (not the hyphen) and digits
+    text = re.sub(r'(\d|[^-\w])+', ' ', text)
+    # now we can search for ' --- ' and place the barrier placeholder
+    # the positive look-ahead and look-behind are to preserve the spaces
+    text = re.sub(r'(?<=\s)---(?=\s)', BARRIER_PLACEHOLDER, text)
+    # remove any run of hyphens not surrounded by non space
+    text = re.sub(r'(\s+-+\s+|(?<=\S)-+\s+|\s+-+(?=\S))', ' ', text)
     # Convert to list from string
     text = text.split()
     # Lemmatisation
