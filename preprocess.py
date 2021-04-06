@@ -29,6 +29,10 @@ def init_argparser():
     parser.add_argument('--output', '-o', metavar='FILENAME', default='-',
                         help='output file name. If omitted or %(default)s '
                              'stdout is used')
+    parser.add_argument('--placeholder', '-p', default=BARRIER_PLACEHOLDER,
+                        help='Placeholder for barrier word. Also used as a '
+                             'prefix for the relevant words. '
+                             'Default: %(default)s')
     parser.add_argument('--barrier-words', '-b',
                         action=AppendMultipleFilesAction, nargs='+',
                         metavar='FILENAME', dest='barrier_words_file',
@@ -250,8 +254,10 @@ def main():
     assert_column(args.datafile, dataset, target_column)
     debug_logger.debug('Dataset loaded {} items'.format(len(dataset[target_column])))
 
-    barrier_words = set()
+    barrier_placeholder = args.placeholder
+    relevant_prefix = barrier_placeholder
 
+    barrier_words = set()
     if args.barrier_words_file is not None:
         for sfile in args.barrier_words_file:
             barrier_words |= load_barrier_words(sfile)
@@ -279,7 +285,7 @@ def main():
 
     start = timer()
     corpus = process_corpus(dataset[target_column], rel_terms, barrier_words,
-                            acronyms, BARRIER_PLACEHOLDER, RELEVANT_PREFIX)
+                            acronyms, barrier_placeholder, relevant_prefix)
     stop = timer()
     elapsed_time = stop - start
     debug_logger.debug('Corpus processed')
