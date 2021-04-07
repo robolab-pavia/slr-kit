@@ -231,6 +231,56 @@ def train_lda_model(docs, topics=20, alpha='auto', beta='auto', no_above=0.5,
     return model, dictionary
 
 
+def prepare_topics(model, docs, titles, dictionary):
+    """
+    Prepare the dicts for the topics and the document topic assignment
+
+    :param model: the trained lda model
+    :type model: LdaModel
+    :param docs: the documents to evaluate to assign the topics
+    :type docs: list[list[str]]
+    :param titles: the titles of the documents
+    :type titles: list[str]
+    :param dictionary: the gensim dictionary object used for training
+    :type dictionary: Dictionary
+    :return: the dict of the topics, the docs-topics assignement and
+        the average coherence score
+    :rtype: tuple[dict[int, dict[str, str or dict[str, float]]],
+        list[dict[str, int or str or dict[int, str]]], float]
+    """
+    cm = CoherenceModel(model=model, texts=docs, dictionary=dictionary,
+                        coherence='c_v', processes=cpu_count())
+    # Average topic coherence is the sum of topic coherences of all topics,
+    # divided by the number of topics.
+    avg_topic_coherence = cm.get_coherence()
+    coherence = cm.get_coherence_per_topic()
+    topics = {}
+    topics_order = list(range(model.num_topics))
+    topics_order.sort(key=lambda x: coherence[x], reverse=True)
+    for i in topics_order:
+        topic = model.show_topic(i)
+        t_dict = {
+            'name': f'Topic {i}',
+            'terms_probability': {t[0]: float(t[1]) for t in topic},
+            'coherence': f'{float(coherence[i]):.5f}',
+        }
+        topics[i] = t_dict
+
+    docs_topics = []
+    for i, (title, d) in enumerate(zip(titles, docs)):
+        bow = dictionary.doc2bow(d)
+        t = model.get_document_topics(bow)
+        t.sort(key=lambda x: x[1], reverse=True)
+        d_t = {
+            'id': i,
+            'title': title,
+            'topics': {tu[0]: float(tu[1]) for tu in t},
+        }
+        docs_topics.append(d_t)
+
+    return topics, docs_topics, avg_topic_coherence
+
+
 def main():
     args = init_argparser().parse_args()
 
@@ -259,43 +309,16 @@ def main():
         model, dictionary = train_lda_model(docs, topics, alpha, beta,
                                             no_above, no_below, seed)
 
-    cm = CoherenceModel(model=model, texts=docs, dictionary=dictionary,
-                        coherence='c_v', processes=cpu_count())
+    docs_topics, topics, avg_topic_coherence = prepare_topics(model, docs,
+                                                              titles,
+                                                              dictionary)
 
-    # Average topic coherence is the sum of topic coherences of all topics,
-    # divided by the number of topics.
-    avg_topic_coherence = cm.get_coherence()
-    coherence = cm.get_coherence_per_topic()
     print(f'Average topic coherence: {avg_topic_coherence:.4f}.')
-    topics = {}
-    topics_order = list(range(model.num_topics))
-    topics_order.sort(key=lambda x: coherence[x], reverse=True)
-    for i in topics_order:
-        topic = model.show_topic(i)
-        t_dict = {
-            'name': f'Topic {i}',
-            'terms_probability': {t[0]: float(t[1]) for t in topic},
-            'coherence': f'{float(coherence[i]):.5f}',
-        }
-        topics[i] = t_dict
-
     now = datetime.now().strftime('')
     name = f'{args.prefix}_terms-topics_{now:%Y-%m-%d_%H:%M:%S}.json'
     topic_file = args.dataset / name
     with open(topic_file, 'w') as file:
         json.dump(topics, file, indent='\t')
-
-    docs_topics = []
-    for i, (title, d) in enumerate(zip(titles, docs)):
-        bow = dictionary.doc2bow(d)
-        t = model.get_document_topics(bow)
-        t.sort(key=lambda x: x[1], reverse=True)
-        d_t = {
-            'id': i,
-            'title': title,
-            'topics': {tu[0]: float(tu[1]) for tu in t},
-        }
-        docs_topics.append(d_t)
 
     name = f'{args.prefix}_docs-topics_{now:%Y-%m-%d_%H:%M:%S}.json'
     docs_file = args.dataset / name
