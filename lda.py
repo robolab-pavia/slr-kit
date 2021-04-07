@@ -161,6 +161,30 @@ def generate_filtered_docs(terms_file, preproc_file,
     return good_docs, titles
 
 
+def prepare_documents(preproc_file, terms_file, ngrams, labels):
+    """
+    Elaborates the documents preparing the bag of word representation
+
+    :param preproc_file: path to the csv file with the lemmatized abstracts
+    :type preproc_file: str
+    :param terms_file: path to the csv file with the classified terms
+    :type terms_file: str
+    :param ngrams: if True use all the ngrams
+    :type ngrams: bool
+    :param labels: use only the terms classified with the labels specified here
+    :type labels: tuple[str]
+    :return: the documents as bag of words and the document titles
+    :rtype: tuple[list[list[str]], list[str]]
+    """
+    if ngrams:
+        docs, titles = generate_filtered_docs_ngrams(terms_file, preproc_file,
+                                                     labels)
+    else:
+        docs, titles = generate_filtered_docs(terms_file, preproc_file, labels)
+
+    return docs, titles
+
+
 def main():
     args = init_argparser().parse_args()
 
@@ -172,11 +196,8 @@ def main():
     else:
         labels = ('keyword', 'relevant')
 
-    if args.ngrams:
-        docs, titles = generate_filtered_docs_ngrams(terms_file, preproc_file,
-                                                     labels)
-    else:
-        docs, titles = generate_filtered_docs(terms_file, preproc_file, labels)
+    docs, titles = prepare_documents(preproc_file, terms_file,
+                                     args.ngrams, labels)
 
     if args.load_model is not None:
         lda_path = Path(args.load_model)
