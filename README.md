@@ -310,13 +310,29 @@ topic_matcher.py energy1_terms-topics.json energy2_terms-topics.json > matching.
 
 ## `report_year.py`
 
-- ACTION: Analyse the yearly appearance of the chosen topics OR lists the topics with their most significant keywords from a chosen Json file
-- INPUT: Respectively: A Json file listing every paper with its relatives topics and a csv file with data of every paper OR json file with list of topics
-- OUTPUT: Respectively: A graph for the chosen topics OR a list of the topics with their most significant keywords
+The script has 2 different types of execution that the user can choose with the argument "list" or "plot"
+
+#### `list`
+
+- ACTION: Lists the topics with their most significant keywords from a chosen Json file
+- INPUT: Json file with list of topics and their relative keywords
+- OUTPUT: List of the topics with their top 5 most significant keywords
+
+### Example of usage
+
+```
+report_year.py list energy_terms-topics.json
+```
+
+#### `plot`
+
+- ACTION: Analyse and plot the yearly growth of the number of papers inherent to a chosen topic; multiple topics can be chosen at once
+- INPUT: A list of the desired topics ("all" if the user wants to plot data from every topic), a Json file listing every paper with its relatives topics and a CSV file with data from every paper 
+- OUTPUT: A yearly growth graph for the chosen topics
 
 ### Example of usage
 
 ```
 report_year.py plot 1,2,5,39 energy_docs-topics.json energy_preproc.csv
-report_year.py list energy_terms-topics.json
+report_year.py plot all energy_docs-topics.json energy_preproc.csv
 ```
