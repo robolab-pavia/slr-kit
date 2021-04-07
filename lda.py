@@ -185,6 +185,52 @@ def prepare_documents(preproc_file, terms_file, ngrams, labels):
     return docs, titles
 
 
+def train_lda_model(docs, topics=20, alpha='auto', beta='auto', no_above=0.5,
+                    no_below=20, seed=None):
+    """
+    Trains the lda model
+
+    Each parameter has the default value used also as default by the lda.py script
+    :param docs: documents train the model upon
+    :type docs: list[list[str]]
+    :param topics: number of topics
+    :type topics: int
+    :param alpha: alpha parameter
+    :type alpha: float or str
+    :param beta: beta parameter
+    :type beta: float or str
+    :param no_above: keep terms which are contained in no more than this
+        fraction of documents (fraction of total corpus size, not an absolute
+        number).
+    :type no_above: float
+    :param no_below: keep tokens which are contained in at least this number of
+        documents (absolute number).
+    :type no_below: int
+    :param seed: seed used for random generator
+    :type seed: int or None
+    :return: the trained model and the dictionary object used in training
+    :rtype: tuple[LdaModel, Dictionary]
+    """
+    # Make a index to word dictionary.
+    dictionary = Dictionary(docs)
+    dictionary.filter_extremes(no_below=no_below,
+                               no_above=no_above)
+    _ = dictionary[0]  # This is only to "load" the dictionary.
+    id2word = dictionary.id2token
+    corpus = [dictionary.doc2bow(doc) for doc in docs]
+    # Train LDA model.
+    model = LdaModel(
+        corpus=corpus,
+        id2word=id2word,
+        chunksize=len(corpus),
+        alpha=alpha,
+        eta=beta,
+        num_topics=topics,
+        random_state=seed
+    )
+    return model, dictionary
+
+
 def main():
     args = init_argparser().parse_args()
 
@@ -204,28 +250,14 @@ def main():
         model = LdaModel.load(str(lda_path / 'model'))
         dictionary = Dictionary.load(str(lda_path / 'model_dictionary'))
     else:
-        # Make a index to word dictionary.
-        dictionary = Dictionary(docs)
-        dictionary.filter_extremes(no_below=args.no_below, no_above=args.no_above)
-        _ = dictionary[0]  # This is only to "load" the dictionary.
-        id2word = dictionary.id2token
-        corpus = [dictionary.doc2bow(doc) for doc in docs]
-        # Train LDA model.
-        # Set training parameters.
-        num_topics = args.topics
-        chunksize = len(corpus)
+        no_below = args.no_below
+        no_above = args.no_above
+        topics = args.topics
         alpha = args.alpha
         beta = args.beta
-
-        model = LdaModel(
-            corpus=corpus,
-            id2word=id2word,
-            chunksize=chunksize,
-            alpha=alpha,
-            eta=beta,
-            num_topics=num_topics,
-            random_state=args.seed
-        )
+        seed = args.seed
+        model, dictionary = train_lda_model(docs, topics, alpha, beta,
+                                            no_above, no_below, seed)
 
     cm = CoherenceModel(model=model, texts=docs, dictionary=dictionary,
                         coherence='c_v', processes=cpu_count())
