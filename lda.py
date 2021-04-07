@@ -8,6 +8,7 @@ Introduces Gensim's LDA model and demonstrates its use on the NIPS corpus.
 
 import argparse
 import json
+from datetime import datetime
 from itertools import repeat
 from multiprocessing import Pool
 from os import cpu_count
@@ -225,7 +226,9 @@ def main():
         }
         topics[i] = t_dict
 
-    topic_file = args.dataset / f'{args.prefix}_terms-topics.json'
+    now = datetime.now().strftime('')
+    name = f'{args.prefix}_terms-topics_{now:%Y-%m-%d_%H:%M:%S}.json'
+    topic_file = args.dataset / name
     with open(topic_file, 'w') as file:
         json.dump(topics, file, indent='\t')
 
@@ -241,7 +244,8 @@ def main():
         }
         docs_topics.append(d_t)
 
-    docs_file = args.dataset / f'{args.prefix}_docs-topics.json'
+    name = f'{args.prefix}_docs-topics_{now:%Y-%m-%d_%H:%M:%S}.json'
+    docs_file = args.dataset / name
     with open(docs_file, 'w') as file:
         json.dump(docs_topics, file, indent='\t')
 
