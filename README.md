@@ -92,23 +92,28 @@ The following example processes the `dataset_abstracts.csv` file and produces `d
 preprocess.py --stop-words stop_words.txt dataset_abstracts.csv > dataset_preproc.csv
 ```
 
-## `gen-n-grams.py`
+## `gen-terms.py`
 
 - ACTION: Extracts the terms ({1,2,3,4}-grams) from the abstracts.
-- INPUT: The CSV file produced by `preprocess.py` (it works on the column `abstract_lem`).
-- OUTPUT: A CSV file containing the list of terms and their frequency.
+- INPUT: The TSV file produced by `preprocess.py` (it works on the column `abstract_lem`).
+- OUTPUT: A TSV file containing the list of terms, and a TSV with their frequency.
 
-TODO: change name in `gen-terms.py`?
+### Arguments:
 
-It outputs also a tsv file with the count field.
-This tsv file is used by FAWOC to load the additional data.
+- `inputfile`: name of the TSV produced by `preprocess.py`;
+- `outputfile`: name of the output file. This name is also used to create the name of the file with the term frequencies.
+  For instance, if `outputfile` is `filename.tsv`, the frequencies file will be named `filename_fawoc_data.tsv`.
+  This file is create in the same directory of `outputfile`;
+- `--stdout|-s`: also print on stdout the output file;
+- `--n-grams|-n N`: maximum size of n-grams. The script will output all the 1-grams, ... N-grams;
+- `--min-frequency|-m N`: minimum frequency of the n-grams. All the n-grams with a frequency lower than `N` are not output.
 
 ### Example of usage
 
-Extracts terms from `dataset_preproc.csv` and store them in `dataset_terms.csv`:
+Extracts terms from `dataset_preproc.csv` and store them in `dataset_terms.csv` and `dataset_terms_fawoc_data.tsv`:
 
 ```
-gen-n-grams.py dataset_preproc.csv > dataset_terms.csv
+gen-n-grams.py dataset_preproc.csv dataset_terms.csv
 ```
 
 ## `cumulative-frequency.py`
