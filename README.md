@@ -302,21 +302,31 @@ evaluate_clusters.py pckmeans_clusters.csv ground_truth.json
 - INPUT: 2 Json files containing list of topics with relative words
 - OUTPUT: CSV file containing list of topics pairs with similarity metric in decreasing order
 
+### Arguments
+
+- `first_file`: the first json file with the list of topics
+- `second_file`: the second json file with the list of topics
+- `output`:  output file name in CSV format
+
 ### Example of usage
 
 ```
-topic_matcher.py energy1_terms-topics.json energy2_terms-topics.json > matching.csv
+topic_matcher.py energy1_terms-topics.json energy2_terms-topics.json matching.csv
 ```
 
 ## `report_year.py`
 
 The script has 2 different types of execution that the user can choose with the argument "list" or "plot"
 
-#### `list`
+### `list`
 
 - ACTION: Lists the topics with their most significant keywords from a chosen Json file
 - INPUT: Json file with list of topics and their relative keywords
 - OUTPUT: List of the topics with their top 5 most significant keywords
+
+### Arguments
+
+- `topics_json`: the json file with the list of the topics
 
 ### Example of usage
 
@@ -324,11 +334,18 @@ The script has 2 different types of execution that the user can choose with the 
 report_year.py list energy_terms-topics.json
 ```
 
-#### `plot`
+### `plot`
 
 - ACTION: Analyse and plot the yearly growth of the number of papers inherent to a chosen topic; multiple topics can be chosen at once
 - INPUT: A list of the desired topics ("all" if the user wants to plot data from every topic), a Json file listing every paper with its relatives topics and a CSV file with data from every paper 
 - OUTPUT: A yearly growth graph for the chosen topics
+
+### Arguments
+
+- `topics_list`: list of the topics desired e.g. 1,3,10 or "all"
+- `papers_json`: the json file with the list of the papers
+- `papers_csv`: the csv file with the papers data
+
 
 ### Example of usage
 
