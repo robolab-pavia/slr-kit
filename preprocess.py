@@ -54,6 +54,21 @@ def init_argparser():
     parser.add_argument('--stop-words', '-s', action=AppendMultipleFilesAction,
                         nargs='+', metavar='FILENAME', dest='stop_words_file',
                         help='stop words file name')
+    parser.add_argument('--target-column', '-t', action='store', type=str,
+                        default='abstract', dest='target_column',
+                        help='name of the column to look for')
+    parser.add_argument('--output-column', action='store', type=str,
+                        default='abstract_lem', dest='output_column',
+                        help='name of the column to save')
+    parser.add_argument('--input-delimiter', action='store', type=str,
+                        default='\t', dest='input_delimiter',
+                        help='delimiter used in datafile. Default \t')
+    parser.add_argument('--output-delimiter', action='store', type=str,
+                        default='\t', dest='output_delimiter',
+                        help='delimiter used in output file. Default \t')
+    parser.add_argument('--rows', '-r', type=int,
+                        dest='input_rows', default=None,
+                        help="Select maximun number of samples")
     return parser
 
 
@@ -99,7 +114,6 @@ def process_corpus(dataset, stop_words):
 
 
 def main():
-    target_column = 'abstract'
     parser = init_argparser()
     args = parser.parse_args()
 
@@ -108,10 +122,10 @@ def main():
     # TODO: write log string with values of the parameters used in the execution
 
     # load the dataset
-    dataset = pd.read_csv(args.datafile, delimiter='\t', encoding='utf-8')
+    dataset = pd.read_csv(args.datafile, delimiter=args.input_delimiter, encoding='utf-8', nrows=args.input_rows)
     dataset.fillna('', inplace=True)
-    assert_column(args.datafile, dataset, target_column)
-    debug_logger.debug('Dataset loaded {} items'.format(len(dataset[target_column])))
+    assert_column(args.datafile, dataset, args.target_column)
+    debug_logger.debug('Dataset loaded {} items'.format(len(dataset[args.target_column])))
 
     stop_words = set()
 
@@ -121,9 +135,9 @@ def main():
 
         debug_logger.debug('Stopwords loaded and updated')
 
-    corpus = process_corpus(dataset[target_column], stop_words)
+    corpus = process_corpus(dataset[args.target_column], stop_words)
     debug_logger.debug('Corpus processed')
-    dataset['abstract_lem'] = corpus
+    dataset[args.output_column] = corpus
 
     # write to output, either a file or stdout (default)
     if args.output == '-':
@@ -131,7 +145,7 @@ def main():
     else:
         output_file = open(args.output, 'w', encoding='utf-8')
 
-    dataset.to_csv(output_file, index=None, header=True, sep='\t')
+    dataset.to_csv(output_file, index=None, header=True, sep=args.output_delimiter)
 
 
 if __name__ == '__main__':
