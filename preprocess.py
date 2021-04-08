@@ -43,6 +43,21 @@ def init_argparser():
                         help='relevant terms file name')
     parser.add_argument('--acronyms', '-a',
                         help='TSV files with the approved acronyms')
+    parser.add_argument('--target-column', '-t', action='store', type=str,
+                        default='abstract', dest='target_column',
+                        help='name of the column to look for')
+    parser.add_argument('--output-column', action='store', type=str,
+                        default='abstract_lem', dest='output_column',
+                        help='name of the column to save')
+    parser.add_argument('--input-delimiter', action='store', type=str,
+                        default='\t', dest='input_delimiter',
+                        help='delimiter used in datafile. Default \t')
+    parser.add_argument('--output-delimiter', action='store', type=str,
+                        default='\t', dest='output_delimiter',
+                        help='delimiter used in output file. Default \t')
+    parser.add_argument('--rows', '-R', type=int,
+                        dest='input_rows', default=None,
+                        help="Select maximun number of samples")
     return parser
 
 
@@ -239,7 +254,6 @@ def load_relevant_terms(input_file):
 
 
 def main():
-    target_column = 'abstract'
     parser = init_argparser()
     args = parser.parse_args()
 
@@ -249,10 +263,11 @@ def main():
     log_start(args, debug_logger, name)
 
     # load the dataset
-    dataset = pd.read_csv(args.datafile, delimiter='\t', encoding='utf-8')
+    dataset = pd.read_csv(args.datafile, delimiter=args.input_delimiter,
+                          encoding='utf-8', nrows=args.input_rows)
     dataset.fillna('', inplace=True)
-    assert_column(args.datafile, dataset, target_column)
-    debug_logger.debug('Dataset loaded {} items'.format(len(dataset[target_column])))
+    assert_column(args.datafile, dataset, args.target_column)
+    debug_logger.debug('Dataset loaded {} items'.format(len(dataset[args.target_column])))
 
     barrier_placeholder = args.placeholder
     relevant_prefix = barrier_placeholder
@@ -284,12 +299,12 @@ def main():
         debug_logger.debug('Relevant words loaded and updated')
 
     start = timer()
-    corpus = process_corpus(dataset[target_column], rel_terms, barrier_words,
+    corpus = process_corpus(dataset[args.target_column], rel_terms, barrier_words,
                             acronyms, barrier_placeholder, relevant_prefix)
     stop = timer()
     elapsed_time = stop - start
     debug_logger.debug('Corpus processed')
-    dataset['abstract_lem'] = corpus
+    dataset[args.output_column] = corpus
 
     # write to output, either a file or stdout (default)
     if args.output == '-':
@@ -297,7 +312,8 @@ def main():
     else:
         output_file = open(args.output, 'w', encoding='utf-8')
 
-    dataset.to_csv(output_file, index=None, header=True, sep='\t')
+    dataset.to_csv(output_file, index=None, header=True,
+                   sep=args.output_delimiter)
     print('Elapsed time:', elapsed_time, file=sys.stderr)
     debug_logger.info(f'elapsed time: {elapsed_time}')
     log_end(debug_logger, name)

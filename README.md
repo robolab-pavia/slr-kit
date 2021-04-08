@@ -92,23 +92,28 @@ The following example processes the `dataset_abstracts.csv` file and produces `d
 preprocess.py --stop-words stop_words.txt dataset_abstracts.csv > dataset_preproc.csv
 ```
 
-## `gen-n-grams.py`
+## `gen-terms.py`
 
 - ACTION: Extracts the terms ({1,2,3,4}-grams) from the abstracts.
-- INPUT: The CSV file produced by `preprocess.py` (it works on the column `abstract_lem`).
-- OUTPUT: A CSV file containing the list of terms and their frequency.
+- INPUT: The TSV file produced by `preprocess.py` (it works on the column `abstract_lem`).
+- OUTPUT: A TSV file containing the list of terms, and a TSV with their frequency.
 
-TODO: change name in `gen-terms.py`?
+### Arguments:
 
-It outputs also a tsv file with the count field.
-This tsv file is used by FAWOC to load the additional data.
+- `inputfile`: name of the TSV produced by `preprocess.py`;
+- `outputfile`: name of the output file. This name is also used to create the name of the file with the term frequencies.
+  For instance, if `outputfile` is `filename.tsv`, the frequencies file will be named `filename_fawoc_data.tsv`.
+  This file is create in the same directory of `outputfile`;
+- `--stdout|-s`: also print on stdout the output file;
+- `--n-grams|-n N`: maximum size of n-grams. The script will output all the 1-grams, ... N-grams;
+- `--min-frequency|-m N`: minimum frequency of the n-grams. All the n-grams with a frequency lower than `N` are not output.
 
 ### Example of usage
 
-Extracts terms from `dataset_preproc.csv` and store them in `dataset_terms.csv`:
+Extracts terms from `dataset_preproc.csv` and store them in `dataset_terms.csv` and `dataset_terms_fawoc_data.tsv`:
 
 ```
-gen-n-grams.py dataset_preproc.csv > dataset_terms.csv
+gen-n-grams.py dataset_preproc.csv dataset_terms.csv
 ```
 
 ## `cumulative-frequency.py`
@@ -294,4 +299,62 @@ parse_pairings.py manual_pairings.txt > ground_truth.json
 
 ```
 evaluate_clusters.py pckmeans_clusters.csv ground_truth.json
+```
+
+## `topic_matcher.py`
+
+- ACTION: Analyze similarity between every pair of topics from 2 json files listing the list of topics
+- INPUT: 2 Json files containing list of topics with relative words
+- OUTPUT: CSV file containing list of topics pairs with similarity metric in decreasing order
+
+### Arguments
+
+- `first_file`: the first json file with the list of topics
+- `second_file`: the second json file with the list of topics
+- `output`:  output file name in CSV format
+
+### Example of usage
+
+```
+topic_matcher.py energy1_terms-topics.json energy2_terms-topics.json matching.csv
+```
+
+## `report_year.py`
+
+The script has 2 different types of execution that the user can choose with the argument "list" or "plot"
+
+### `list`
+
+- ACTION: Lists the topics with their most significant keywords from a chosen Json file
+- INPUT: Json file with list of topics and their relative keywords
+- OUTPUT: List of the topics with their top 5 most significant keywords
+
+### Arguments
+
+- `topics_json`: the json file with the list of the topics
+
+### Example of usage
+
+```
+report_year.py list energy_terms-topics.json
+```
+
+### `plot`
+
+- ACTION: Analyse and plot the yearly growth of the number of papers inherent to a chosen topic; multiple topics can be chosen at once
+- INPUT: A list of the desired topics ("all" if the user wants to plot data from every topic), a Json file listing every paper with its relatives topics and a CSV file with data from every paper 
+- OUTPUT: A yearly growth graph for the chosen topics
+
+### Arguments
+
+- `topics_list`: list of the topics desired e.g. 1,3,10 or "all"
+- `papers_json`: the json file with the list of the papers
+- `papers_csv`: the csv file with the papers data
+
+
+### Example of usage
+
+```
+report_year.py plot 1,2,5,39 energy_docs-topics.json energy_preproc.csv
+report_year.py plot all energy_docs-topics.json energy_preproc.csv
 ```
