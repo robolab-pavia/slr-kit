@@ -314,7 +314,7 @@ def main():
                                                               dictionary)
 
     print(f'Average topic coherence: {avg_topic_coherence:.4f}.')
-    now = datetime.now().strftime('')
+    now = datetime.now()
     name = f'{args.prefix}_terms-topics_{now:%Y-%m-%d_%H:%M:%S}.json'
     topic_file = args.dataset / name
     with open(topic_file, 'w') as file:
