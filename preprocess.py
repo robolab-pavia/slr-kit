@@ -78,7 +78,7 @@ def load_barrier_words(input_file):
     return stop_words_list
 
 
-def replace_ngram(text, n_grams, check_subsequent):
+def replace_ngram(text, n_grams):
     """
     Replace the given n-grams with a placeholder in the specified text
 
@@ -93,8 +93,6 @@ def replace_ngram(text, n_grams, check_subsequent):
     :type text: list[str]
     :param n_grams: generator that yields n-grams and their placeholder
     :type n_grams: Generator[tuple[str, tuple[str]], Any, None]
-    :param check_subsequent: if True, check the token immediately after the
-        found n-gram. If it is equal to the placeholder, this token is removed.
     :return: the transformed text
     :rtype: list[str]
     """
@@ -110,12 +108,6 @@ def replace_ngram(text, n_grams, check_subsequent):
                 if tuple(text2[index:index + length]) == ngram:
                     # found!
                     text2[index:index + length] = [placeholder]
-                    try:
-                        if check_subsequent and text2[index + 1] == placeholder:
-                            del text2[index + 1]
-                    except IndexError:
-                        # reached the end of the list: stop the loop
-                        end = True
             except ValueError:
                 end = True
 
