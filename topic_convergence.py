@@ -3,6 +3,7 @@ import terms
 import copy
 from tqdm import tqdm
 
+
 def init_argparser():
     parser = argparse.ArgumentParser()
     return parser
@@ -53,14 +54,19 @@ def list_sorter(terms_list):
 
 
 def list_comparer(sorted_list, relevant_list):
-    strings = []
-    for item in sorted_list.items:
-        if relevant_list.get(item.string) is None:
-            strings.append(item.string)
 
-    sorted_list.remove(strings)
-    print(len(sorted_list))
+    index = 0
+
+    for item in list(sorted_list.items):
+        if relevant_list.get(item.string) is None:
+            sorted_list.items.remove(item)
+        else:
+            sorted_list.get(item.string).label = relevant_list.get(item.string).label
+            sorted_list.get(item.string).index = index
+            index += 1
+
     return sorted_list
+
 
 def main():
     #parser = init_argparser()
@@ -69,6 +75,7 @@ def main():
     terms_list, relevant_list = list_cleaner(tsv_path)
     sorted_list = list_sorter(terms_list)
     final_list = list_comparer(sorted_list, relevant_list)
+    final_list.to_tsv("outp.csv")
 
 
 if __name__ == "__main__":
