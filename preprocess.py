@@ -122,6 +122,31 @@ def replace_ngram(text, n_grams, check_subsequent):
     return text2
 
 
+def acronyms_generator(acronyms, prefix_suffix=BARRIER_PLACEHOLDER):
+    """
+    Generator that yields acronyms and the relative placeholder for replace_ngram
+
+    The placeholder for each acronym is <prefix_suffix><abbreviation><prefix_suffix>
+    The function yields for each acronym: the extended acronym, the extended
+    acronym with all the word separated by '-' and the abbreviation of the acronym
+    Each acronym is yielded as a tuple of strings.
+
+    :param acronyms: the acronyms to replace in each document. Must have two
+        columns 'Acronym' and 'Extended'
+    :type acronyms: pd.DataFrame
+    :param prefix_suffix: prefix and suffix used to create the placeholder
+    :type prefix_suffix: str
+    :return: a generator that yields the placeholder and the acronym
+    :rtype: Generator[tuple[str, tuple[str]], Any, None]
+    """
+    for _, row in acronyms.iterrows():
+        sub = f'{prefix_suffix}{row["Acronym"]}{prefix_suffix}'
+        yield sub, row['Extended']
+        alt = ('-'.join(row['Extended']), )
+        yield sub, alt
+        yield sub, (row['Acronym'], )
+
+
 def preprocess_item(item, relevant_terms, barrier_words, acronyms,
                     barrier=BARRIER_PLACEHOLDER,
                     relevant_prefix=RELEVANT_PREFIX):
