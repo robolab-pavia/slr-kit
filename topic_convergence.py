@@ -1,33 +1,35 @@
 import argparse
-import csv
-from operator import itemgetter
-
+import terms
+import copy
 
 def init_argparser():
     parser = argparse.ArgumentParser()
     return parser
 
 
-def list_sorter(terms_list):
+def list_sorter(tsv_path):
+    sorter = terms.TermList()
+    sorter.from_tsv(tsv_path)
+    relevant_list = terms.TermList([])
+    print(len(sorter.items))
+    for item in list(sorter.items):
+        if item.order < 0:
+            sorter.items.remove(item)
+        else:
+            if item.label == terms.Label.RELEVANT or item.label == terms.Label.KEYWORD:
+                copy_item = copy.deepcopy(item)
+                relevant_list.items.append(copy_item)
+            sorter.get(item.string).order = -1
+            sorter.get(item.string).label = terms.Label.NONE
+    sorted_list = terms.TermList()
 
-    terms_list.pop(0)
-    index = 0
-    for term in list(terms_list):
-        if term[2] != "relevant" and term[2] != "keyword":
-            terms_list.remove(term)
-        index += 1
-
-    sorted_list = sorted(terms_list, key=itemgetter(4))
-
-    return sorted_list
 
 
 def main():
     #parser = init_argparser()
     #args = parser.parse_args()
-    csv_path = "energy_dataset/energy_terms.csv"
-    terms_list = list(csv.reader(open(csv_path, encoding="utf8"), delimiter="\t"))
-    list_sorter(terms_list)
+    tsv_path = "energy_dataset/energy_terms.csv"
+    list_sorter(tsv_path)
 
 
 if __name__ == "__main__":
