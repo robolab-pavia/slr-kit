@@ -192,9 +192,7 @@ def preprocess_item(item, relevant_terms, barrier_words, acronyms,
     text2 = []
 
     # replace acronyms
-    acro_gen = ((acro['Acronym'], acro['Extended'])
-                for _, acro in acronyms.iterrows())
-    text = replace_ngram(text, acro_gen, True)
+    text = replace_ngram(text, acronyms_generator(acronyms, relevant_prefix))
 
     for word in text:
         text2.append(lem.lemmatize(word))
@@ -202,7 +200,7 @@ def preprocess_item(item, relevant_terms, barrier_words, acronyms,
     # mark relevant terms
     rel_gen = ((f'{relevant_prefix}_{"_".join(rel)}', rel)
                for rel in relevant_terms)
-    text2 = replace_ngram(text2, rel_gen, False)
+    text2 = replace_ngram(text2, rel_gen)
 
     for i, word in enumerate(text2):
         if word in barrier_words:
