@@ -4,8 +4,8 @@ from multiprocessing import Pool
 import pandas as pd
 from psutil import cpu_count
 
-BARRIER_PLACEHOLDER = 'XXX'
-RELEVANT_PREFIX = BARRIER_PLACEHOLDER
+from utils import BARRIER_PLACEHOLDER, RELEVANT_PREFIX
+
 PHYSICAL_CPUS = cpu_count(logical=False)
 
 

@@ -6,10 +6,7 @@ import sys
 import csv
 import logging
 import argparse
-from utils import setup_logger
-
-BARRIER_PLACEHOLDER = 'XXX'
-RELEVANT_PREFIX = BARRIER_PLACEHOLDER
+from utils import setup_logger, BARRIER_PLACEHOLDER
 
 
 def init_argparser():

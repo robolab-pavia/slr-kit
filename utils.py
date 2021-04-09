@@ -5,6 +5,9 @@ import string
 import json
 import sys
 
+BARRIER_PLACEHOLDER = '@'
+RELEVANT_PREFIX = BARRIER_PLACEHOLDER
+
 
 def load_df(filename, required_columns=None):
     """

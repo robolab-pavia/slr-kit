@@ -18,8 +18,9 @@ from gensim.corpora import Dictionary
 from gensim.models import LdaModel
 from gensim.models.coherencemodel import CoherenceModel
 
-from lda_utils import PHYSICAL_CPUS, load_documents, BARRIER_PLACEHOLDER
-from utils import substring_index, AppendMultipleFilesAction
+from lda_utils import PHYSICAL_CPUS, load_documents
+from utils import (substring_index, AppendMultipleFilesAction,
+                   BARRIER_PLACEHOLDER)
 
 
 def init_argparser():
@@ -344,7 +345,7 @@ def main():
     relevant_prefix = barrier_placeholder
 
     if args.no_relevant:
-        labels = ('keyword', )
+        labels = ('keyword',)
     else:
         labels = ('keyword', 'relevant')
 

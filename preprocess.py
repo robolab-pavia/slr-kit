@@ -13,12 +13,10 @@ from psutil import cpu_count
 
 from utils import (setup_logger, assert_column,
                    log_end, log_start,
-                   AppendMultipleFilesAction)
+                   AppendMultipleFilesAction, BARRIER_PLACEHOLDER,
+                   RELEVANT_PREFIX)
 
 PHYSICAL_CPUS = cpu_count(logical=False)
-
-BARRIER_PLACEHOLDER = 'XXX'
-RELEVANT_PREFIX = BARRIER_PLACEHOLDER
 
 
 def init_argparser():
