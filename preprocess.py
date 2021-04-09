@@ -198,7 +198,7 @@ def preprocess_item(item, relevant_terms, barrier_words, acronyms,
         text2.append(lem.lemmatize(word))
 
     # mark relevant terms
-    rel_gen = ((f'{relevant_prefix}_{"_".join(rel)}', rel)
+    rel_gen = ((f'{relevant_prefix}{"_".join(rel)}{relevant_prefix}', rel)
                for rel in relevant_terms)
     text2 = replace_ngram(text2, rel_gen)
 
