@@ -55,7 +55,7 @@ def init_argparser():
                         help='delimiter used in output file. Default \t')
     parser.add_argument('--rows', '-R', type=int,
                         dest='input_rows', default=None,
-                        help="Select maximun number of samples")
+                        help="Select maximum number of samples")
     return parser
 
 
