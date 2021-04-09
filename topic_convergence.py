@@ -12,8 +12,10 @@ def list_cleaner(tsv_path):
     terms_list = terms.TermList()
     terms_list.from_tsv(tsv_path)
     relevant_list = terms.TermList([])
-    print("Starting list cleaning")
-    for item in list(terms_list.items):
+
+    print("Starting list cleaning...")
+
+    for item in tqdm(list(terms_list.items)):
         if item.order < 0:
             terms_list.items.remove(item)
         else:
@@ -30,7 +32,7 @@ def list_cleaner(tsv_path):
 
 def list_sorter(terms_list):
     multigram_index = 0
-    print("Starting list sorting")
+    print("Starting list sorting...")
 
     for term in terms_list.items:
         if len(term.string.split()) > 1:
@@ -49,12 +51,24 @@ def list_sorter(terms_list):
 
     return sorted_list
 
+
+def list_comparer(sorted_list, relevant_list):
+    strings = []
+    for item in sorted_list.items:
+        if relevant_list.get(item.string) is None:
+            strings.append(item.string)
+
+    sorted_list.remove(strings)
+    print(len(sorted_list))
+    return sorted_list
+
 def main():
     #parser = init_argparser()
     #args = parser.parse_args()
     tsv_path = "energy_dataset/energy_terms.csv"
     terms_list, relevant_list = list_cleaner(tsv_path)
     sorted_list = list_sorter(terms_list)
+    final_list = list_comparer(sorted_list, relevant_list)
 
 
 if __name__ == "__main__":
