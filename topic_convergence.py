@@ -11,7 +11,6 @@ def list_sorter(tsv_path):
     sorter = terms.TermList()
     sorter.from_tsv(tsv_path)
     relevant_list = terms.TermList([])
-    print(len(sorter.items))
     for item in list(sorter.items):
         if item.order < 0:
             sorter.items.remove(item)
@@ -21,6 +20,15 @@ def list_sorter(tsv_path):
                 relevant_list.items.append(copy_item)
             sorter.get(item.string).order = -1
             sorter.get(item.string).label = terms.Label.NONE
+
+    multigram_index = 0
+
+    for term in sorter.items:
+        if len(term.string.split()) > 1:
+            break
+        multigram_index = term.index
+
+    print(multigram_index)
     sorted_list = terms.TermList()
 
 
