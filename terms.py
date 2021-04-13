@@ -470,7 +470,7 @@ class TermList:
         items = sorted(self.items, key=lambda t: t.index)
         path = str(Path(outfile).resolve().parent)
         with tempfile.NamedTemporaryFile('w', dir=path, prefix='.fawoc.temp.',
-                                         encoding='utf-8', delete=False) as out:
+                                         encoding='utf-8', delete=False, newline="") as out:
             writer = csv.DictWriter(out, delimiter='\t', quotechar='"',
                                     fieldnames=['id', 'keyword', 'label'],
                                     quoting=csv.QUOTE_MINIMAL)
