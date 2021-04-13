@@ -112,14 +112,16 @@ def main():
         writer = csv.writer(output_file, delimiter='\t', quotechar='"',
                             quoting=csv.QUOTE_MINIMAL)
         writer.writerow(['id', 'term', 'label'])
+        index = 0
         for terms in list_of_grams:
-            for index, key in enumerate(terms):
+            for key in terms:
                 writer.writerow([index, key, ''])
                 fawoc_data.append({
                     'id': index,
                     'term': key,
                     'count': int(terms[key]),
                 })
+                index += 1
 
     with open(path.parent / name, 'w') as fawoc_file:
         fawoc_data_writer = csv.DictWriter(fawoc_file, delimiter='\t',
