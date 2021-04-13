@@ -8,6 +8,7 @@ Introduces Gensim's LDA model and demonstrates its use on the NIPS corpus.
 
 import argparse
 import json
+from datetime import datetime
 from itertools import repeat
 from multiprocessing import Pool
 from os import cpu_count
@@ -160,59 +161,99 @@ def generate_filtered_docs(terms_file, preproc_file,
     return good_docs, titles
 
 
-def main():
-    args = init_argparser().parse_args()
+def prepare_documents(preproc_file, terms_file, ngrams, labels):
+    """
+    Elaborates the documents preparing the bag of word representation
 
-    terms_file = args.dataset / f'{args.prefix}_terms.csv'
-    preproc_file = args.dataset / f'{args.prefix}_preproc.csv'
-
-    if args.no_relevant:
-        labels = ('keyword', )
-    else:
-        labels = ('keyword', 'relevant')
-
-    if args.ngrams:
+    :param preproc_file: path to the csv file with the lemmatized abstracts
+    :type preproc_file: str
+    :param terms_file: path to the csv file with the classified terms
+    :type terms_file: str
+    :param ngrams: if True use all the ngrams
+    :type ngrams: bool
+    :param labels: use only the terms classified with the labels specified here
+    :type labels: tuple[str]
+    :return: the documents as bag of words and the document titles
+    :rtype: tuple[list[list[str]], list[str]]
+    """
+    if ngrams:
         docs, titles = generate_filtered_docs_ngrams(terms_file, preproc_file,
                                                      labels)
     else:
         docs, titles = generate_filtered_docs(terms_file, preproc_file, labels)
 
-    if args.load_model is not None:
-        lda_path = Path(args.load_model)
-        model = LdaModel.load(str(lda_path / 'model'))
-        dictionary = Dictionary.load(str(lda_path / 'model_dictionary'))
-    else:
-        # Make a index to word dictionary.
-        dictionary = Dictionary(docs)
-        dictionary.filter_extremes(no_below=args.no_below, no_above=args.no_above)
-        _ = dictionary[0]  # This is only to "load" the dictionary.
-        id2word = dictionary.id2token
-        corpus = [dictionary.doc2bow(doc) for doc in docs]
-        # Train LDA model.
-        # Set training parameters.
-        num_topics = args.topics
-        chunksize = len(corpus)
-        alpha = args.alpha
-        beta = args.beta
+    return docs, titles
 
-        model = LdaModel(
-            corpus=corpus,
-            id2word=id2word,
-            chunksize=chunksize,
-            alpha=alpha,
-            eta=beta,
-            num_topics=num_topics,
-            random_state=args.seed
-        )
 
+def train_lda_model(docs, topics=20, alpha='auto', beta='auto', no_above=0.5,
+                    no_below=20, seed=None):
+    """
+    Trains the lda model
+
+    Each parameter has the default value used also as default by the lda.py script
+    :param docs: documents train the model upon
+    :type docs: list[list[str]]
+    :param topics: number of topics
+    :type topics: int
+    :param alpha: alpha parameter
+    :type alpha: float or str
+    :param beta: beta parameter
+    :type beta: float or str
+    :param no_above: keep terms which are contained in no more than this
+        fraction of documents (fraction of total corpus size, not an absolute
+        number).
+    :type no_above: float
+    :param no_below: keep tokens which are contained in at least this number of
+        documents (absolute number).
+    :type no_below: int
+    :param seed: seed used for random generator
+    :type seed: int or None
+    :return: the trained model and the dictionary object used in training
+    :rtype: tuple[LdaModel, Dictionary]
+    """
+    # Make a index to word dictionary.
+    dictionary = Dictionary(docs)
+    dictionary.filter_extremes(no_below=no_below,
+                               no_above=no_above)
+    _ = dictionary[0]  # This is only to "load" the dictionary.
+    id2word = dictionary.id2token
+    corpus = [dictionary.doc2bow(doc) for doc in docs]
+    # Train LDA model.
+    model = LdaModel(
+        corpus=corpus,
+        id2word=id2word,
+        chunksize=len(corpus),
+        alpha=alpha,
+        eta=beta,
+        num_topics=topics,
+        random_state=seed
+    )
+    return model, dictionary
+
+
+def prepare_topics(model, docs, titles, dictionary):
+    """
+    Prepare the dicts for the topics and the document topic assignment
+
+    :param model: the trained lda model
+    :type model: LdaModel
+    :param docs: the documents to evaluate to assign the topics
+    :type docs: list[list[str]]
+    :param titles: the titles of the documents
+    :type titles: list[str]
+    :param dictionary: the gensim dictionary object used for training
+    :type dictionary: Dictionary
+    :return: the dict of the topics, the docs-topics assignement and
+        the average coherence score
+    :rtype: tuple[dict[int, dict[str, str or dict[str, float]]],
+        list[dict[str, int or str or dict[int, str]]], float]
+    """
     cm = CoherenceModel(model=model, texts=docs, dictionary=dictionary,
                         coherence='c_v', processes=cpu_count())
-
     # Average topic coherence is the sum of topic coherences of all topics,
     # divided by the number of topics.
     avg_topic_coherence = cm.get_coherence()
     coherence = cm.get_coherence_per_topic()
-    print(f'Average topic coherence: {avg_topic_coherence:.4f}.')
     topics = {}
     topics_order = list(range(model.num_topics))
     topics_order.sort(key=lambda x: coherence[x], reverse=True)
@@ -224,10 +265,6 @@ def main():
             'coherence': f'{float(coherence[i]):.5f}',
         }
         topics[i] = t_dict
-
-    topic_file = args.dataset / f'{args.prefix}_terms-topics.json'
-    with open(topic_file, 'w') as file:
-        json.dump(topics, file, indent='\t')
 
     docs_topics = []
     for i, (title, d) in enumerate(zip(titles, docs)):
@@ -241,7 +278,50 @@ def main():
         }
         docs_topics.append(d_t)
 
-    docs_file = args.dataset / f'{args.prefix}_docs-topics.json'
+    return topics, docs_topics, avg_topic_coherence
+
+
+def main():
+    args = init_argparser().parse_args()
+
+    terms_file = args.dataset / f'{args.prefix}_terms.csv'
+    preproc_file = args.dataset / f'{args.prefix}_preproc.csv'
+
+    if args.no_relevant:
+        labels = ('keyword', )
+    else:
+        labels = ('keyword', 'relevant')
+
+    docs, titles = prepare_documents(preproc_file, terms_file,
+                                     args.ngrams, labels)
+
+    if args.load_model is not None:
+        lda_path = Path(args.load_model)
+        model = LdaModel.load(str(lda_path / 'model'))
+        dictionary = Dictionary.load(str(lda_path / 'model_dictionary'))
+    else:
+        no_below = args.no_below
+        no_above = args.no_above
+        topics = args.topics
+        alpha = args.alpha
+        beta = args.beta
+        seed = args.seed
+        model, dictionary = train_lda_model(docs, topics, alpha, beta,
+                                            no_above, no_below, seed)
+
+    docs_topics, topics, avg_topic_coherence = prepare_topics(model, docs,
+                                                              titles,
+                                                              dictionary)
+
+    print(f'Average topic coherence: {avg_topic_coherence:.4f}.')
+    now = datetime.now()
+    name = f'{args.prefix}_terms-topics_{now:%Y-%m-%d_%H%M%S}.json'
+    topic_file = args.dataset / name
+    with open(topic_file, 'w') as file:
+        json.dump(topics, file, indent='\t')
+
+    name = f'{args.prefix}_docs-topics_{now:%Y-%m-%d_%H%M%S}.json'
+    docs_file = args.dataset / name
     with open(docs_file, 'w') as file:
         json.dump(docs_topics, file, indent='\t')
 
