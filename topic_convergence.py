@@ -6,6 +6,14 @@ from tqdm import tqdm
 
 def init_argparser():
     parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(help="sub-command help", dest="command")
+
+    # parser for "sort" command
+    parser_sort = subparsers.add_parser("sort", help="create a sorted list of only relatives and keywords terms from a"
+                                                     " classified-terms tsv file")
+    parser_sort.add_argument("terms_tsv", type=str, help="the tsv file with the unsorted and complete list of terms")
+    parser_sort.add_argument("output", type=str, help="the path of the output file")
+
     return parser
 
 
@@ -69,13 +77,15 @@ def list_comparer(sorted_list, relevant_list):
 
 
 def main():
-    #parser = init_argparser()
-    #args = parser.parse_args()
-    tsv_path = "energy_dataset/energy_terms.csv"
-    terms_list, relevant_list = list_cleaner(tsv_path)
-    sorted_list = list_sorter(terms_list)
-    final_list = list_comparer(sorted_list, relevant_list)
-    final_list.to_tsv("outp.csv")
+    parser = init_argparser()
+    args = parser.parse_args()
+
+    if args.command == "sort":
+        tsv_path = args.terms_tsv
+        terms_list, relevant_list = list_cleaner(tsv_path)
+        sorted_list = list_sorter(terms_list)
+        final_list = list_comparer(sorted_list, relevant_list)
+        final_list.to_tsv(args.output)
 
 
 if __name__ == "__main__":
