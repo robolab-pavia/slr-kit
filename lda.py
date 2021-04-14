@@ -309,7 +309,7 @@ def main():
         model, dictionary = train_lda_model(docs, topics, alpha, beta,
                                             no_above, no_below, seed)
 
-    docs_topics, topics, avg_topic_coherence = prepare_topics(model, docs,
+    topics, docs_topics, avg_topic_coherence = prepare_topics(model, docs,
                                                               titles,
                                                               dictionary)
 
