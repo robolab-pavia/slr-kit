@@ -8,6 +8,7 @@ import lda
 import topic_matcher
 import os
 import json
+import tempfile
 
 
 def init_argparser():
@@ -20,13 +21,18 @@ def init_argparser():
     parser_sort.add_argument("terms_tsv", type=str, help="the tsv file with the unsorted and complete list of terms")
     parser_sort.add_argument("output", type=str, help="the path of the output file")
 
-    #parser for "lda" command
-    parser_lda = subparsers.add_parser("lda", help="todo")
+    # parser for "lda" command
+    parser_lda = subparsers.add_parser("lda", help="runs LDA on a set of list of increasing size")
     parser_lda.add_argument("ordered_list", type=str, help="the tsv file with the ordered list of relevant terms")
     parser_lda.add_argument("preproc_file", type=str, help="the tsv file with data from all papers")
     parser_lda.add_argument("output_path", type=str, help="path to the output folder desired")
     parser_lda.add_argument("--min", type=int, default=1000)
     parser_lda.add_argument("--increment", type=int, default=200)
+
+    # parser for "match" command
+    parser_match = subparsers.add_parser("match", help="matches and compares the results from the LDA subcommand")
+    parser_match.add_argument("lda_dir", type=str, help="path to the directory containing increasing lda list")
+    parser_match.add_argument("output", type=str, help="path to the output file")
 
     return parser
 
@@ -117,6 +123,43 @@ def lda_iterator(terms_file, preproc_file, output_path, minimum, increment):
             json.dump(docs_topics, file, indent='\t')
 
 
+def matcher(lda_dir, output_path):
+
+    temp_dir = tempfile.mkdtemp()
+    file_counter = 0
+    file_list = sorted(os.listdir(lda_dir), key=len)
+    for filename in os.listdir(lda_dir):
+        if filename[:12] == "topics_list_":
+            file_counter += 1
+        else:
+            file_list.remove(filename)
+
+    for x in range(file_counter-1):
+        name = file_list[x][-9:-5]+"-"+file_list[x+1][-9:-5]
+        name = name.replace("_", "")
+        topics_data1, topics_data2 = topic_matcher.json_opener(lda_dir+"/"+file_list[x],
+                                                               lda_dir+"/"+file_list[x+1])
+        topic_matcher.csv_writer(topics_data1, topics_data2, temp_dir + "/" + name + ".csv")
+
+    with open(output_path, "w", newline="") as out_file:
+        writer = csv.writer(out_file, delimiter="\t")
+        writer.writerow(["Terms A",
+                         "Terms B",
+                         "Avg top 20 topics"])
+
+        for filename in sorted(os.listdir(temp_dir), key=len):
+            print(filename)
+            avg = 0
+            match_list = list(csv.reader(open(temp_dir+"/"+filename, encoding="utf8"), delimiter=","))
+            for row in match_list[1:21]:
+                avg += float(row[4])
+            avg /= 20
+            avg = round(avg, 2)
+            line = filename[:-4].split("-")
+            line.append(str(avg))
+            writer.writerow(line)
+
+
 def main():
     parser = init_argparser()
     args = parser.parse_args()
@@ -129,6 +172,8 @@ def main():
         final_list.to_tsv(args.output)
     elif args.command == "lda":
         lda_iterator(args.ordered_list, args.preproc_file, args.output_path, args.min, args.increment)
+    elif args.command == "match":
+        matcher(args.lda_dir, args.output)
 
 
 if __name__ == "__main__":
