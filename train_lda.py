@@ -268,9 +268,6 @@ def compute_optimal_model(corpora, topics_range, alpha, beta, seed=None):
         'times': [],
         'seed': [],
     }
-    # Can take a long time to run
-    corpora_len = len(corpora)
-
     # iterate through all the combinations
 
     with Pool(processes=PHYSICAL_CPUS, initializer=init_train,
