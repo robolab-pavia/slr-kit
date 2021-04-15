@@ -75,8 +75,6 @@ def init_argparser():
     parser.add_argument('--plot-save', action='store_true',
                         help='if set, it saves the plot of the coherence as '
                              '<dataset>/<prefix>_lda_plot.pdf')
-    parser.add_argument('--keyword-only', action='store_true',
-                        help='if set, it uses only the keyword term')
     parser.add_argument('--result', '-r', metavar='FILENAME',
                         type=argparse.FileType('w'), default='-',
                         help='Where to save the training results in CSV format.'
