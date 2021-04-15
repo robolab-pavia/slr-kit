@@ -240,7 +240,9 @@ def main():
                                          barrier_placeholder,
                                          relevant_prefix)
 
-        no_below_list = [1, 20, 40, 100, len(titles) // 10]
+        tenth_of_titles = len(titles) // 10
+        no_below_list_base = [1, 20, 40, 100, tenth_of_titles]
+        no_below_list = [b for b in no_below_list_base if b <= tenth_of_titles]
         for no_below, no_above in product(no_below_list, no_above_list):
             corpus, dictionary = prepare_corpus(docs, no_above, no_below)
             corpora[(labels, no_below, no_above)] = (corpus, dictionary, docs)
