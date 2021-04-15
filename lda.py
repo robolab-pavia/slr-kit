@@ -84,11 +84,19 @@ def init_argparser():
     return parser
 
 
-def load_ngrams(terms_file, labels=('keyword', 'relevant')):
+def load_term_data(terms_file):
     words_dataset = pd.read_csv(terms_file, delimiter='\t',
                                 encoding='utf-8')
-    terms = words_dataset['keyword'].to_list()
+    try:
+        terms = words_dataset['term'].to_list()
+    except KeyError:
+        terms = words_dataset['keyword'].to_list()
     term_labels = words_dataset['label'].to_list()
+    return term_labels, terms
+
+
+def load_ngrams(terms_file, labels=('keyword', 'relevant')):
+    term_labels, terms = load_term_data(terms_file)
     zipped = zip(terms, term_labels)
     good = [x[0] for x in zipped if x[1] in labels]
     ngrams = {1: []}
@@ -125,10 +133,7 @@ def filter_doc(d, ngram_len, terms):
 
 
 def load_terms(terms_file, labels=('keyword', 'relevant')):
-    words_dataset = pd.read_csv(terms_file, delimiter='\t',
-                                encoding='utf-8')
-    terms = words_dataset['keyword'].to_list()
-    term_labels = words_dataset['label'].to_list()
+    term_labels, terms = load_term_data(terms_file)
     zipped = zip(terms, term_labels)
     good = [x for x in zipped if x[1] in labels]
     good_set = set()
@@ -175,6 +180,7 @@ def generate_filtered_docs(terms_file, preproc_file,
     for doc in docs:
         gd = [t for t in doc if t in terms]
         good_docs.append(gd)
+
     return good_docs, titles
 
 
