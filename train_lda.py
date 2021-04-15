@@ -1,7 +1,6 @@
 import argparse
-import json
 import sys
-from itertools import repeat, product
+from itertools import product
 from multiprocessing import Pool
 from pathlib import Path
 from timeit import default_timer as timer
@@ -13,9 +12,8 @@ import pandas as pd
 from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel, LdaModel
 
-from lda import (PHYSICAL_CPUS, generate_filtered_docs_ngrams,
-                 generate_filtered_docs, BARRIER_PLACEHOLDER, prepare_documents,
-                 prepare_topics, output_topics)
+from lda import (PHYSICAL_CPUS, BARRIER_PLACEHOLDER, prepare_documents,
+                 output_topics)
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
 from utils import AppendMultipleFilesAction
