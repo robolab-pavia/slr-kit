@@ -33,21 +33,24 @@ def init_argparser():
     :return: the command line parser
     :rtype: argparse.ArgumentParser
     """
-    epilog = """"'The program uses two files: <dataset>/<prefix>_preproc.csv and
- '<dataset>/<prefix>_terms.csv.
- It outputs the topics in <dataset>/<prefix>_terms-topics.json and the topics assigned
- to each document in <dataset>/<prefix>_docs-topics.json"""
+    epilog = "This script outputs the topics in " \
+             "<outdir>/lda_terms-topics_<date>_<time>.json and the topics" \
+             "assigned to each document in" \
+             "<outdir>/lda_docs-topics_<date>_<time>.json"
     parser = argparse.ArgumentParser(description='Performs the LDA on a dataset',
                                      epilog=epilog)
-    parser.add_argument('dataset', action='store', type=Path,
-                        help='path to the directory where the files of the '
-                             'dataset to elaborate are stored.')
-    parser.add_argument('prefix', action='store', type=str,
-                        help='prefix used when searching files.')
+    parser.add_argument('preproc_file', action='store', type=Path,
+                        help='path to the the preprocess file with the text to '
+                             'elaborate.')
+    parser.add_argument('terms_file', action='store', type=Path,
+                        help='path to the file with the classified terms.')
+    parser.add_argument('outdir', action='store', type=Path, nargs='?',
+                        default=Path.cwd(),
+                        help='path to the directory where to save the results.')
     parser.add_argument('--additional-terms', '-T',
                         action=AppendMultipleFilesAction, nargs='+',
                         metavar='FILENAME', dest='additional_file',
-                        help='Additional keyword file name')
+                        help='Additional keywords files')
     parser.add_argument('--topics', action='store', type=int, default=20,
                         help='Number of topics. If omitted %(default)s is used')
     parser.add_argument('--alpha', action='store', type=str, default='auto',
@@ -69,8 +72,8 @@ def init_argparser():
     parser.add_argument('--ngrams', action='store_true',
                         help='if set use all the ngrams')
     parser.add_argument('--model', action='store_true',
-                        help='if set the lda model is saved to directory '
-                             '<dataset>/<prefix>_lda_model. The model is saved '
+                        help='if set, the lda model is saved to directory '
+                             '<outdir>/lda_model. The model is saved '
                              'with name "model.')
     parser.add_argument('--no-relevant', action='store_true',
                         help='if set, use only the term labelled as keyword')
@@ -398,8 +401,9 @@ def output_topics(model, dictionary, docs, titles, outdir, file_prefix):
 def main():
     args = init_argparser().parse_args()
 
-    terms_file = args.dataset / f'{args.prefix}_terms.csv'
-    preproc_file = args.dataset / f'{args.prefix}_preproc.csv'
+    terms_file = args.terms_file
+    preproc_file = args.preproc_file
+    output_dir = args.outdir
 
     barrier_placeholder = args.placeholder
     relevant_prefix = barrier_placeholder
@@ -440,10 +444,10 @@ def main():
                                                               dictionary)
 
     print(f'Average topic coherence: {avg_topic_coherence:.4f}.')
-    output_topics(model, dictionary, docs, titles, args.dataset, args.prefix)
+    output_topics(model, dictionary, docs, titles, output_dir, 'lda')
 
     if args.model:
-        lda_path: Path = args.dataset / f'{args.prefix}_lda_model'
+        lda_path: Path = args.outdir / 'lda_model'
         lda_path.mkdir(exist_ok=True)
         model.save(str(lda_path / 'model'))
         dictionary.save(str(lda_path / 'model_dictionary'))

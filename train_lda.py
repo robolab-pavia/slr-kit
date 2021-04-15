@@ -33,20 +33,20 @@ class _ValidateInt(argparse.Action):
 
 def init_argparser():
     """Initialize the command line parser."""
-    epilog = 'The program uses two files: <dataset>/<prefix>_preproc.csv and ' \
-             '<dataset>/<prefix>_terms.csv. The first one is used for the ' \
-             'documents abstract and title. The second one is used for the ' \
-             'terms.\nThe script tests different lda models with different ' \
+    epilog = 'The script tests different lda models with different ' \
              'parameters and it tries to find the best model. The optimal ' \
              'number of topic is searched in the interval specified by the ' \
              'user on the command line.'
     parser = argparse.ArgumentParser(description='Performs the LDA on a dataset',
                                      epilog=epilog)
-    parser.add_argument('dataset', action='store', type=Path,
-                        help='path to the directory where the files of the '
-                             'dataset to elaborate are stored.')
-    parser.add_argument('prefix', action='store', type=str,
-                        help='prefix used when searching files.')
+    parser.add_argument('preproc_file', action='store', type=Path,
+                        help='path to the the preprocess file with the text to '
+                             'elaborate.')
+    parser.add_argument('terms_file', action='store', type=Path,
+                        help='path to the file with the classified terms.')
+    parser.add_argument('outdir', action='store', type=Path, nargs='?',
+                        default=Path.cwd(),
+                        help='path to the directory where to save the results.')
     parser.add_argument('--ngrams', action='store_true',
                         help='if set use all the ngrams')
     parser.add_argument('--additional-terms', '-T',
@@ -55,7 +55,7 @@ def init_argparser():
                         help='Additional keywords files')
     parser.add_argument('--model', action='store_true',
                         help='if set, the best lda model is saved to directory '
-                             '<dataset>/<prefix>_lda_model')
+                             '<outdir>/lda_model')
     parser.add_argument('--min-topics', '-m', type=int, default=5,
                         action=_ValidateInt,
                         help='Minimum number of topics to retrieve '
@@ -74,16 +74,16 @@ def init_argparser():
                         help='if set, it plots the coherence')
     parser.add_argument('--plot-save', action='store_true',
                         help='if set, it saves the plot of the coherence as '
-                             '<dataset>/<prefix>_lda_plot.pdf')
+                             '<outdir>/lda_plot.pdf')
     parser.add_argument('--result', '-r', metavar='FILENAME',
                         type=argparse.FileType('w'), default='-',
                         help='Where to save the training results in CSV format.'
                              ' If omitted or -, stdout is used.')
     parser.add_argument('--output', '-o', action='store_true',
                         help='if set, it stores the topic description in '
-                             '<dataset>/<prefix>_topics.json, and the document '
-                             'topic assignment in '
-                             '<dataset>/<prefix>_docs-topics.json')
+                             '<outdir>/lda_terms-topics_<date>_<time>.json, '
+                             'and the document topic assignment in '
+                             '<outdir>/lda_docs-topics_<date>_<time>.json')
     parser.add_argument('--placeholder', '-p', default=BARRIER_PLACEHOLDER,
                         help='Placeholder for barrier word. Also used as a '
                              'prefix for the relevant words. '
@@ -206,8 +206,9 @@ def load_additional_terms(input_file):
 
 def main():
     args = init_argparser().parse_args()
-    terms_file = args.dataset / f'{args.prefix}_terms.csv'
-    preproc_file = args.dataset / f'{args.prefix}_preproc.csv'
+    terms_file = args.terms_file
+    preproc_file = args.preproc_file
+    output_dir = args.outdir
 
     barrier_placeholder = args.placeholder
     relevant_prefix = barrier_placeholder
@@ -264,17 +265,18 @@ def main():
                          alpha=best['alpha'], eta=best['beta'])
 
         if args.output:
-            output_topics(model, dictionary, docs, titles, args.dataset, args.prefix)
+            output_topics(model, dictionary, docs, titles, output_dir, 'lda')
 
         if args.model:
-            lda_path: Path = args.dataset / f'{args.prefix}_lda_model'
+            lda_path = output_dir / 'lda_model'
             lda_path.mkdir(exist_ok=True)
             model.save(str(lda_path / 'model'))
             dictionary.save(str(lda_path / 'model_dictionary'))
 
     if args.plot_show or args.plot_save:
         max_cv = results.groupby('topics')['coherence'].idxmax()
-        plt.plot(results.loc[max_cv, 'topics'], results.loc[max_cv, 'coherence'],
+        plt.plot(results.loc[max_cv, 'topics'],
+                 results.loc[max_cv, 'coherence'],
                  marker='o', linestyle='solid')
 
         plt.xticks(topics_range)
@@ -285,7 +287,7 @@ def main():
             plt.show()
 
         if args.plot_save:
-            fig_file = args.dataset / f'{args.prefix}_lda_plot.pdf'
+            fig_file = output_dir / 'lda_plot.pdf'
             plt.savefig(str(fig_file), dpi=1000)
 
 
