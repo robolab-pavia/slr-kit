@@ -379,6 +379,22 @@ def load_documents(preproc_file, target_col,
     return documents, titles
 
 
+def output_topics(model, dictionary, docs, titles, outdir, file_prefix):
+    topics, docs_topics, avg_topic_coherence = prepare_topics(model, docs,
+                                                              titles,
+                                                              dictionary)
+    now = datetime.now()
+    name = f'{file_prefix}_terms-topics_{now:%Y-%m-%d_%H%M%S}.json'
+    topic_file = outdir / name
+    with open(topic_file, 'w') as file:
+        json.dump(topics, file, indent='\t')
+
+    name = f'{file_prefix}_docs-topics_{now:%Y-%m-%d_%H%M%S}.json'
+    docs_file = outdir / name
+    with open(docs_file, 'w') as file:
+        json.dump(docs_topics, file, indent='\t')
+
+
 def main():
     args = init_argparser().parse_args()
 
@@ -424,16 +440,7 @@ def main():
                                                               dictionary)
 
     print(f'Average topic coherence: {avg_topic_coherence:.4f}.')
-    now = datetime.now()
-    name = f'{args.prefix}_terms-topics_{now:%Y-%m-%d_%H%M%S}.json'
-    topic_file = args.dataset / name
-    with open(topic_file, 'w') as file:
-        json.dump(topics, file, indent='\t')
-
-    name = f'{args.prefix}_docs-topics_{now:%Y-%m-%d_%H%M%S}.json'
-    docs_file = args.dataset / name
-    with open(docs_file, 'w') as file:
-        json.dump(docs_topics, file, indent='\t')
+    output_topics(model, dictionary, docs, titles, args.dataset, args.prefix)
 
     if args.model:
         lda_path: Path = args.dataset / f'{args.prefix}_lda_model'

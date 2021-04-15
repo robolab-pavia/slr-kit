@@ -15,7 +15,7 @@ from gensim.models import CoherenceModel, LdaModel
 
 from lda import (PHYSICAL_CPUS, generate_filtered_docs_ngrams,
                  generate_filtered_docs, BARRIER_PLACEHOLDER, prepare_documents,
-                 prepare_topics)
+                 prepare_topics, output_topics)
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
 from utils import AppendMultipleFilesAction
@@ -188,19 +188,6 @@ def compute_optimal_model(corpora, topics_range, alpha, beta, seed=None):
     return pd.DataFrame(model_results)
 
 
-def output_topics(model, dictionary, docs, titles, args):
-    topics, docs_topics, avg_topic_coherence = prepare_topics(model, docs,
-                                                              titles,
-                                                              dictionary)
-    topic_file = args.dataset / f'{args.prefix}_terms-topics.json'
-    with open(topic_file, 'w') as file:
-        json.dump(topics, file, indent='\t')
-
-    docs_file = args.dataset / f'{args.prefix}_docs-topics.json'
-    with open(docs_file, 'w') as file:
-        json.dump(docs_topics, file, indent='\t')
-
-
 def load_additional_terms(input_file):
     """
     Loads a list of keyword terms from a file
@@ -281,7 +268,7 @@ def main():
                          alpha=best['alpha'], eta=best['beta'])
 
         if args.output:
-            output_topics(model, dictionary, docs, titles, args)
+            output_topics(model, dictionary, docs, titles, args.dataset, args.prefix)
 
         if args.model:
             lda_path: Path = args.dataset / f'{args.prefix}_lda_model'
