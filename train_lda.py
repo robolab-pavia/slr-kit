@@ -13,8 +13,7 @@ import pandas as pd
 from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel, LdaModel
 
-from lda_utils import PHYSICAL_CPUS, load_documents
-from utils import substring_index, BARRIER_PLACEHOLDER
+from lda import (PHYSICAL_CPUS, load_documents, BARRIER_PLACEHOLDER)
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
 from utils import AppendMultipleFilesAction
