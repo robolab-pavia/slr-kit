@@ -99,13 +99,13 @@ def load_ngrams(terms_file, labels=('keyword', 'relevant')):
     term_labels, terms = load_term_data(terms_file)
     zipped = zip(terms, term_labels)
     good = [x[0] for x in zipped if x[1] in labels]
-    ngrams = {1: []}
+    ngrams = {1: set()}
     for x in good:
         n = x.count(' ') + 1
         try:
-            ngrams[n].append(x)
+            ngrams[n].add(x)
         except KeyError:
-            ngrams[n] = [x]
+            ngrams[n] = {x}
 
     return ngrams
 
@@ -148,10 +148,17 @@ def generate_filtered_docs_ngrams(terms_file, preproc_file,
                                   additional=None,
                                   barrier_placeholder=BARRIER_PLACEHOLDER,
                                   relevant_prefix=BARRIER_PLACEHOLDER):
-    if additional is None:
-        additional = set()
+    terms = load_ngrams(terms_file, labels)
+    if additional is not None:
+        for kw in additional:
+            n = kw.count(' ') + 1
+            try:
+                terms[n].add(kw)
+            except KeyError:
+                # no terms with n words: add this category to include the
+                # additional keyword
+                terms[n] = {kw}
 
-    terms = load_ngrams(terms_file, labels) | additional
     ngram_len = sorted(terms, reverse=True)
     target_col = 'abstract_lem'
     documents, titles = load_documents(preproc_file, target_col,
