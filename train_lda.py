@@ -13,7 +13,9 @@ import pandas as pd
 from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel, LdaModel
 
-from lda import (PHYSICAL_CPUS, load_documents, BARRIER_PLACEHOLDER)
+from lda import (PHYSICAL_CPUS, generate_filtered_docs_ngrams,
+                 generate_filtered_docs, BARRIER_PLACEHOLDER, prepare_documents,
+                 prepare_topics)
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
 from utils import AppendMultipleFilesAction
@@ -91,111 +93,6 @@ def init_argparser():
                              'prefix for the relevant words. '
                              'Default: %(default)s')
     return parser
-
-
-def load_ngrams(terms_file, labels=('keyword', 'relevant')):
-    words_dataset = pd.read_csv(terms_file, delimiter='\t',
-                                encoding='utf-8')
-    terms = words_dataset['keyword'].to_list()
-    term_labels = words_dataset['label'].to_list()
-    zipped = zip(terms, term_labels)
-    good = [x[0] for x in zipped if x[1] in labels]
-    ngrams = {1: []}
-    for x in good:
-        n = x.count(' ') + 1
-        try:
-            ngrams[n].append(x)
-        except KeyError:
-            ngrams[n] = [x]
-
-    return ngrams
-
-
-def check_ngram(doc, idx):
-    for dd in doc:
-        r = range(dd[0][0], dd[0][1])
-        yield idx[0] in r or idx[1] in r
-
-
-def filter_doc(d, ngram_len, terms):
-    doc = []
-    flag = False
-    for n in ngram_len:
-        for t in terms[n]:
-            for idx in substring_index(d, t):
-                if flag and any(check_ngram(doc, idx)):
-                    continue
-
-                doc.append((idx, t.replace(' ', '_')))
-
-        flag = True
-    doc.sort(key=lambda dd: dd[0])
-    return [t[1] for t in doc]
-
-
-def load_terms(terms_file, labels=('keyword', 'relevant')):
-    words_dataset = pd.read_csv(terms_file, delimiter='\t',
-                                encoding='utf-8')
-    terms = words_dataset['keyword'].to_list()
-    term_labels = words_dataset['label'].to_list()
-    zipped = zip(terms, term_labels)
-    good = [x for x in zipped if x[1] in labels]
-    good_set = set()
-    for x in good:
-        good_set.add(x[0])
-
-    return good_set
-
-
-def generate_filtered_docs_ngrams(terms_file, preproc_file, additional=None,
-                                  barrier_placeholder=BARRIER_PLACEHOLDER,
-                                  relevant_prefix=BARRIER_PLACEHOLDER):
-    if additional is None:
-        additional = set()
-
-    labels = [('keyword', 'relevant'), ('keyword',)]
-    docs = {}
-    target_col = 'abstract_lem'
-    documents, titles = load_documents(preproc_file, target_col,
-                                       barrier_placeholder, relevant_prefix)
-    for lbl in labels:
-        terms = load_ngrams(terms_file, lbl) | additional
-        if all(len(t) == 0 for t in terms.values()):
-            continue
-
-        ngram_len = sorted(terms, reverse=True)
-        with Pool() as pool:
-            docs[lbl] = pool.starmap(filter_doc, zip(documents,
-                                                     repeat(ngram_len),
-                                                     repeat(terms)))
-    return docs, titles
-
-
-def generate_filtered_docs(terms_file, preproc_file, additional=None,
-                           barrier_placeholder=BARRIER_PLACEHOLDER,
-                           relevant_prefix=BARRIER_PLACEHOLDER):
-    if additional is None:
-        additional = set()
-
-    labels = [('keyword', 'relevant'), ('keyword',)]
-    good_docs = {}
-    target_col = 'abstract_lem'
-    documents, titles = load_documents(preproc_file, target_col,
-                                       barrier_placeholder, relevant_prefix)
-    for lbl in labels:
-        terms = load_terms(terms_file, lbl) | additional
-        if len(terms) == 0:
-            continue
-
-        docs = [d.split(' ') for d in documents]
-
-        gd = []
-        for doc in docs:
-            gd.append([t for t in doc if t in terms])
-
-        good_docs[lbl] = gd
-
-    return good_docs, titles
 
 
 def prepare_corpus(docs, no_above, no_below):
@@ -291,35 +188,14 @@ def compute_optimal_model(corpora, topics_range, alpha, beta, seed=None):
     return pd.DataFrame(model_results)
 
 
-def output_topics(model, docs, titles, args):
-    cm = CoherenceModel(model=model, texts=docs, dictionary=model.id2word,
-                        coherence='c_v', processes=PHYSICAL_CPUS)
-    coherence = cm.get_coherence_per_topic()
-    topics = {}
-    topics_order = list(range(model.num_topics))
-    topics_order.sort(key=lambda x: coherence[x], reverse=True)
-    for i in topics_order:
-        topic = model.show_topic(i)
-        t_dict = {
-            'name': f'Topic {i}',
-            'terms_probability': {t[0]: float(t[1]) for t in topic},
-            'coherence': f'{float(coherence[i]):.5f}',
-        }
-        topics[i] = t_dict
+def output_topics(model, dictionary, docs, titles, args):
+    topics, docs_topics, avg_topic_coherence = prepare_topics(model, docs,
+                                                              titles,
+                                                              dictionary)
     topic_file = args.dataset / f'{args.prefix}_terms-topics.json'
     with open(topic_file, 'w') as file:
         json.dump(topics, file, indent='\t')
-    docs_topics = []
-    for i, (title, d) in enumerate(zip(titles, docs)):
-        bow = model.id2word.doc2bow(d)
-        t = model.get_document_topics(bow)
-        t.sort(key=lambda x: x[1], reverse=True)
-        d_t = {
-            'id': i,
-            'title': title,
-            'topics': {tu[0]: float(tu[1]) for tu in t},
-        }
-        docs_topics.append(d_t)
+
     docs_file = args.dataset / f'{args.prefix}_docs-topics.json'
     with open(docs_file, 'w') as file:
         json.dump(docs_topics, file, indent='\t')
@@ -362,19 +238,6 @@ def main():
         for sfile in args.additional_file:
             additional_keyword |= load_additional_terms(sfile)
 
-    if args.ngrams:
-        docs, titles = generate_filtered_docs_ngrams(terms_file, preproc_file,
-                                                     additional_keyword,
-                                                     barrier_placeholder,
-                                                     relevant_prefix)
-    else:
-        docs, titles = generate_filtered_docs(terms_file, preproc_file,
-                                              additional_keyword,
-                                              barrier_placeholder,
-                                              relevant_prefix)
-
-    no_below_list = [1, 20, 40, 100, len(titles) // 10]
-    no_above_list = [0.5, 0.6, 0.75, 1.0]
     topics_range = range(args.min_topics, args.max_topics + args.step_topics,
                          args.step_topics)
     # Alpha parameter
@@ -385,10 +248,18 @@ def main():
     beta = list(np.arange(0.01, 1, 0.1))
     beta.append('auto')
     corpora = {}
-    for k, d in docs.items():
+    no_above_list = [0.5, 0.6, 0.75, 1.0]
+    for labels in [('keyword', 'relevant'), ('keyword', )]:
+        docs, titles = prepare_documents(preproc_file, terms_file,
+                                         args.ngrams, labels,
+                                         additional_keyword,
+                                         barrier_placeholder,
+                                         relevant_prefix)
+
+        no_below_list = [1, 20, 40, 100, len(titles) // 10]
         for no_below, no_above in product(no_below_list, no_above_list):
-            corpus, dictionary = prepare_corpus(d, no_above, no_below)
-            corpora[(k, no_below, no_above)] = (corpus, dictionary, d)
+            corpus, dictionary = prepare_corpus(docs, no_above, no_below)
+            corpora[(labels, no_below, no_above)] = (corpus, dictionary, docs)
 
     results = compute_optimal_model(corpora, topics_range, alpha, beta,
                                     args.seed)
@@ -410,7 +281,7 @@ def main():
                          alpha=best['alpha'], eta=best['beta'])
 
         if args.output:
-            output_topics(model, docs, titles, args)
+            output_topics(model, dictionary, docs, titles, args)
 
         if args.model:
             lda_path: Path = args.dataset / f'{args.prefix}_lda_model'
