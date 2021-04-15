@@ -17,6 +17,8 @@ from lda_utils import PHYSICAL_CPUS, load_documents, BARRIER_PLACEHOLDER
 from utils import substring_index
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
+from utils import AppendMultipleFilesAction
+
 _corpora: Optional[Dict[Tuple[str], Tuple[List[Tuple[int, int]],
                                           Dictionary, List[List[str]]]]] = None
 _seed: Optional[int] = None
@@ -48,6 +50,10 @@ def init_argparser():
                         help='prefix used when searching files.')
     parser.add_argument('--ngrams', action='store_true',
                         help='if set use all the ngrams')
+    parser.add_argument('--additional-terms', '-T',
+                        action=AppendMultipleFilesAction, nargs='+',
+                        metavar='FILENAME', dest='additional_file',
+                        help='Additional keywords files')
     parser.add_argument('--model', action='store_true',
                         help='if set, the best lda model is saved to directory '
                              '<dataset>/<prefix>_lda_model')
