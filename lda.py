@@ -9,7 +9,7 @@ Introduces Gensim's LDA model and demonstrates its use on the NIPS corpus.
 import argparse
 import json
 from datetime import datetime
-from itertools import repeat
+from itertools import repeat, chain
 from multiprocessing import Pool
 from pathlib import Path
 
@@ -20,8 +20,7 @@ from gensim.models.coherencemodel import CoherenceModel
 from psutil import cpu_count
 
 from utils import (substring_index, AppendMultipleFilesAction,
-                   BARRIER_PLACEHOLDER, RELEVANT_PREFIX)
-
+                   BARRIER_PLACEHOLDER, RELEVANT_PREFIX, assert_column)
 
 PHYSICAL_CPUS = cpu_count(logical=False)
 
@@ -51,6 +50,8 @@ def init_argparser():
                         action=AppendMultipleFilesAction, nargs='+',
                         metavar='FILENAME', dest='additional_file',
                         help='Additional keywords files')
+    parser.add_argument('--acronyms', '-a',
+                        help='TSV files with the approved acronyms')
     parser.add_argument('--topics', action='store', type=int, default=20,
                         help='Number of topics. If omitted %(default)s is used')
     parser.add_argument('--alpha', action='store', type=str, default='auto',
@@ -151,19 +152,25 @@ def load_terms(terms_file, labels=('keyword', 'relevant')):
 
 def generate_filtered_docs_ngrams(terms_file, preproc_file,
                                   labels=('keyword', 'relevant'),
-                                  additional=None,
+                                  additional=None, acronyms=None,
                                   barrier_placeholder=BARRIER_PLACEHOLDER,
                                   relevant_prefix=BARRIER_PLACEHOLDER):
     terms = load_ngrams(terms_file, labels)
+    keywords = []
     if additional is not None:
-        for kw in additional:
-            n = kw.count(' ') + 1
-            try:
-                terms[n].add(kw)
-            except KeyError:
-                # no terms with n words: add this category to include the
-                # additional keyword
-                terms[n] = {kw}
+        keywords.append(additional)
+
+    if acronyms is not None:
+        keywords.append(acronyms['Acronym'])
+
+    for kw in chain.from_iterable(keywords):
+        n = kw.count(' ') + 1
+        try:
+            terms[n].add(kw)
+        except KeyError:
+            # no terms with n words: add this category to include the
+            # additional keyword
+            terms[n] = {kw}
 
     ngram_len = sorted(terms, reverse=True)
     target_col = 'abstract_lem'
@@ -178,10 +185,14 @@ def generate_filtered_docs_ngrams(terms_file, preproc_file,
 
 def generate_filtered_docs(terms_file, preproc_file,
                            labels=('keyword', 'relevant'), additional=None,
+                           acronyms=None,
                            barrier_placeholder=BARRIER_PLACEHOLDER,
                            relevant_prefix=BARRIER_PLACEHOLDER):
     if additional is None:
         additional = set()
+
+    if acronyms is not None:
+        additional |= {acro for acro in acronyms['Acronym']}
 
     terms = load_terms(terms_file, labels) | additional
     target_col = 'abstract_lem'
@@ -218,7 +229,7 @@ def load_additional_terms(input_file):
 
 
 def prepare_documents(preproc_file, terms_file, ngrams, labels,
-                      additional_keyword=None,
+                      additional_keyword=None, acronyms=None,
                       barrier_placeholder=BARRIER_PLACEHOLDER,
                       relevant_prefix=BARRIER_PLACEHOLDER):
     """
@@ -234,6 +245,9 @@ def prepare_documents(preproc_file, terms_file, ngrams, labels,
     :type labels: tuple[str]
     :param additional_keyword: additional keyword loaded from file
     :type additional_keyword: set or None
+    :param acronyms: approved acronyms to be considered as keyword. Must have
+        the columns 'Acronym' and 'Extended'
+    :type acronyms: pd.DataFrame
     :param barrier_placeholder: placeholder for barrier words
     :type barrier_placeholder: str
     :param relevant_prefix: prefix used to mark relevant terms
@@ -244,15 +258,19 @@ def prepare_documents(preproc_file, terms_file, ngrams, labels,
     if additional_keyword is None:
         additional_keyword = set()
     if ngrams:
-        docs, titles = generate_filtered_docs_ngrams(terms_file, preproc_file,
-                                                     labels, additional_keyword,
-                                                     barrier_placeholder,
-                                                     relevant_prefix)
+        ret = generate_filtered_docs_ngrams(terms_file, preproc_file, labels,
+                                            acronyms=acronyms,
+                                            additional=additional_keyword,
+                                            barrier_placeholder=barrier_placeholder,
+                                            relevant_prefix=relevant_prefix)
     else:
-        docs, titles = generate_filtered_docs(terms_file, preproc_file, labels,
-                                              additional_keyword,
-                                              barrier_placeholder,
-                                              relevant_prefix)
+        ret = generate_filtered_docs(terms_file, preproc_file, labels,
+                                     acronyms=acronyms,
+                                     additional=additional_keyword,
+                                     barrier_placeholder=barrier_placeholder,
+                                     relevant_prefix=relevant_prefix)
+
+    docs, titles = ret
 
     return docs, titles
 
@@ -419,11 +437,20 @@ def main():
         for sfile in args.additional_file:
             additional_keyword |= load_additional_terms(sfile)
 
+    if args.acronyms is not None:
+        conv = {'Acronym': lambda s: s.lower()}
+        acronyms = pd.read_csv(args.acronyms, delimiter='\t', encoding='utf-8',
+                               converters=conv, usecols=list(conv))
+        assert_column(args.acronyms, acronyms, ['Acronym'])
+    else:
+        acronyms = None
+
     docs, titles = prepare_documents(preproc_file, terms_file,
                                      args.ngrams, labels,
-                                     additional_keyword,
-                                     barrier_placeholder,
-                                     relevant_prefix)
+                                     additional_keyword=additional_keyword,
+                                     acronyms=acronyms,
+                                     barrier_placeholder=barrier_placeholder,
+                                     relevant_prefix=relevant_prefix)
 
     if args.load_model is not None:
         lda_path = Path(args.load_model)

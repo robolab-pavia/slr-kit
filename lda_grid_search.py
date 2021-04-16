@@ -16,7 +16,7 @@ from lda import (PHYSICAL_CPUS, BARRIER_PLACEHOLDER, prepare_documents,
                  output_topics)
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
-from utils import AppendMultipleFilesAction
+from utils import AppendMultipleFilesAction, assert_column
 
 _corpora: Optional[Dict[Tuple[str], Tuple[List[Tuple[int, int]],
                                           Dictionary, List[List[str]]]]] = None
@@ -53,6 +53,8 @@ def init_argparser():
                         action=AppendMultipleFilesAction, nargs='+',
                         metavar='FILENAME', dest='additional_file',
                         help='Additional keywords files')
+    parser.add_argument('--acronyms', '-a',
+                        help='TSV files with the approved acronyms')
     parser.add_argument('--model', action='store_true',
                         help='if set, the best lda model is saved to directory '
                              '<outdir>/lda_model')
@@ -222,6 +224,14 @@ def main():
         for sfile in args.additional_file:
             additional_keyword |= load_additional_terms(sfile)
 
+    if args.acronyms is not None:
+        conv = {'Acronym': lambda s: s.lower()}
+        acronyms = pd.read_csv(args.acronyms, delimiter='\t', encoding='utf-8',
+                               converters=conv, usecols=list(conv))
+        assert_column(args.acronyms, acronyms, ['Acronym'])
+    else:
+        acronyms = None
+
     topics_range = range(args.min_topics, args.max_topics + args.step_topics,
                          args.step_topics)
     # Alpha parameter
@@ -236,9 +246,10 @@ def main():
     for labels in [('keyword', 'relevant'), ('keyword', )]:
         docs, titles = prepare_documents(preproc_file, terms_file,
                                          args.ngrams, labels,
-                                         additional_keyword,
-                                         barrier_placeholder,
-                                         relevant_prefix)
+                                         additional_keyword=additional_keyword,
+                                         acronyms=acronyms,
+                                         barrier_placeholder=barrier_placeholder,
+                                         relevant_prefix=relevant_prefix)
 
         tenth_of_titles = len(titles) // 10
         no_below_list_base = [1, 20, 40, 100, tenth_of_titles]
