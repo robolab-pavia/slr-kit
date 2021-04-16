@@ -348,7 +348,7 @@ def main():
         assert_column(args.acronyms, acronyms, ['Acronym', 'Extended'])
         debug_logger.debug('Acronyms loaded and updated')
     else:
-        acronyms = pd.DataFrame()
+        acronyms = pd.DataFrame(columns=['Acronym', 'Extended'])
 
     rel_terms = set()
     if args.relevant_terms_file is not None:
