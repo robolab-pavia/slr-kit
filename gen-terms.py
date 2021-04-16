@@ -26,7 +26,10 @@ def init_argparser():
     parser.add_argument('--placeholder', '-p', default=BARRIER_PLACEHOLDER,
                         help='Placeholder for barrier word. Also used as a '
                              'prefix for the relevant words. '
-                             'Default: %(default)s')
+                             'Default: %(default)r')
+    parser.add_argument('--column', '-c', default='abstract_lem',
+                        help='Column in datafile to process. '
+                             'If omitted %(default)r is used.')
     return parser
 
 
@@ -103,9 +106,9 @@ def convert_int_parameter(args, arg_name, default=None):
 
 
 def main():
-    target_column = 'abstract_lem'
     parser = init_argparser()
     args = parser.parse_args()
+    target_column = args.column
 
     # set the value of n_grams, possibly from the command line
     n_grams = convert_int_parameter(args, 'n_grams', default=4)

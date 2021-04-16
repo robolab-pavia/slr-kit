@@ -1,13 +1,16 @@
+import abc
 import argparse
 import logging
 import re
 import sys
+
 from itertools import repeat
 from multiprocessing import Pool
-from typing import Generator
+from typing import Generator, Tuple, Sequence
 from timeit import default_timer as timer
 
 import pandas as pd
+import treetaggerwrapper as ttagger
 from nltk.stem.wordnet import WordNetLemmatizer
 from psutil import cpu_count
 
@@ -19,18 +22,64 @@ from utils import (setup_logger, assert_column,
 PHYSICAL_CPUS = cpu_count(logical=False)
 
 
+class Lemmatizer(abc.ABC):
+    @abc.abstractmethod
+    def lemmatize(self, text: Sequence[str]) -> Generator[Tuple[str, str], None, None]:
+        pass
+
+
+class EnglishLemmatizer(Lemmatizer):
+    def __init__(self):
+        self._lem = WordNetLemmatizer()
+
+    def lemmatize(self, text: Sequence[str]) -> Generator[Tuple[str, str], None, None]:
+        for word in text:
+            yield (word, self._lem.lemmatize(word))
+
+
+class ItalianLemmatizer(Lemmatizer):
+    def __init__(self, treetagger_dir=None):
+        self._ttagger = ttagger.TreeTagger(TAGLANG='it', TAGDIR=treetagger_dir)
+
+    def lemmatize(self, text: Sequence[str]) -> Generator[Tuple[str, str], None, None]:
+        tags = self._ttagger.tag_text(' '.join(text))
+        for t in tags:
+            sp = t.split('\t')
+            if sp[0].lower() in ['sai'] and sp[2] != 'sapere':
+                yield (sp[0], 'sapere')
+            elif sp[2] == 'essere|stare':
+                yield (sp[0], 'stare')
+            else:
+                yield (sp[0], sp[2])
+
+
+AVAILABLE_LEMMATIZERS = {
+    'en': EnglishLemmatizer,
+    'it': ItalianLemmatizer,
+}
+
+
+def get_lemmatizer(lang='en'):
+    try:
+        return AVAILABLE_LEMMATIZERS[lang]()
+    except KeyError:
+        pass
+
+    raise ValueError(f'language {lang!r} not available')
+
+
 def init_argparser():
     """Initialize the command line parser."""
     parser = argparse.ArgumentParser()
     parser.add_argument('datafile', action='store', type=str,
                         help="input CSV data file")
     parser.add_argument('--output', '-o', metavar='FILENAME', default='-',
-                        help='output file name. If omitted or %(default)s '
+                        help='output file name. If omitted or %(default)r '
                              'stdout is used')
     parser.add_argument('--placeholder', '-p', default=BARRIER_PLACEHOLDER,
                         help='Placeholder for barrier word. Also used as a '
                              'prefix for the relevant words. '
-                             'Default: %(default)s')
+                             'Default: %(default)r')
     parser.add_argument('--barrier-words', '-b',
                         action=AppendMultipleFilesAction, nargs='+',
                         metavar='FILENAME', dest='barrier_words_file',
@@ -43,19 +92,26 @@ def init_argparser():
                         help='TSV files with the approved acronyms')
     parser.add_argument('--target-column', '-t', action='store', type=str,
                         default='abstract', dest='target_column',
-                        help='name of the column to look for')
+                        help='Column in datafile to process. '
+                             'If omitted %(default)r is used.')
     parser.add_argument('--output-column', action='store', type=str,
                         default='abstract_lem', dest='output_column',
-                        help='name of the column to save')
+                        help='name of the column to save'
+                             'If omitted %(default)r is used.')
     parser.add_argument('--input-delimiter', action='store', type=str,
                         default='\t', dest='input_delimiter',
-                        help='delimiter used in datafile. Default \t')
+                        help='Delimiter used in datafile. '
+                             'Default %(default)r')
     parser.add_argument('--output-delimiter', action='store', type=str,
                         default='\t', dest='output_delimiter',
-                        help='delimiter used in output file. Default \t')
+                        help='Delimiter used in output file. '
+                             'Default %(default)r')
     parser.add_argument('--rows', '-R', type=int,
                         dest='input_rows', default=None,
                         help="Select maximum number of samples")
+    parser.add_argument('--language', '-l', default='en',
+                        help='language of text. Must be a ISO 639-1 two-letter '
+                             'code. Default: %(default)r')
     return parser
 
 
@@ -139,8 +195,40 @@ def acronyms_generator(acronyms, prefix_suffix=BARRIER_PLACEHOLDER):
         yield sub, (row['Acronym'], )
 
 
+def language_specific_regex(text, lang='en'):
+    # The first step in every language is to change punctuations to barrier.
+    # The barrier placeholder can be anything, so we have to change the
+    # punctuation with something that will survive the special char removal.
+    # '---' it's ok because hyphens are preserved in every language.
+    if lang == 'en':
+        # punctuation
+        out_text = re.sub('[,.;:!?()"\']', ' --- ', text)
+        # Remove special characters (not the hyphen) and digits
+        return re.sub(r'(\d|[^-\w])+', ' ', out_text)
+    if lang == 'it':
+        # punctuation - preserve "'"
+        out_text = re.sub('[,.;:!?()"]', ' --- ', text)
+        # Remove special characters (not the hyphen) and digits. but preserve
+        # accented letters. Also preserve "'" if surrounded by non blank chars
+        return re.sub(r'(\d|[^-\wàèéìòù\']|(?<=\s)\'(?=\S)|(?<=\S)\'(?!\S))+',
+                      ' ', out_text)
+
+
+def regex(text, lang='en'):
+    # Change punctuation and remove special characters (not the hyphen) and
+    # digits. The definition of special character and punctuation, changes with
+    # the language
+    out_text = language_specific_regex(text, lang)
+    # now we can search for ' --- ' and place the barrier placeholder
+    # the positive look-ahead and look-behind are to preserve the spaces
+    out_text = re.sub(r'(?<=\s)---(?=\s)', BARRIER_PLACEHOLDER, out_text)
+    # remove any run of hyphens not surrounded by non space
+    out_text = re.sub(r'(\s+-+\s+|(?<=\S)-+\s+|\s+-+(?=\S))', ' ', out_text)
+    return out_text
+
+
 def preprocess_item(item, relevant_terms, barrier_words, acronyms,
-                    barrier=BARRIER_PLACEHOLDER,
+                    language='en', barrier=BARRIER_PLACEHOLDER,
                     relevant_prefix=RELEVANT_PREFIX):
     """
     Preprocess the text of a document.
@@ -164,6 +252,8 @@ def preprocess_item(item, relevant_terms, barrier_words, acronyms,
     :param acronyms: the acronyms to replace in each document. Must have two
         columns 'Acronym' and 'Extended'
     :type acronyms: pd.DataFrame
+    :param language: code of the language to be used to lemmatize text
+    :type language: str
     :param barrier: placeholder for the barrier words
     :type barrier: str
     :param relevant_prefix: prefix string used when replacing the relevant terms
@@ -171,31 +261,17 @@ def preprocess_item(item, relevant_terms, barrier_words, acronyms,
     :return: the processed text
     :rtype: list[str]
     """
+    lem = get_lemmatizer(language)
     # Convert to lowercase
     text = item.lower()
-    # Change punctuations to barrier. The barrier placeholder can be anything,
-    # so we have to change the punctuation with something that will survive the
-    # special char removal. '---' it's ok because hyphens are preserved
-    text = re.sub('[,.;:!?()]', ' --- ', text)
-    # Remove special characters (not the hyphen) and digits
-    text = re.sub(r'(\d|[^-\w])+', ' ', text)
-    # now we can search for ' --- ' and place the barrier placeholder
-    # the positive look-ahead and look-behind are to preserve the spaces
-    text = re.sub(r'(?<=\s)---(?=\s)', BARRIER_PLACEHOLDER, text)
-    # remove any run of hyphens not surrounded by non space
-    text = re.sub(r'(\s+-+\s+|(?<=\S)-+\s+|\s+-+(?=\S))', ' ', text)
-    # Convert to list from string
-    text = text.split()
-    # Lemmatisation
-    lem = WordNetLemmatizer()
-    # text = [lem.lemmatize(word) for word in text if not word in stop_words]
-    text2 = []
+    # apply some regex to clean the text
+    text = regex(text, language)
+    text = text.split(' ')
 
     # replace acronyms
     text = replace_ngram(text, acronyms_generator(acronyms, relevant_prefix))
 
-    for word in text:
-        text2.append(lem.lemmatize(word))
+    text2 = [lem_word for _, lem_word in lem.lemmatize(text)]
 
     # mark relevant terms
     rel_gen = ((f'{relevant_prefix}{"_".join(rel)}{relevant_prefix}', rel)
@@ -211,7 +287,7 @@ def preprocess_item(item, relevant_terms, barrier_words, acronyms,
 
 
 def process_corpus(dataset, relevant_terms, barrier_words, acronyms,
-                   barrier=BARRIER_PLACEHOLDER,
+                   language='en', barrier=BARRIER_PLACEHOLDER,
                    relevant_prefix=RELEVANT_PREFIX):
     """
     Process a corpus of documents.
@@ -227,6 +303,8 @@ def process_corpus(dataset, relevant_terms, barrier_words, acronyms,
     :param acronyms: the acronyms to replace in each document. Must have two
         columns 'Acronym' and 'Extended'
     :type acronyms: pd.Dataframe
+    :param language: code of the language to be used to lemmatize text
+    :type language: str
     :param barrier: placeholder for the barrier words
     :type barrier: str
     :param relevant_prefix: prefix used to replace the relevant terms
@@ -239,6 +317,7 @@ def process_corpus(dataset, relevant_terms, barrier_words, acronyms,
                                                    repeat(relevant_terms),
                                                    repeat(barrier_words),
                                                    repeat(acronyms),
+                                                   repeat(language),
                                                    repeat(barrier),
                                                    repeat(relevant_prefix)))
     return corpus
@@ -270,6 +349,11 @@ def main():
     parser = init_argparser()
     args = parser.parse_args()
 
+    if args.language not in AVAILABLE_LEMMATIZERS:
+        print(f'Language {args.language!r} is not available', file=sys.stderr)
+        sys.exit(1)
+
+    target_column = args.target_column
     debug_logger = setup_logger('debug_logger', 'slr-kit.log',
                                 level=logging.DEBUG)
     name = 'preprocess'
@@ -279,8 +363,8 @@ def main():
     dataset = pd.read_csv(args.datafile, delimiter=args.input_delimiter,
                           encoding='utf-8', nrows=args.input_rows)
     dataset.fillna('', inplace=True)
-    assert_column(args.datafile, dataset, args.target_column)
-    debug_logger.debug('Dataset loaded {} items'.format(len(dataset[args.target_column])))
+    assert_column(args.datafile, dataset, target_column)
+    debug_logger.debug('Dataset loaded {} items'.format(len(dataset[target_column])))
 
     barrier_placeholder = args.placeholder
     relevant_prefix = barrier_placeholder
@@ -302,7 +386,7 @@ def main():
         assert_column(args.acronyms, acronyms, ['Acronym', 'Extended'])
         debug_logger.debug('Acronyms loaded and updated')
     else:
-        acronyms = pd.DataFrame()
+        acronyms = pd.DataFrame(columns=['Acronym', 'Extended'])
 
     rel_terms = set()
     if args.relevant_terms_file is not None:
@@ -312,8 +396,10 @@ def main():
         debug_logger.debug('Relevant words loaded and updated')
 
     start = timer()
-    corpus = process_corpus(dataset[args.target_column], rel_terms, barrier_words,
-                            acronyms, barrier_placeholder, relevant_prefix)
+    corpus = process_corpus(dataset[target_column], rel_terms, barrier_words,
+                            acronyms, language=args.language,
+                            barrier=barrier_placeholder,
+                            relevant_prefix=relevant_prefix)
     stop = timer()
     elapsed_time = stop - start
     debug_logger.debug('Corpus processed')
