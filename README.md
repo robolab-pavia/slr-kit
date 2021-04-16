@@ -220,6 +220,54 @@ ebbedings.py dataset_preproc.csv dataset_dtm.csv > dataset_w2v_similarity.csv
 supervised_clustering.py ground_truth.json > pckmeans_clusters.csv
 ```
 
+## `lda.py`
+
+- ACTION: Train an LDA model and outputs the extracted topics and the association between topics and documents.
+- INPUT: The TSV file produced by `preprocess.py` (it works on the column `abstract_lem`) and the terms TSV file classified with FAWOC.
+- OPTIONAL INPUT: One or more files with additional keyword and acronyms.
+- OUTPUT: A JSON file with the description of extracted topics and a JSON file with the association between topics and documents.
+
+This script outputs the topics in `<outdir>/lda_terms-topics_<date>_<time>.json` and the topics assigned
+to each document in `<outdir>/lda_docs-topics_<date>_<time>.json`.
+### Arguments:
+
+Positional:
+
+- `preproc_file` path to the preprocess file with the text to elaborate.
+- `terms_file` path to the file with the classified terms.
+- `outdir` path to the directory where to save the results. If omitted, the current directory is used.
+
+Optional:
+
+- `--additional-terms FILENAME [FILENAME ...], -T FILENAME [FILENAME ...]`
+                      Additional keywords files
+- ` --acronyms ACRONYMS, -a ACRONYMS` TSV files with the approved acronyms
+- `--topics TOPICS`       Number of topics. If omitted 20 is used
+- `--alpha ALPHA`         alpha parameter of LDA. If omitted "auto" is used
+- `--beta BETA`           beta parameter of LDA. If omitted "auto" is used
+- `--no_below NO_BELOW   Keep tokens which are contained in at least this number of documents. If
+                      omitted 20 is used
+- `--no_above NO_ABOVE`   Keep tokens which are contained in no more than this fraction of documents
+                      (fraction of total corpus size, not an absolute number). If omitted 0.5 is
+                      used
+- `--seed SEED`           Seed to be used in training
+- `--ngrams`              if set use all the ngrams
+- `--model`               if set, the lda model is saved to directory `<outdir>/lda_model`. The model is
+                      saved with name "model".
+- `--no-relevant`        if set, use only the term labelled as keyword
+- `--load-model LOAD_MODEL`
+                      Path to a directory where a previously trained model is saved. Inside this
+                      directory the model named "model" is searched. the loaded model is used with
+                      the dataset file to generate the topics and the topic document association
+- `--placeholder PLACEHOLDER, -p PLACEHOLDER`
+                        Placeholder for barrier word. Also used as a prefix for the relevant words. 
+                        Default: "@"
+
+### Example of usage 
+Extracts topics from dataset `dataset_preproc.csv` using the classified terms in `dataset_terms.csv` and saving the result in `/path/to/outdir`:
+```
+lda.py dataset_preproc.csv dataset_terms.csv /path/to/outdir
+```
 # Additional scripts
 
 ## `analyze-occ.py`

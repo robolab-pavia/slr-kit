@@ -9,17 +9,20 @@ Introduces Gensim's LDA model and demonstrates its use on the NIPS corpus.
 import argparse
 import json
 from datetime import datetime
-from itertools import repeat
+from itertools import repeat, chain
 from multiprocessing import Pool
-from os import cpu_count
 from pathlib import Path
 
 import pandas as pd
 from gensim.corpora import Dictionary
 from gensim.models import LdaModel
 from gensim.models.coherencemodel import CoherenceModel
+from psutil import cpu_count
 
-from utils import substring_index
+from utils import (substring_index, AppendMultipleFilesAction,
+                   BARRIER_PLACEHOLDER, RELEVANT_PREFIX, assert_column)
+
+PHYSICAL_CPUS = cpu_count(logical=False)
 
 
 def init_argparser():
@@ -29,17 +32,26 @@ def init_argparser():
     :return: the command line parser
     :rtype: argparse.ArgumentParser
     """
-    epilog = """"'The program uses two files: <dataset>/<prefix>_preproc.csv and
- '<dataset>/<prefix>_terms.csv.
- It outputs the topics in <dataset>/<prefix>_terms-topics.json and the topics assigned
- to each document in <dataset>/<prefix>_docs-topics.json"""
+    epilog = "This script outputs the topics in " \
+             "<outdir>/lda_terms-topics_<date>_<time>.json and the topics" \
+             "assigned to each document in" \
+             "<outdir>/lda_docs-topics_<date>_<time>.json"
     parser = argparse.ArgumentParser(description='Performs the LDA on a dataset',
                                      epilog=epilog)
-    parser.add_argument('dataset', action='store', type=Path,
-                        help='path to the directory where the files of the '
-                             'dataset to elaborate are stored.')
-    parser.add_argument('prefix', action='store', type=str,
-                        help='prefix used when searching files.')
+    parser.add_argument('preproc_file', action='store', type=Path,
+                        help='path to the the preprocess file with the text to '
+                             'elaborate.')
+    parser.add_argument('terms_file', action='store', type=Path,
+                        help='path to the file with the classified terms.')
+    parser.add_argument('outdir', action='store', type=Path, nargs='?',
+                        default=Path.cwd(),
+                        help='path to the directory where to save the results.')
+    parser.add_argument('--additional-terms', '-T',
+                        action=AppendMultipleFilesAction, nargs='+',
+                        metavar='FILENAME', dest='additional_file',
+                        help='Additional keywords files')
+    parser.add_argument('--acronyms', '-a',
+                        help='TSV files with the approved acronyms')
     parser.add_argument('--topics', action='store', type=int, default=20,
                         help='Number of topics. If omitted %(default)s is used')
     parser.add_argument('--alpha', action='store', type=str, default='auto',
@@ -61,8 +73,8 @@ def init_argparser():
     parser.add_argument('--ngrams', action='store_true',
                         help='if set use all the ngrams')
     parser.add_argument('--model', action='store_true',
-                        help='if set the lda model is saved to directory '
-                             '<dataset>/<prefix>_lda_model. The model is saved '
+                        help='if set, the lda model is saved to directory '
+                             '<outdir>/lda_model. The model is saved '
                              'with name "model.')
     parser.add_argument('--no-relevant', action='store_true',
                         help='if set, use only the term labelled as keyword')
@@ -72,23 +84,35 @@ def init_argparser():
                              'named "model" is searched. the loaded model is '
                              'used with the dataset file to generate the topics'
                              ' and the topic document association')
+    parser.add_argument('--placeholder', '-p', default=BARRIER_PLACEHOLDER,
+                        help='Placeholder for barrier word. Also used as a '
+                             'prefix for the relevant words. '
+                             'Default: %(default)s')
     return parser
 
 
-def load_ngrams(terms_file, labels=('keyword', 'relevant')):
+def load_term_data(terms_file):
     words_dataset = pd.read_csv(terms_file, delimiter='\t',
                                 encoding='utf-8')
-    terms = words_dataset['keyword'].to_list()
+    try:
+        terms = words_dataset['term'].to_list()
+    except KeyError:
+        terms = words_dataset['keyword'].to_list()
     term_labels = words_dataset['label'].to_list()
+    return term_labels, terms
+
+
+def load_ngrams(terms_file, labels=('keyword', 'relevant')):
+    term_labels, terms = load_term_data(terms_file)
     zipped = zip(terms, term_labels)
     good = [x[0] for x in zipped if x[1] in labels]
-    ngrams = {1: []}
+    ngrams = {1: set()}
     for x in good:
         n = x.count(' ') + 1
         try:
-            ngrams[n].append(x)
+            ngrams[n].add(x)
         except KeyError:
-            ngrams[n] = [x]
+            ngrams[n] = {x}
 
     return ngrams
 
@@ -116,10 +140,7 @@ def filter_doc(d, ngram_len, terms):
 
 
 def load_terms(terms_file, labels=('keyword', 'relevant')):
-    words_dataset = pd.read_csv(terms_file, delimiter='\t',
-                                encoding='utf-8')
-    terms = words_dataset['keyword'].to_list()
-    term_labels = words_dataset['label'].to_list()
+    term_labels, terms = load_term_data(terms_file)
     zipped = zip(terms, term_labels)
     good = [x for x in zipped if x[1] in labels]
     good_set = set()
@@ -130,15 +151,32 @@ def load_terms(terms_file, labels=('keyword', 'relevant')):
 
 
 def generate_filtered_docs_ngrams(terms_file, preproc_file,
-                                  labels=('keyword', 'relevant')):
+                                  labels=('keyword', 'relevant'),
+                                  additional=None, acronyms=None,
+                                  barrier_placeholder=BARRIER_PLACEHOLDER,
+                                  relevant_prefix=BARRIER_PLACEHOLDER):
     terms = load_ngrams(terms_file, labels)
+    keywords = []
+    if additional is not None:
+        keywords.append(additional)
+
+    if acronyms is not None:
+        keywords.append(acronyms['Acronym'])
+
+    for kw in chain.from_iterable(keywords):
+        n = kw.count(' ') + 1
+        try:
+            terms[n].add(kw)
+        except KeyError:
+            # no terms with n words: add this category to include the
+            # additional keyword
+            terms[n] = {kw}
+
     ngram_len = sorted(terms, reverse=True)
-    dataset = pd.read_csv(preproc_file, delimiter='\t', encoding='utf-8')
-    dataset.fillna('', inplace=True)
-    documents = dataset['abstract_lem'].to_list()
-    titles = dataset['title'].to_list()
-    docs = []
-    with Pool() as pool:
+    target_col = 'abstract_lem'
+    documents, titles = load_documents(preproc_file, target_col,
+                                       barrier_placeholder, relevant_prefix)
+    with Pool(processes=PHYSICAL_CPUS) as pool:
         docs = pool.starmap(filter_doc, zip(documents, repeat(ngram_len),
                                             repeat(terms)))
 
@@ -146,22 +184,54 @@ def generate_filtered_docs_ngrams(terms_file, preproc_file,
 
 
 def generate_filtered_docs(terms_file, preproc_file,
-                           labels=('keyword', 'relevant')):
-    terms = load_terms(terms_file, labels)
-    dataset = pd.read_csv(preproc_file, delimiter='\t', encoding='utf-8')
-    dataset.fillna('', inplace=True)
-    documents = dataset['abstract_lem'].to_list()
-    titles = dataset['title'].to_list()
+                           labels=('keyword', 'relevant'), additional=None,
+                           acronyms=None,
+                           barrier_placeholder=BARRIER_PLACEHOLDER,
+                           relevant_prefix=BARRIER_PLACEHOLDER):
+    if additional is None:
+        additional = set()
+
+    if acronyms is not None:
+        additional |= {acro for acro in acronyms['Acronym']}
+
+    terms = load_terms(terms_file, labels) | additional
+    target_col = 'abstract_lem'
+    documents, titles = load_documents(preproc_file, target_col,
+                                       barrier_placeholder, relevant_prefix)
     docs = [d.split(' ') for d in documents]
 
     good_docs = []
     for doc in docs:
         gd = [t for t in doc if t in terms]
         good_docs.append(gd)
+
     return good_docs, titles
 
 
-def prepare_documents(preproc_file, terms_file, ngrams, labels):
+def load_additional_terms(input_file):
+    """
+    Loads a list of keyword terms from a file
+
+    This functions skips all the lines that starts with a '#'.
+    Each term is split in a tuple of strings
+
+    :param input_file: file to read
+    :type input_file: str
+    :return: the loaded terms as a set of strings
+    :rtype: set[str]
+    """
+    with open(input_file, 'r', encoding='utf-8') as f:
+        rel_words_list = f.read().splitlines()
+
+    rel_words_list = {w for w in rel_words_list if w != '' and w[0] != '#'}
+
+    return rel_words_list
+
+
+def prepare_documents(preproc_file, terms_file, ngrams, labels,
+                      additional_keyword=None, acronyms=None,
+                      barrier_placeholder=BARRIER_PLACEHOLDER,
+                      relevant_prefix=BARRIER_PLACEHOLDER):
     """
     Elaborates the documents preparing the bag of word representation
 
@@ -173,14 +243,34 @@ def prepare_documents(preproc_file, terms_file, ngrams, labels):
     :type ngrams: bool
     :param labels: use only the terms classified with the labels specified here
     :type labels: tuple[str]
+    :param additional_keyword: additional keyword loaded from file
+    :type additional_keyword: set or None
+    :param acronyms: approved acronyms to be considered as keyword. Must have
+        the columns 'Acronym' and 'Extended'
+    :type acronyms: pd.DataFrame
+    :param barrier_placeholder: placeholder for barrier words
+    :type barrier_placeholder: str
+    :param relevant_prefix: prefix used to mark relevant terms
+    :type relevant_prefix: str
     :return: the documents as bag of words and the document titles
     :rtype: tuple[list[list[str]], list[str]]
     """
+    if additional_keyword is None:
+        additional_keyword = set()
     if ngrams:
-        docs, titles = generate_filtered_docs_ngrams(terms_file, preproc_file,
-                                                     labels)
+        ret = generate_filtered_docs_ngrams(terms_file, preproc_file, labels,
+                                            acronyms=acronyms,
+                                            additional=additional_keyword,
+                                            barrier_placeholder=barrier_placeholder,
+                                            relevant_prefix=relevant_prefix)
     else:
-        docs, titles = generate_filtered_docs(terms_file, preproc_file, labels)
+        ret = generate_filtered_docs(terms_file, preproc_file, labels,
+                                     acronyms=acronyms,
+                                     additional=additional_keyword,
+                                     barrier_placeholder=barrier_placeholder,
+                                     relevant_prefix=relevant_prefix)
+
+    docs, titles = ret
 
     return docs, titles
 
@@ -249,7 +339,8 @@ def prepare_topics(model, docs, titles, dictionary):
         list[dict[str, int or str or dict[int, str]]], float]
     """
     cm = CoherenceModel(model=model, texts=docs, dictionary=dictionary,
-                        coherence='c_v', processes=cpu_count())
+                        coherence='c_v', processes=PHYSICAL_CPUS)
+
     # Average topic coherence is the sum of topic coherences of all topics,
     # divided by the number of topics.
     avg_topic_coherence = cm.get_coherence()
@@ -281,19 +372,85 @@ def prepare_topics(model, docs, titles, dictionary):
     return topics, docs_topics, avg_topic_coherence
 
 
+def filter_barriers(doc: str, barrier_placeholder, relevant_prefix):
+    words = []
+    for word in doc.split(' '):
+        if word == barrier_placeholder:
+            continue
+        if word.startswith(relevant_prefix) and word.endswith(relevant_prefix):
+            words.extend(word.strip(relevant_prefix).split('_'))
+        else:
+            words.append(word)
+
+    return ' '.join(words)
+
+
+def load_documents(preproc_file, target_col,
+                   barrier_placeholder=BARRIER_PLACEHOLDER,
+                   relevant_prefix=RELEVANT_PREFIX):
+    dataset = pd.read_csv(preproc_file, delimiter='\t', encoding='utf-8')
+    dataset.fillna('', inplace=True)
+    with Pool(processes=PHYSICAL_CPUS) as pool:
+        documents = pool.starmap(filter_barriers,
+                                 zip(dataset[target_col].to_list(),
+                                     repeat(barrier_placeholder),
+                                     repeat(relevant_prefix)))
+
+    titles = dataset['title'].to_list()
+    return documents, titles
+
+
+def output_topics(model, dictionary, docs, titles, outdir, file_prefix):
+    topics, docs_topics, avg_topic_coherence = prepare_topics(model, docs,
+                                                              titles,
+                                                              dictionary)
+    now = datetime.now()
+    name = f'{file_prefix}_terms-topics_{now:%Y-%m-%d_%H%M%S}.json'
+    topic_file = outdir / name
+    with open(topic_file, 'w') as file:
+        json.dump(topics, file, indent='\t')
+
+    name = f'{file_prefix}_docs-topics_{now:%Y-%m-%d_%H%M%S}.json'
+    docs_file = outdir / name
+    with open(docs_file, 'w') as file:
+        json.dump(docs_topics, file, indent='\t')
+
+
 def main():
     args = init_argparser().parse_args()
 
-    terms_file = args.dataset / f'{args.prefix}_terms.csv'
-    preproc_file = args.dataset / f'{args.prefix}_preproc.csv'
+    terms_file = args.terms_file
+    preproc_file = args.preproc_file
+    output_dir = args.outdir
+
+    barrier_placeholder = args.placeholder
+    relevant_prefix = barrier_placeholder
 
     if args.no_relevant:
-        labels = ('keyword', )
+        labels = ('keyword',)
     else:
         labels = ('keyword', 'relevant')
 
+    additional_keyword = set()
+
+    if args.additional_file is not None:
+        for sfile in args.additional_file:
+            additional_keyword |= load_additional_terms(sfile)
+
+    if args.acronyms is not None:
+        conv = {'Acronym': lambda s: s.lower()}
+        acronyms = pd.read_csv(args.acronyms, delimiter='\t', encoding='utf-8',
+                               converters=conv, usecols=list(conv))
+        assert_column(args.acronyms, acronyms, ['Acronym'])
+    else:
+        acronyms = None
+
     docs, titles = prepare_documents(preproc_file, terms_file,
-                                     args.ngrams, labels)
+                                     args.ngrams, labels,
+                                     additional_keyword=additional_keyword,
+                                     acronyms=acronyms,
+                                     barrier_placeholder=barrier_placeholder,
+                                     relevant_prefix=relevant_prefix)
 
     if args.load_model is not None:
         lda_path = Path(args.load_model)
@@ -314,19 +471,10 @@ def main():
                                                               dictionary)
 
     print(f'Average topic coherence: {avg_topic_coherence:.4f}.')
-    now = datetime.now()
-    name = f'{args.prefix}_terms-topics_{now:%Y-%m-%d_%H%M%S}.json'
-    topic_file = args.dataset / name
-    with open(topic_file, 'w') as file:
-        json.dump(topics, file, indent='\t')
-
-    name = f'{args.prefix}_docs-topics_{now:%Y-%m-%d_%H%M%S}.json'
-    docs_file = args.dataset / name
-    with open(docs_file, 'w') as file:
-        json.dump(docs_topics, file, indent='\t')
+    output_topics(model, dictionary, docs, titles, output_dir, 'lda')
 
     if args.model:
-        lda_path: Path = args.dataset / f'{args.prefix}_lda_model'
+        lda_path: Path = args.outdir / 'lda_model'
         lda_path.mkdir(exist_ok=True)
         model.save(str(lda_path / 'model'))
         dictionary.save(str(lda_path / 'model_dictionary'))

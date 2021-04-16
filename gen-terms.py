@@ -6,7 +6,7 @@ import sys
 import csv
 import logging
 import argparse
-from utils import setup_logger
+from utils import setup_logger, BARRIER_PLACEHOLDER
 
 
 def init_argparser():
@@ -23,28 +23,58 @@ def init_argparser():
     parser.add_argument('--min-frequency', '-m', metavar='N',
                         dest='min_frequency', default=5,
                         help='Minimum frequency of the n-grams')
+    parser.add_argument('--placeholder', '-p', default=BARRIER_PLACEHOLDER,
+                        help='Placeholder for barrier word. Also used as a '
+                             'prefix for the relevant words. '
+                             'Default: %(default)s')
     return parser
 
 
-def get_n_grams(corpus, n_terms=1, min_frequency=5, barrier=None):
-    """Extracts n-grams from the corpus.
+def get_n_grams(corpus, n_terms=1, min_frequency=5, barrier=None,
+                relevant_prefix=None):
+    """
+    Extracts n-grams from the corpus.
 
-    The output is a dict of n-grams, wher each dict item key
+    The output is a dict of n-grams, where each dict item key
     is the n-gram and the value its the frequency, sorted by frequency.
+
+    :param corpus: the text to extract terms from
+    :type corpus: list[str]
+    :param n_terms: maximum length of an n-gram in number of words
+    :type n_terms: int
+    :param min_frequency: min. number of occurrences. n-grams with less than
+        this frequency are discarded
+    :type min_frequency: int
+    :param barrier: placeholder for the barrier word. No n-gram with this
+        placeholder is returned
+    :type barrier: str or None
+    :param relevant_prefix: prefix used to mark the relevant terms. No n-gram
+        containing a word with this prefix is returned
+    :type relevant_prefix: str or None
+    :return: the n-grams as a dict with the n-gram itself as the key and its
+        frequency as the value
+    :rtype: dict[str, int]
     """
     terms = {}
+    if relevant_prefix is None:
+        # no prefix, use something that startswith can't find
+        relevant_prefix = ' '
+
     for doc in corpus:
         doc_list = doc.split(' ')
         for i in range(len(doc_list) - n_terms + 1):
             words = doc_list[i:i+n_terms]
-            # skip the terms that contain a barrier
-            if barrier in words:
+            # skip the terms that contain a barrier or a relevant term
+            if any(word == barrier or word.startswith(relevant_prefix)
+                   for word in words):
                 continue
+
             term = ' '.join(words)
             if term in terms:
                 terms[term] += 1
             else:
                 terms[term] = 1
+
     limited_terms = {k: v for k, v in terms.items() if v >= min_frequency}
     sorted_dict = {k: v for k, v in sorted(limited_terms.items(),
                                            key=lambda item: item[1],
@@ -97,10 +127,14 @@ def main():
     debug_logger.debug(msg.format(len(dataset[target_column])))
     corpus = dataset[target_column].to_list()
 
+    barrier_placeholder = args.placeholder
+    relevant_prefix = barrier_placeholder
+
     list_of_grams = []
     for n in range(1, n_grams + 1):
         top_terms = get_n_grams(corpus, n_terms=n, min_frequency=min_frequency,
-                                barrier='XXX')
+                                barrier=barrier_placeholder,
+                                relevant_prefix=relevant_prefix)
         list_of_grams.append(top_terms)
 
     path = pathlib.Path(args.output)
