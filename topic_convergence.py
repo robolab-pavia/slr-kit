@@ -8,10 +8,16 @@ import lda
 import topic_matcher
 import os
 import json
-import tempfile
 
 
 def init_argparser():
+    """
+    Initialize the command line parser.
+
+    :return: the command line parser
+    :rtype: argparse.ArgumentParser
+    """
+
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(help="sub-command help", dest="command")
 
@@ -31,13 +37,20 @@ def init_argparser():
 
     # parser for "match" command
     parser_match = subparsers.add_parser("match", help="matches and compares the results from the LDA subcommand")
-    parser_match.add_argument("lda_dir", type=str, help="path to the directory containing increasing lda list")
-    parser_match.add_argument("output", type=str, help="path to the output file")
+    parser_match.add_argument("output", type=str, help="path to the directory containing lda directory")
 
     return parser
 
 
 def list_cleaner(tsv_path):
+    """
+    Cleans the list of terms keeping only relevant and keyword classified terms.
+
+    :param tsv_path: path to the csv file with the complete list of terms.
+    :type tsv_path: str
+    :return: the original list and the relevant-keyword only list.
+    :rtype: tuple[TermsList, TermsList]
+    """
     terms_list = terms.TermList()
     terms_list.from_tsv(tsv_path)
     relevant_list = terms.TermList([])
@@ -60,6 +73,14 @@ def list_cleaner(tsv_path):
 
 
 def list_sorter(terms_list):
+    """
+    Sorts the list according to Fawoc submitting order.
+
+    :param terms_list: the original list of terms.
+    :type terms_list: TermsList
+    :return: the sorted list of all terms.
+    :rtype: TermsList
+    """
     multigram_index = 0
     print("Starting list sorting...")
 
@@ -82,7 +103,14 @@ def list_sorter(terms_list):
 
 
 def list_comparer(sorted_list, relevant_list):
+    """
+    Removes from the sorted list every term that is not either classified as relevant or keyword.
 
+    :param sorted_list: the sorted list containing all terms.
+    :param relevant_list: the list containing only relevant and keyword terms.
+    :return: the sorted list of only relevant and keyword classified terms.
+    :rtype: TermsList
+    """
     index = 0
 
     for item in list(sorted_list.items):
@@ -97,8 +125,28 @@ def list_comparer(sorted_list, relevant_list):
 
 
 def lda_iterator(terms_file, preproc_file, output_path, minimum, increment):
+    """
+    Executes LDA algorithm on an increasing size sorted list of only relevant or keyword classified terms.
 
-    Path(output_path).mkdir(parents=True, exist_ok=True)
+    :param terms_file: the path to the ordered list of terms.
+    :type terms_file: str
+    :param preproc_file: the path to the preproc_file.csv containing data of every paper.
+    :type preproc_file: str
+    :param output_path: path to the directory where the results will be saved.
+    :type output_path: str
+    :param minimum: minimum number of terms to consider from the sorted list.
+    :type minimum: int
+    :param increment: the value of words to consider in addiction to the previous iteration.
+    :type increment: int
+    """
+
+    dict_path = output_path + "/dictionary"
+    list_path = output_path + "/list"
+    lda_path = output_path + "/lda"
+
+    Path(dict_path).mkdir(parents=True, exist_ok=True)
+    Path(list_path).mkdir(parents=True, exist_ok=True)
+    Path(lda_path).mkdir(parents=True, exist_ok=True)
 
     x = minimum
     y = increment
@@ -106,28 +154,38 @@ def lda_iterator(terms_file, preproc_file, output_path, minimum, increment):
     max_len = len(terms_list)
 
     while x <= max_len:
-        with open(output_path + "/list_" + str(x) + ".csv", "w", newline="", encoding='utf-8') as temp_out:
+        with open(list_path + "/list_" + str(x) + ".csv", "w", newline="", encoding='utf-8') as temp_out:
             writer = csv.writer(temp_out, delimiter="\t")
             writer.writerow(terms_list[0])
             for row in terms_list[1:x+1]:
                 writer.writerow(row)
         x += y
 
-    for filename in tqdm(os.listdir(output_path)):
-        docs, titles = lda.prepare_documents(preproc_file, output_path + "/" + filename, True, ('keyword', 'relevant'))
+    for filename in tqdm(os.listdir(list_path)):
+        docs, titles = lda.prepare_documents(preproc_file, list_path + "/" + filename, True, ('keyword', 'relevant'))
         model, dictionary = lda.train_lda_model(docs, 20, "auto", "auto", 0.5, 20)
+        dictionary.save_as_text(dict_path + "/dic_" + filename[:-4] + ".txt")
         docs_topics, topics, avg_topic_coherence = lda.prepare_topics(model, docs, titles, dictionary)
-        os.remove(output_path + "/" + filename)
-        topic_file = output_path + "/" + "topics_" + filename[:-4] + ".json"
+        topic_file = lda_path + "/topics_" + filename[:-4] + ".json"
         with open(topic_file, 'w') as file:
             json.dump(docs_topics, file, indent='\t')
 
 
-def matcher(lda_dir, output_path):
+def matcher(output_path):
+    """
+    Matches the various execution of LDA from lda_iterator.
 
-    temp_dir = tempfile.mkdtemp()
+    :param output_path: path to the directory with lda directory.
+    :type output_path: str
+    """
+    Path(output_path+"/matches").mkdir(parents=True, exist_ok=True)
+
+    temp_dir = output_path+"/matches"
+    lda_dir = output_path+"/lda"
+
     file_counter = 0
     file_list = sorted(os.listdir(lda_dir), key=len)
+
     for filename in os.listdir(lda_dir):
         if filename[:12] == "topics_list_":
             file_counter += 1
@@ -141,22 +199,27 @@ def matcher(lda_dir, output_path):
                                                                lda_dir+"/"+file_list[x+1])
         topic_matcher.csv_writer(topics_data1, topics_data2, temp_dir + "/" + name + ".csv")
 
-    with open(output_path, "w", newline="") as out_file:
+    with open(output_path+"/overall_result.csv", "w", newline="") as out_file:
         writer = csv.writer(out_file, delimiter="\t")
         writer.writerow(["Terms A",
                          "Terms B",
-                         "Avg top 20 topics"])
-
+                         "Avg top 20 topics",
+                         "Actual terms A",
+                         "Actual terms B"])
         for filename in sorted(os.listdir(temp_dir), key=len):
-            print(filename)
             avg = 0
             match_list = list(csv.reader(open(temp_dir+"/"+filename, encoding="utf8"), delimiter=","))
+            line = filename[:-4].split("-")
+            lines_a = sum(1 for line in open(output_path + '/dictionary/dic_list_'+line[0]+".txt")) - 1
+            lines_b = sum(1 for line in open(output_path + '/dictionary/dic_list_'+line[1]+".txt")) - 1
             for row in match_list[1:21]:
                 avg += float(row[4])
+
             avg /= 20
             avg = round(avg, 2)
-            line = filename[:-4].split("-")
             line.append(str(avg))
+            line.append(str(lines_a))
+            line.append(str(lines_b))
             writer.writerow(line)
 
 
@@ -173,7 +236,7 @@ def main():
     elif args.command == "lda":
         lda_iterator(args.ordered_list, args.preproc_file, args.output_path, args.min, args.increment)
     elif args.command == "match":
-        matcher(args.lda_dir, args.output)
+        matcher(args.output)
 
 
 if __name__ == "__main__":
