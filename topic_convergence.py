@@ -1,13 +1,14 @@
 import argparse
 import terms
 import copy
+import os
+import csv
+import json
 from tqdm import tqdm
 from pathlib import Path
-import csv
+
 import lda
 import topic_matcher
-import os
-import json
 
 
 def init_argparser():
@@ -153,6 +154,7 @@ def lda_iterator(terms_file, preproc_file, output_path, minimum, increment):
     terms_list = list(csv.reader(open(terms_file, encoding="utf8"), delimiter="\t"))
     max_len = len(terms_list)
 
+    # writing the increasing size list where x is the beginning value and y is the increment
     while x <= max_len:
         with open(list_path + "/list_" + str(x) + ".csv", "w", newline="", encoding='utf-8') as temp_out:
             writer = csv.writer(temp_out, delimiter="\t")
@@ -161,6 +163,7 @@ def lda_iterator(terms_file, preproc_file, output_path, minimum, increment):
                 writer.writerow(row)
         x += y
 
+    # applying LDA algorithm to every list generated from upper loop and saving results in json file
     for filename in tqdm(os.listdir(list_path)):
         docs, titles = lda.prepare_documents(preproc_file, list_path + "/" + filename, True, ('keyword', 'relevant'))
         model, dictionary = lda.train_lda_model(docs, 20, "auto", "auto", 0.5, 20)
@@ -186,12 +189,14 @@ def matcher(output_path):
     file_counter = 0
     file_list = sorted(os.listdir(lda_dir), key=len)
 
+    # filtering only topic_list_ files
     for filename in os.listdir(lda_dir):
         if filename[:12] == "topics_list_":
             file_counter += 1
         else:
             file_list.remove(filename)
 
+    # matching every consecutive pair of files
     for x in range(file_counter-1):
         name = file_list[x][-9:-5]+"-"+file_list[x+1][-9:-5]
         name = name.replace("_", "")
@@ -199,6 +204,7 @@ def matcher(output_path):
                                                                lda_dir+"/"+file_list[x+1])
         topic_matcher.csv_writer(topics_data1, topics_data2, temp_dir + "/" + name + ".csv")
 
+    # computing the mean for the top 20 topic pairs from each topic_matcher output file
     with open(output_path+"/overall_result.csv", "w", newline="") as out_file:
         writer = csv.writer(out_file, delimiter="\t")
         writer.writerow(["Terms A",
@@ -206,6 +212,8 @@ def matcher(output_path):
                          "Avg top 20 topics",
                          "Actual terms A",
                          "Actual terms B"])
+
+        # writing results in the overall_results.csv file and saving the dictionary of actually used terms
         for filename in sorted(os.listdir(temp_dir), key=len):
             avg = 0
             match_list = list(csv.reader(open(temp_dir+"/"+filename, encoding="utf8"), delimiter=","))
