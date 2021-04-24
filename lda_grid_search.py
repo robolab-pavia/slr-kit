@@ -1,7 +1,6 @@
 import argparse
-import json
 import sys
-from itertools import repeat, product
+from itertools import product
 from multiprocessing import Pool
 from pathlib import Path
 from timeit import default_timer as timer
@@ -12,13 +11,13 @@ import numpy as np
 import pandas as pd
 from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel, LdaModel
-from psutil import cpu_count
 
-from utils import substring_index
-
-PHYSICAL_CPU = cpu_count(logical=False)
+from lda import (PHYSICAL_CPUS, BARRIER_PLACEHOLDER, prepare_documents,
+                 output_topics)
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
+from utils import AppendMultipleFilesAction, assert_column
+
 _corpora: Optional[Dict[Tuple[str], Tuple[List[Tuple[int, int]],
                                           Dictionary, List[List[str]]]]] = None
 _seed: Optional[int] = None
@@ -34,25 +33,31 @@ class _ValidateInt(argparse.Action):
 
 def init_argparser():
     """Initialize the command line parser."""
-    epilog = 'The program uses two files: <dataset>/<prefix>_preproc.csv and ' \
-             '<dataset>/<prefix>_terms.csv. The first one is used for the ' \
-             'documents abstract and title. The second one is used for the ' \
-             'terms.\nThe script tests different lda models with different ' \
+    epilog = 'The script tests different lda models with different ' \
              'parameters and it tries to find the best model. The optimal ' \
              'number of topic is searched in the interval specified by the ' \
              'user on the command line.'
     parser = argparse.ArgumentParser(description='Performs the LDA on a dataset',
                                      epilog=epilog)
-    parser.add_argument('dataset', action='store', type=Path,
-                        help='path to the directory where the files of the '
-                             'dataset to elaborate are stored.')
-    parser.add_argument('prefix', action='store', type=str,
-                        help='prefix used when searching files.')
+    parser.add_argument('preproc_file', action='store', type=Path,
+                        help='path to the the preprocess file with the text to '
+                             'elaborate.')
+    parser.add_argument('terms_file', action='store', type=Path,
+                        help='path to the file with the classified terms.')
+    parser.add_argument('outdir', action='store', type=Path, nargs='?',
+                        default=Path.cwd(),
+                        help='path to the directory where to save the results.')
     parser.add_argument('--ngrams', action='store_true',
                         help='if set use all the ngrams')
+    parser.add_argument('--additional-terms', '-T',
+                        action=AppendMultipleFilesAction, nargs='+',
+                        metavar='FILENAME', dest='additional_file',
+                        help='Additional keywords files')
+    parser.add_argument('--acronyms', '-a',
+                        help='TSV files with the approved acronyms')
     parser.add_argument('--model', action='store_true',
                         help='if set, the best lda model is saved to directory '
-                             '<dataset>/<prefix>_lda_model')
+                             '<outdir>/lda_model')
     parser.add_argument('--min-topics', '-m', type=int, default=5,
                         action=_ValidateInt,
                         help='Minimum number of topics to retrieve '
@@ -71,116 +76,21 @@ def init_argparser():
                         help='if set, it plots the coherence')
     parser.add_argument('--plot-save', action='store_true',
                         help='if set, it saves the plot of the coherence as '
-                             '<dataset>/<prefix>_lda_plot.pdf')
-    parser.add_argument('--keyword-only', action='store_true',
-                        help='if set, it uses only the keyword term')
+                             '<outdir>/lda_plot.pdf')
     parser.add_argument('--result', '-r', metavar='FILENAME',
                         type=argparse.FileType('w'), default='-',
                         help='Where to save the training results in CSV format.'
                              ' If omitted or -, stdout is used.')
     parser.add_argument('--output', '-o', action='store_true',
                         help='if set, it stores the topic description in '
-                             '<dataset>/<prefix>_topics.json, and the document '
-                             'topic assignment in '
-                             '<dataset>/<prefix>_docs-topics.json')
+                             '<outdir>/lda_terms-topics_<date>_<time>.json, '
+                             'and the document topic assignment in '
+                             '<outdir>/lda_docs-topics_<date>_<time>.json')
+    parser.add_argument('--placeholder', '-p', default=BARRIER_PLACEHOLDER,
+                        help='Placeholder for barrier word. Also used as a '
+                             'prefix for the relevant words. '
+                             'Default: %(default)s')
     return parser
-
-
-def load_ngrams(terms_file, labels=('keyword', 'relevant')):
-    words_dataset = pd.read_csv(terms_file, delimiter='\t',
-                                encoding='utf-8')
-    terms = words_dataset['keyword'].to_list()
-    term_labels = words_dataset['label'].to_list()
-    zipped = zip(terms, term_labels)
-    good = [x[0] for x in zipped if x[1] in labels]
-    ngrams = {1: []}
-    for x in good:
-        n = x.count(' ') + 1
-        try:
-            ngrams[n].append(x)
-        except KeyError:
-            ngrams[n] = [x]
-
-    return ngrams
-
-
-def check_ngram(doc, idx):
-    for dd in doc:
-        r = range(dd[0][0], dd[0][1])
-        yield idx[0] in r or idx[1] in r
-
-
-def filter_doc(d, ngram_len, terms):
-    doc = []
-    flag = False
-    for n in ngram_len:
-        for t in terms[n]:
-            for idx in substring_index(d, t):
-                if flag and any(check_ngram(doc, idx)):
-                    continue
-
-                doc.append((idx, t.replace(' ', '_')))
-
-        flag = True
-    doc.sort(key=lambda dd: dd[0])
-    return [t[1] for t in doc]
-
-
-def load_terms(terms_file, labels=('keyword', 'relevant')):
-    words_dataset = pd.read_csv(terms_file, delimiter='\t',
-                                encoding='utf-8')
-    terms = words_dataset['keyword'].to_list()
-    term_labels = words_dataset['label'].to_list()
-    zipped = zip(terms, term_labels)
-    good = [x for x in zipped if x[1] in labels]
-    good_set = set()
-    for x in good:
-        good_set.add(x[0])
-
-    return good_set
-
-
-def generate_filtered_docs_ngrams(terms_file, preproc_file):
-    labels = [('keyword', 'relevant'), ('keyword',)]
-    docs = {}
-    dataset = pd.read_csv(preproc_file, delimiter='\t', encoding='utf-8')
-    dataset.fillna('', inplace=True)
-    titles = dataset['title'].to_list()
-    for lbl in labels:
-        terms = load_ngrams(terms_file, lbl)
-        if all(len(t) == 0 for t in terms.values()):
-            continue
-
-        ngram_len = sorted(terms, reverse=True)
-        documents = dataset['abstract_lem'].to_list()
-        with Pool() as pool:
-            docs[lbl] = pool.starmap(filter_doc, zip(documents,
-                                                     repeat(ngram_len),
-                                                     repeat(terms)))
-    return docs, titles
-
-
-def generate_filtered_docs(terms_file, preproc_file):
-    labels = [('keyword', 'relevant'), ('keyword',)]
-    good_docs = {}
-    dataset = pd.read_csv(preproc_file, delimiter='\t', encoding='utf-8')
-    dataset.fillna('', inplace=True)
-    titles = dataset['title'].to_list()
-    for lbl in labels:
-        terms = load_terms(terms_file, lbl)
-        if len(terms) == 0:
-            continue
-
-        documents = dataset['abstract_lem'].to_list()
-        docs = [d.split(' ') for d in documents]
-
-        gd = []
-        for doc in docs:
-            gd.append([t for t in doc if t in terms])
-
-        good_docs[lbl] = gd
-
-    return good_docs, titles
 
 
 def prepare_corpus(docs, no_above, no_below):
@@ -252,12 +162,9 @@ def compute_optimal_model(corpora, topics_range, alpha, beta, seed=None):
         'times': [],
         'seed': [],
     }
-    # Can take a long time to run
-    corpora_len = len(corpora)
-
     # iterate through all the combinations
 
-    with Pool(processes=PHYSICAL_CPU, initializer=init_train,
+    with Pool(processes=PHYSICAL_CPUS, initializer=init_train,
               initargs=(corpora, seed)) as pool:
         results = pool.starmap(train, product(corpora.keys(), topics_range,
                                               alpha, beta))
@@ -279,55 +186,52 @@ def compute_optimal_model(corpora, topics_range, alpha, beta, seed=None):
     return pd.DataFrame(model_results)
 
 
-def output_topics(model, docs, titles, args):
-    cm = CoherenceModel(model=model, texts=docs, dictionary=model.id2word,
-                        coherence='c_v', processes=PHYSICAL_CPU)
-    coherence = cm.get_coherence_per_topic()
-    topics = {}
-    topics_order = list(range(model.num_topics))
-    topics_order.sort(key=lambda x: coherence[x], reverse=True)
-    for i in topics_order:
-        topic = model.show_topic(i)
-        t_dict = {
-            'name': f'Topic {i}',
-            'terms_probability': {t[0]: float(t[1]) for t in topic},
-            'coherence': f'{float(coherence[i]):.5f}',
-        }
-        topics[i] = t_dict
-    topic_file = args.dataset / f'{args.prefix}_terms-topics.json'
-    with open(topic_file, 'w') as file:
-        json.dump(topics, file, indent='\t')
-    docs_topics = []
-    for i, (title, d) in enumerate(zip(titles, docs)):
-        bow = model.id2word.doc2bow(d)
-        t = model.get_document_topics(bow)
-        t.sort(key=lambda x: x[1], reverse=True)
-        d_t = {
-            'id': i,
-            'title': title,
-            'topics': {tu[0]: float(tu[1]) for tu in t},
-        }
-        docs_topics.append(d_t)
-    docs_file = args.dataset / f'{args.prefix}_docs-topics.json'
-    with open(docs_file, 'w') as file:
-        json.dump(docs_topics, file, indent='\t')
+def load_additional_terms(input_file):
+    """
+    Loads a list of keyword terms from a file
+
+    This functions skips all the lines that starts with a '#'.
+    Each term is split in a tuple of strings
+
+    :param input_file: file to read
+    :type input_file: str
+    :return: the loaded terms as a set of strings
+    :rtype: set[str]
+    """
+    with open(input_file, 'r', encoding='utf-8') as f:
+        rel_words_list = f.read().splitlines()
+
+    rel_words_list = {w for w in rel_words_list if w != '' and w[0] != '#'}
+
+    return rel_words_list
 
 
 def main():
     args = init_argparser().parse_args()
-    terms_file = args.dataset / f'{args.prefix}_terms.csv'
-    preproc_file = args.dataset / f'{args.prefix}_preproc.csv'
+    terms_file = args.terms_file
+    preproc_file = args.preproc_file
+    output_dir = args.outdir
+
+    barrier_placeholder = args.placeholder
+    relevant_prefix = barrier_placeholder
 
     if args.min_topics >= args.max_topics:
         sys.exit('max_topics must be greater than min_topics')
 
-    if args.ngrams:
-        docs, titles = generate_filtered_docs_ngrams(terms_file, preproc_file)
-    else:
-        docs, titles = generate_filtered_docs(terms_file, preproc_file)
+    additional_keyword = set()
 
-    no_below_list = [1, 20, 40, 100, len(titles)//10]
-    no_above_list = [0.5, 0.6, 0.75, 1.0]
+    if args.additional_file is not None:
+        for sfile in args.additional_file:
+            additional_keyword |= load_additional_terms(sfile)
+
+    if args.acronyms is not None:
+        conv = {'Acronym': lambda s: s.lower()}
+        acronyms = pd.read_csv(args.acronyms, delimiter='\t', encoding='utf-8',
+                               converters=conv, usecols=list(conv))
+        assert_column(args.acronyms, acronyms, ['Acronym'])
+    else:
+        acronyms = None
+
     topics_range = range(args.min_topics, args.max_topics + args.step_topics,
                          args.step_topics)
     # Alpha parameter
@@ -338,10 +242,21 @@ def main():
     beta = list(np.arange(0.01, 1, 0.1))
     beta.append('auto')
     corpora = {}
-    for k, d in docs.items():
+    no_above_list = [0.5, 0.6, 0.75, 1.0]
+    for labels in [('keyword', 'relevant'), ('keyword', )]:
+        docs, titles = prepare_documents(preproc_file, terms_file,
+                                         args.ngrams, labels,
+                                         additional_keyword=additional_keyword,
+                                         acronyms=acronyms,
+                                         barrier_placeholder=barrier_placeholder,
+                                         relevant_prefix=relevant_prefix)
+
+        tenth_of_titles = len(titles) // 10
+        no_below_list_base = [1, 20, 40, 100, tenth_of_titles]
+        no_below_list = [b for b in no_below_list_base if b <= tenth_of_titles]
         for no_below, no_above in product(no_below_list, no_above_list):
-            corpus, dictionary = prepare_corpus(d, no_above, no_below)
-            corpora[(k, no_below, no_above)] = (corpus, dictionary, d)
+            corpus, dictionary = prepare_corpus(docs, no_above, no_below)
+            corpora[(labels, no_below, no_above)] = (corpus, dictionary, docs)
 
     results = compute_optimal_model(corpora, topics_range, alpha, beta,
                                     args.seed)
@@ -363,17 +278,18 @@ def main():
                          alpha=best['alpha'], eta=best['beta'])
 
         if args.output:
-            output_topics(model, docs, titles, args)
+            output_topics(model, dictionary, docs, titles, output_dir, 'lda')
 
         if args.model:
-            lda_path: Path = args.dataset / f'{args.prefix}_lda_model'
+            lda_path = output_dir / 'lda_model'
             lda_path.mkdir(exist_ok=True)
             model.save(str(lda_path / 'model'))
             dictionary.save(str(lda_path / 'model_dictionary'))
 
     if args.plot_show or args.plot_save:
         max_cv = results.groupby('topics')['coherence'].idxmax()
-        plt.plot(results.loc[max_cv, 'topics'], results.loc[max_cv, 'coherence'],
+        plt.plot(results.loc[max_cv, 'topics'],
+                 results.loc[max_cv, 'coherence'],
                  marker='o', linestyle='solid')
 
         plt.xticks(topics_range)
@@ -384,7 +300,7 @@ def main():
             plt.show()
 
         if args.plot_save:
-            fig_file = args.dataset / f'{args.prefix}_lda_plot.pdf'
+            fig_file = output_dir / 'lda_plot.pdf'
             plt.savefig(str(fig_file), dpi=1000)
 
 

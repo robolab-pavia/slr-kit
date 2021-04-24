@@ -329,9 +329,14 @@ class TermList:
                 except KeyError:
                     count = -1
 
+                try:
+                    term = row['term']
+                except KeyError:
+                    term = row['keyword']
+
                 item = Term(
                     index=idx,
-                    string=row['keyword'],
+                    string=term,
                     count=count,
                     label=label,
                     order=order,
@@ -436,6 +441,7 @@ class TermList:
             if save_other_data:
                 other_data.append({
                     'id': t.index,
+                    'term': t.string,
                     'count': t.count,
                 })
             if t.is_classified():
@@ -444,6 +450,7 @@ class TermList:
                     'related': t.related,
                 }
         if save_other_data:
+            other_data.sort(key=lambda r: r['id'])
             with open(service_tsv, 'w', newline='', encoding='utf-8') as f:
                 csv_writer = csv.DictWriter(f, other_data[0].keys(),
                                             delimiter='\t', quotechar='"',
@@ -470,15 +477,15 @@ class TermList:
         items = sorted(self.items, key=lambda t: t.index)
         path = str(Path(outfile).resolve().parent)
         with tempfile.NamedTemporaryFile('w', dir=path, prefix='.fawoc.temp.',
-                                         encoding='utf-8', delete=False, newline="") as out:
+                                         encoding='utf-8', delete=False, newline='') as out:
             writer = csv.DictWriter(out, delimiter='\t', quotechar='"',
-                                    fieldnames=['id', 'keyword', 'label'],
+                                    fieldnames=['id', 'term', 'label'],
                                     quoting=csv.QUOTE_MINIMAL)
             writer.writeheader()
             for w in items:
                 item = {
                     'id': w.index,
-                    'keyword': w.string,
+                    'term': w.string,
                     'label': w.label.label_name,
                 }
                 writer.writerow(item)
