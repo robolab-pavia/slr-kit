@@ -59,14 +59,12 @@ def list_cleaner(tsv_path):
     print("Starting list cleaning...")
 
     for item in tqdm(list(terms_list.items)):
-        if item.order < 0:
-            terms_list.items.remove(item)
-        else:
-            if item.label == terms.Label.RELEVANT or item.label == terms.Label.KEYWORD:
-                copy_item = copy.deepcopy(item)
-                relevant_list.items.append(copy_item)
-            terms_list.get(item.string).order = -1
-            terms_list.get(item.string).label = terms.Label.NONE
+
+        if item.label == terms.Label.RELEVANT or item.label == terms.Label.KEYWORD:
+            copy_item = copy.deepcopy(item)
+            relevant_list.items.append(copy_item)
+        terms_list.get(item.string).order = -1
+        terms_list.get(item.string).label = terms.Label.NONE
 
     print("List has been cleaned")
 
@@ -166,7 +164,7 @@ def lda_iterator(terms_file, preproc_file, output_path, minimum, increment):
     # applying LDA algorithm to every list generated from upper loop and saving results in json file
     for filename in tqdm(os.listdir(list_path)):
         docs, titles = lda.prepare_documents(preproc_file, list_path + "/" + filename, True, ('keyword', 'relevant'))
-        model, dictionary = lda.train_lda_model(docs, 20, "auto", "auto", 0.5, 20)
+        model, dictionary = lda.train_lda_model(docs, 20, "auto", "auto", 1, 1)
         dictionary.save_as_text(dict_path + "/dic_" + filename[:-4] + ".txt")
         docs_topics, topics, avg_topic_coherence = lda.prepare_topics(model, docs, titles, dictionary)
         topic_file = lda_path + "/topics_" + filename[:-4] + ".json"
