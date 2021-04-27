@@ -108,10 +108,18 @@ def init_argparser():
                         action=AppendMultipleFilesAction, nargs='+',
                         metavar='FILENAME', dest='barrier_words_file',
                         help='barrier words file name')
-    parser.add_argument('--relevant-term', '-r', nargs='+', metavar='FILENAME',
+    parser.add_argument('--relevant-term', '-r', nargs=2,
+                        metavar=('FILENAME', 'PLACEHOLDER'),
                         dest='relevant_terms_file',
                         action=AppendMultiplePairsAction, unique_first=True,
-                        help='relevant terms file name')
+                        help='relevant terms file name and the placeholder to '
+                             'use with those terms. The placeholder must not '
+                             'contains any space. If the placeholder is a "-"'
+                             ' or the empty string, each relevant term from '
+                             'this file, is replaced with the barrier '
+                             'placeholder, followed by the term itself with '
+                             'each space changed with the "-" character and '
+                             'then another barrier placeholder.')
     parser.add_argument('--acronyms', '-a',
                         help='TSV files with the approved acronyms')
     parser.add_argument('--target-column', '-t', action='store', type=str,
@@ -120,7 +128,7 @@ def init_argparser():
                              'If omitted %(default)r is used.')
     parser.add_argument('--output-column', action='store', type=str,
                         default='abstract_lem', dest='output_column',
-                        help='name of the column to save'
+                        help='name of the column to save. '
                              'If omitted %(default)r is used.')
     parser.add_argument('--input-delimiter', action='store', type=str,
                         default='\t', dest='input_delimiter',
@@ -433,6 +441,11 @@ def main():
     rel_terms = []
     if args.relevant_terms_file is not None:
         for rfile, placeholder in args.relevant_terms_file:
+            if ' ' in placeholder:
+                sys.exit('A relevant term placeholder can not contain spaces')
+            if placeholder == '-' or placeholder == '':
+                placeholder = None
+
             rel_terms.append((load_relevant_terms(rfile), placeholder))
 
         debug_logger.debug('Relevant words loaded and updated')
