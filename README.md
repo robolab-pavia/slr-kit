@@ -67,29 +67,71 @@ ris2csv --columns title,abstract dataset.ris > dataset_abstracts.csv
 
 Uses the algorithm presented in A. Schwartz and M. Hearst, "A Simple Algorithm for Identifying Abbreviations Definitions in Biomedical Text", Biocomputing, 2003.
 
-The script assumes that the abstracts are contained in a column named `abstract`. Therefore, if the input CSV comes from other sources (e.g., the direct export from online services), make sure that the `abstract` column is present in the CSV. It also require a column named `id`.
+The script assumes that the abstracts are contained in a column named `abstract`. Therefore, if the input CSV comes from other sources (e.g., the direct export from online services), make sure that the `abstract` column is present in the CSV. It also requires a column named `id`.
 
 ## `preprocess.py`
 
-- ACTION: Performs the preprocessing of the abstract to prepare it for further processing.
+- ACTION: Performs the preprocessing of the documents to prepare it for further processing.
 - INPUT: The CSV file produced by `ris2csv.py`.
-- OUTPUT: A CSV file containing the same columns of the input file, plus a new column `abstract_lem` containing the preprocessed abstract.
+- OUTPUT: A CSV file containing the same columns of the input file, plus a new column containing the preprocessed text.
 
 The preprocessing includes:
 
 - Remove punctuations
 - Convert to lowercase
-- Remove tags
+- Remove stop words (also called as barrier word)
+- Mark selected n-grams as relevant
+- Acronyms substitution
 - Remove special characters and digits
-- Stemming
 - Lemmatisation
+
+The barrier words are read from one or more optional files.
+These words are replaced, in the output, with a placeholder (called barrier placeholder) that is recognized in the term extraction phase.
+The default barrier placeholder is the '@' character.
+
+The user can also specify files containing lists of relevant n-grams.
+For each specified file, the user can specify a particular placeholder that will be used as replacement text for each term in that list.
+That text will be surrounded with the barrier placeholder.
+If the user specify a '-' or the empty string as the placeholder for a list of terms, then a different approach is used.
+Each term will be replaced with a placeholder composed by, the barrier placeholder, the words composing the term separated with '_' and finally another barrier placeholder.
+This kind of placeholders can be used by the subsequent phases to recognize the term without losing the meaning of the n-gram.
+
+Examples (assuming that '@' is the barrier placeholder):
+1. if the user specifies a list of relevant n-grams with the specific placeholder 'TASK_PARAM', all the n-grams in that list will be replaced with '@TASK_PARAM@'.
+2. if the user specifies a list of relevant n-grams without a specific placeholder, then each n-gram will be replaced with a specific string. The n-gram 'edf' will be replaced with '@edf@', the n-gram 'earliest deadline first' will be replaced with '@earliest_deadline_first@'.
+
+This program also handles the acronyms.
+A TSV file containing the approved acronyms can be specified.
+This file must have a column 'Acronym' with the abbreviation of each acronym and a column 'Extended' with the extended version of the acronym.
+For each row in the TSV file, the program searches for:
+1. the abbreviation of the acronym;
+2. the extended acronym;
+3. the extended acronym with all the spaces substituted with '-'.
+The program replaces each recognized acronym with `<barrier placeholder><acronym><barrier placeholder>`.
+
+Positional arguments:
+- `datafile` input CSV data file
+
+optional arguments:
+
+* `--output | -o FILENAME` output file name. If omitted or '-' stdout is used
+* `--placeholder | -p PLACEHOLDER` Placeholder for barrier word. Also used as a prefix for the relevant words. Default: '@'
+* `--barrier-words | -b FILENAME [FILENAME ...]` barrier words file name
+* `--relevant-term | -r FILENAME PLACEHOLDER` relevant terms file name and the placeholder to use with those terms. The placeholder must not contains any space. If the placeholder is a "-" or the empty string, each relevant term from this file, is replaced with the barrier placeholder, followed by the term itself with each space changed with the "-" character and then another barrier placeholder.
+* `--acronyms | -a ACRONYMS` TSV files with the approved acronyms
+* `--target-column | -t TARGET_COLUMN` Column in datafile to process. If omitted 'abstract' is used.
+* `--output-column OUTPUT_COLUMN` name of the column to saveIf omitted 'abstract_lem' is used.
+* `--input-delimiter INPUT_DELIMITER` Delimiter used in datafile. Default '\t'
+* `--output-delimiter OUTPUT_DELIMITER` Delimiter used in output file. Default '\t'
+* `--rows | -R INPUT_ROWS` Select maximum number of samples
+* `--language | -l LANGUAGE` language of text. Must be a ISO 639-1 two-letter code. Default: 'en'
 
 ### Example of usage
 
 The following example processes the `dataset_abstracts.csv` file and produces `dataset_preproc.csv`, which contains the same columns of the input file plus the `abstract_lem` column:
 
 ```
-preprocess.py --stop-words stop_words.txt dataset_abstracts.csv > dataset_preproc.csv
+preprocess.py --barrier-words stop_words.txt dataset_abstracts.csv > dataset_preproc.csv
 ```
 
 ## `gen-terms.py`
