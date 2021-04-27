@@ -10,7 +10,6 @@ from typing import Generator, Tuple, Sequence
 from timeit import default_timer as timer
 
 import pandas as pd
-import treetaggerwrapper as ttagger
 from nltk.stem.wordnet import WordNetLemmatizer
 from psutil import cpu_count
 
@@ -39,7 +38,32 @@ class EnglishLemmatizer(Lemmatizer):
 
 class ItalianLemmatizer(Lemmatizer):
     def __init__(self, treetagger_dir=None):
-        self._ttagger = ttagger.TreeTagger(TAGLANG='it', TAGDIR=treetagger_dir)
+        import warnings
+        try:
+            with warnings.catch_warnings():
+                warnings.filterwarnings('ignore', category=FutureWarning)
+                import treetaggerwrapper as ttagger
+        except ModuleNotFoundError:
+            sys.exit('Module treetaggerwrapper not installed - It is required '
+                     'by the italian lemmatizer')
+
+        try:
+            self._ttagger = ttagger.TreeTagger(TAGLANG='it',
+                                               TAGDIR=treetagger_dir)
+        except ttagger.TreeTaggerError as e:
+            msg: str = e.args[0]
+            if msg.startswith("Can't locate"):
+                sys.exit('TreeTagger not installed - It is required by the '
+                         'italian lemmatizer')
+            elif (msg.startswith('Bad TreeTagger')
+                  or msg.startswith('TreeTagger binary')):
+                sys.exit('TreeTagger not properly installed - It is required by the '
+                         'italian lemmatizer')
+            elif msg.startswith('TreeTagger parameter file'):
+                sys.exit('TreeTagger italian parameter file not properly '
+                         'installed - It is required by the italian lemmatizer')
+            else:
+                raise
 
     def lemmatize(self, text: Sequence[str]) -> Generator[Tuple[str, str], None, None]:
         tags = self._ttagger.tag_text(' '.join(text))
@@ -352,6 +376,10 @@ def main():
     if args.language not in AVAILABLE_LEMMATIZERS:
         print(f'Language {args.language!r} is not available', file=sys.stderr)
         sys.exit(1)
+    else:
+        # try to instantiate the lemmatizer to detect import/install errors
+        # before starting the multiprocess machinery
+        get_lemmatizer(args.language)
 
     target_column = args.target_column
     debug_logger = setup_logger('debug_logger', 'slr-kit.log',
