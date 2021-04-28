@@ -15,8 +15,8 @@ from psutil import cpu_count
 
 from utils import (setup_logger, assert_column,
                    log_end, log_start,
-                   AppendMultipleFilesAction, BARRIER_PLACEHOLDER,
-                   RELEVANT_PREFIX)
+                   AppendMultipleFilesAction, AppendMultiplePairsAction,
+                   BARRIER_PLACEHOLDER, RELEVANT_PREFIX)
 
 PHYSICAL_CPUS = cpu_count(logical=False)
 
@@ -108,10 +108,18 @@ def init_argparser():
                         action=AppendMultipleFilesAction, nargs='+',
                         metavar='FILENAME', dest='barrier_words_file',
                         help='barrier words file name')
-    parser.add_argument('--relevant-term', '-r', nargs='+', metavar='FILENAME',
+    parser.add_argument('--relevant-term', '-r', nargs=2,
+                        metavar=('FILENAME', 'PLACEHOLDER'),
                         dest='relevant_terms_file',
-                        action=AppendMultipleFilesAction,
-                        help='relevant terms file name')
+                        action=AppendMultiplePairsAction, unique_first=True,
+                        help='relevant terms file name and the placeholder to '
+                             'use with those terms. The placeholder must not '
+                             'contains any space. If the placeholder is a "-"'
+                             ' or the empty string, each relevant term from '
+                             'this file, is replaced with the barrier '
+                             'placeholder, followed by the term itself with '
+                             'each space changed with the "-" character and '
+                             'then another barrier placeholder.')
     parser.add_argument('--acronyms', '-a',
                         help='TSV files with the approved acronyms')
     parser.add_argument('--target-column', '-t', action='store', type=str,
@@ -120,7 +128,7 @@ def init_argparser():
                              'If omitted %(default)r is used.')
     parser.add_argument('--output-column', action='store', type=str,
                         default='abstract_lem', dest='output_column',
-                        help='name of the column to save'
+                        help='name of the column to save. '
                              'If omitted %(default)r is used.')
     parser.add_argument('--input-delimiter', action='store', type=str,
                         default='\t', dest='input_delimiter',
@@ -251,18 +259,33 @@ def regex(text, lang='en'):
     return out_text
 
 
+def relevant_generator(relevant, relevant_prefix):
+    for rel_set, placeholder in relevant:
+        ph = f'{relevant_prefix}{placeholder}{relevant_prefix}'
+        for rel in rel_set:
+            if placeholder is not None:
+                yield ph, rel
+            else:
+                yield f'{relevant_prefix}{"_".join(rel)}{relevant_prefix}', rel
+
+
 def preprocess_item(item, relevant_terms, barrier_words, acronyms,
                     language='en', barrier=BARRIER_PLACEHOLDER,
                     relevant_prefix=RELEVANT_PREFIX):
     """
     Preprocess the text of a document.
 
-    It lemmatizes the text. Then it searches for the relevant terms. Each
-    relevant term found is replaced with a string composed with the
-    relevant_prefix, an '_' and then all the words composing the term separated
-    with '_'.
-    It searches for the acronyms, changing the words composing them with the
-    corresponding abbreviation.
+    It lemmatizes the text. Then it searches for the relevant terms. The
+    relevant_terms argument is a list of tuples. Each tuple contains a set of
+    relevant terms to search for, and a placeholder. If the placeholder is None,
+    each relevant term found is replaced with a string composed with the
+    relevant_prefix, then all the words composing the term separated
+    with '_' and finally the relevant_prefix. If the placeholder is not None,
+    then each term associated with that prefix is replaced with a string
+    composed by the relevant_prefix, the placeholder and then the
+    relevant_prefix.
+    The function then searches for the acronyms, changing the words composing
+    them with the corresponding abbreviation.
     It also filters the barrier words changing them with the barrier string as
     placeholder.
 
@@ -270,7 +293,7 @@ def preprocess_item(item, relevant_terms, barrier_words, acronyms,
     :type item: str
     :param relevant_terms: the relevant words to search. Each n-gram must be a
         tuple of strings
-    :type relevant_terms: set[tuple[str]]
+    :type relevant_terms: list[tuple[set[tuple[str]], str or None]]
     :param barrier_words: the barrier words to filter
     :type barrier_words: set[str]
     :param acronyms: the acronyms to replace in each document. Must have two
@@ -298,9 +321,8 @@ def preprocess_item(item, relevant_terms, barrier_words, acronyms,
     text2 = [lem_word for _, lem_word in lem.lemmatize(text)]
 
     # mark relevant terms
-    rel_gen = ((f'{relevant_prefix}{"_".join(rel)}{relevant_prefix}', rel)
-               for rel in relevant_terms)
-    text2 = replace_ngram(text2, rel_gen)
+    text2 = replace_ngram(text2,
+                          relevant_generator(relevant_terms, relevant_prefix))
 
     for i, word in enumerate(text2):
         if word in barrier_words:
@@ -321,7 +343,7 @@ def process_corpus(dataset, relevant_terms, barrier_words, acronyms,
     :param dataset: the corpus of documents
     :type dataset: pd.Sequence
     :param relevant_terms: the related terms to search in each document
-    :type relevant_terms: set[tuple[str]]
+    :type relevant_terms: list[tuple[set[tuple[str]], str]]
     :param barrier_words: the barrier words to filter in each document
     :type barrier_words: set[str]
     :param acronyms: the acronyms to replace in each document. Must have two
@@ -416,10 +438,15 @@ def main():
     else:
         acronyms = pd.DataFrame(columns=['Acronym', 'Extended'])
 
-    rel_terms = set()
+    rel_terms = []
     if args.relevant_terms_file is not None:
-        for rfile in args.relevant_terms_file:
-            rel_terms = load_relevant_terms(rfile)
+        for rfile, placeholder in args.relevant_terms_file:
+            if ' ' in placeholder:
+                sys.exit('A relevant term placeholder can not contain spaces')
+            if placeholder == '-' or placeholder == '':
+                placeholder = None
+
+            rel_terms.append((load_relevant_terms(rfile), placeholder))
 
         debug_logger.debug('Relevant words loaded and updated')
 

@@ -64,7 +64,7 @@ def get_n_grams(corpus, n_terms=1, min_frequency=5, barrier=None,
         relevant_prefix = ' '
 
     for doc in corpus:
-        doc_list = doc.split(' ')
+        doc_list = doc.split()  # default separator is the whitespace char
         for i in range(len(doc_list) - n_terms + 1):
             words = doc_list[i:i+n_terms]
             # skip the terms that contain a barrier or a relevant term
