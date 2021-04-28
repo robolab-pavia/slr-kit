@@ -128,12 +128,16 @@ optional arguments:
 
 ### Example of usage
 
-The following example processes the `dataset_abstracts.csv` file and produces `dataset_preproc.csv`, which contains the same columns of the input file plus the `abstract_lem` column:
+The following example processes the `dataset_abstracts.csv` file, filtering the stop words in `stop_words.txt` and produces `dataset_preproc.csv`, which contains the same columns of the input file plus the `abstract_lem` column:
 
 ```
 preprocess.py --barrier-words stop_words.txt dataset_abstracts.csv > dataset_preproc.csv
 ```
+The following example processes the `dataset_abstracts.csv` file, replacing the terms `relevant_terms.txt` with placeholder created from the terms themselves, replacing the terms in `other_relevant.txt` with '@PLACEHOLDER@' and produces `dataset_preproc.csv`, which contains the same columns of the input file plus the `abstract_lem` column:
 
+```
+preprocess.py --relevant-term relevant_terms.txt - -r other_relevant.txt PLACEHOLDER dataset_abstracts.csv > dataset_preproc.csv
+```
 ## `gen-terms.py`
 
 - ACTION: Extracts the terms ({1,2,3,4}-grams) from the abstracts.
