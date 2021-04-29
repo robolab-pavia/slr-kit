@@ -96,8 +96,6 @@ def list_sorter(terms_list):
             terms_list.get(string).order = 1
         sorted_list = sorted_list + next_sublist
 
-    print("List has been sorted")
-
     return sorted_list
 
 
@@ -176,7 +174,7 @@ def matcher(output_path):
     """
     Matches the various execution of LDA from lda_iterator.
 
-    :param output_path: path to the directory with lda directory.
+    :param output_path: path to the directory containing lda subcommand results.
     :type output_path: str
     """
     Path(output_path+"/matches").mkdir(parents=True, exist_ok=True)
@@ -239,6 +237,7 @@ def main():
         sorted_list = list_sorter(terms_list)
         final_list = list_comparer(sorted_list, relevant_list)
         final_list.to_tsv(args.output)
+        print("List has been sorted")
     elif args.command == "lda":
         lda_iterator(args.ordered_list, args.preproc_file, args.output_path, args.min, args.increment)
     elif args.command == "match":
