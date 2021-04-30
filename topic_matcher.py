@@ -3,6 +3,7 @@ import csv
 import argparse
 from operator import itemgetter
 import os.path
+from scipy import stats
 
 
 def init_argparser():
@@ -38,18 +39,33 @@ def topic_matcher(topic1, topic2):
     partial_diff = 1.0
     metric = 0.0
     counter = 0
+    min_val = 1.0
+
+    for term in topic2["terms_probability"]:
+        if topic2["terms_probability"][term] < min_val:
+            min_val = topic2["terms_probability"][term]
 
     for term1 in topic1["terms_probability"]:
+        found = False
         for term2 in topic2["terms_probability"]:
             if term1 == term2:
-                partial_diff = abs(topic1["terms_probability"][term1] - topic2["terms_probability"][term2])
+                found = True
+                abs_diff = abs(topic1["terms_probability"][term1] - topic2["terms_probability"][term2])
+                mean = (topic1["terms_probability"][term1] + topic2["terms_probability"][term2])/2
+                partial_diff = (abs_diff/mean)*100
+                break
+
+        if not found:
+            abs_diff = abs(topic1["terms_probability"][term1] - min_val)
+            mean = (topic1["terms_probability"][term1] + min_val) / 2
+            partial_diff = (abs_diff / mean) * 100
         metric += partial_diff
         counter += 1
         partial_diff = 1.0
 
     # compute average difference for the topic words and transformed in a percentage notation
     metric /= counter
-    percentage_metric = round((1.0 - metric) * 100.0, 2)
+    percentage_metric = round(100 - metric, 2)
 
     return percentage_metric
 
