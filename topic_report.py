@@ -53,7 +53,8 @@ def report_year(papers_list, topics_list):
     return topics_dict
 
 
-def report_journal(papers_list, topics_list):
+def prepare_journals(papers_list):
+
     journals = []
     journals_dict = dict()
     for paper in papers_list:
@@ -69,7 +70,10 @@ def report_journal(papers_list, topics_list):
 
     journals_dict = sorted(journals_dict.items(), key=lambda x: x[1], reverse=True)
 
-    print(journals_dict)
+    return journals_dict
+
+
+def report_journal_topics(journals_dict, papers_list):
 
     journal_topic = collections.defaultdict(dict)
     for journal, value in journals_dict[0:10]:
@@ -83,6 +87,11 @@ def report_journal(papers_list, topics_list):
     return journal_topic
 
 
+def report_journal_years(papers_list, journals_dict):
+    journal_year = dict()
+
+
+
 def main():
     # parser = init_argparser()
     # args = parser.parse_args()
@@ -90,7 +99,8 @@ def main():
     json_path = "dsm_output/lda_docs-topics_2021-05-06_113444.json"
 
     papers_list, topics_list = prepare_papers(ris_path, json_path)
-    report_journal(papers_list, topics_list)
+    journals_dict = prepare_journals(papers_list)
+
 
 if __name__ == "__main__":
     main()
