@@ -4,15 +4,6 @@ from RISparser import readris
 import collections
 
 
-class Paper:
-    year: int
-    title: str
-    authors: list[str]
-    abstract: str
-    keywords: list[str]
-    topics: list[str]
-
-
 def init_argparser():
     parser = argparse.ArgumentParser()
 
@@ -37,11 +28,6 @@ def prepare_papers(ris_path, json_path):
                 paper["topics"] = topics
                 break
 
-    return papers_list
-
-
-def report_year(papers_list):
-
     topics_list = []
     for paper in papers_list:
         for key in paper["topics"]:
@@ -49,6 +35,12 @@ def report_year(papers_list):
                 topics_list.append(int(key))
 
     topics_list.sort()
+
+    return papers_list, topics_list
+
+
+def report_year(papers_list, topics_list):
+
     topics_dict = collections.defaultdict(dict)
 
     for topic_id in topics_list:
@@ -58,17 +50,47 @@ def report_year(papers_list):
                 year = int(paper["year"])
                 topics_dict[topic_id][year] = topics_dict[topic_id].get(year, 0) + float(topics[str(topic_id)])
 
-    print(topics_dict)
+    return topics_dict
+
+
+def report_journal(papers_list, topics_list):
+    journals = []
+    journals_dict = dict()
+    for paper in papers_list:
+        if "secondary_title" in paper:
+            if paper["secondary_title"] not in journals:
+                journals.append(paper["secondary_title"])
+
+    for journal in journals:
+        for paper in papers_list:
+            if "secondary_title" in paper:
+                if paper["secondary_title"] == journal:
+                    journals_dict[journal] = journals_dict.get(journal, 0) + 1
+
+    journals_dict = sorted(journals_dict.items(), key=lambda x: x[1], reverse=True)
+
+    print(journals_dict)
+
+    journal_topic = collections.defaultdict(dict)
+    for journal, value in journals_dict[0:10]:
+        for paper in papers_list:
+            if "secondary_title" in paper:
+                if paper["secondary_title"] == journal:
+                    topics = paper["topics"]
+                    for topic in topics:
+                        journal_topic[journal][topic] = journal_topic[journal].get(topic, 0) + 1
+
+    return journal_topic
 
 
 def main():
     # parser = init_argparser()
     # args = parser.parse_args()
     ris_path = "dsm-facchinetti-main/dsm.ris"
-    json_path = "dsm_dataset/lda_docs-topics_2021-04-30_180756.json"
+    json_path = "dsm_output/lda_docs-topics_2021-05-06_113444.json"
 
-    papers_list = prepare_papers(ris_path, json_path)
-    report_year(papers_list)
+    papers_list, topics_list = prepare_papers(ris_path, json_path)
+    report_journal(papers_list, topics_list)
 
 if __name__ == "__main__":
     main()
