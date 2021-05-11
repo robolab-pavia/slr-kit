@@ -2,6 +2,8 @@ import argparse
 import json
 from RISparser import readris
 import collections
+from tabulate import tabulate
+from matplotlib import pyplot as plt
 
 
 def init_argparser():
@@ -101,6 +103,45 @@ def report_journal_years(papers_list, journals_dict):
     return journal_year
 
 
+def plot_years(topics_dict):
+
+    for topic in topics_dict:
+        sorted_dic = sorted(topics_dict[topic].items())
+        x, y = zip(*sorted_dic)
+
+        plt.grid(True)
+        plt.plot(x, y, label="topic " + str(topic))
+
+    plt.legend()
+    plt.title("topics yearly graph ")
+    plt.xlabel("Year")
+    plt.ylabel("# of papers")
+    plt.tight_layout()
+    plt.show()
+
+
+def prepare_tables(topics_dict):
+
+    min_year = 2005
+    first_line = ["Topic"]
+    first_line.extend(list(range(min_year, 2021)))
+    topic_year_list = [first_line]
+
+    for topic in topics_dict:
+        sorted_dic = sorted(topics_dict[topic].items())
+        line = [topic]
+        x, y = zip(*sorted_dic)
+        for year in first_line[1:]:
+            if year in x:
+                line.append(y[x.index(year)])
+            else:
+                line.append(0)
+        topic_year_list.append(line)
+
+    topic_year_table = tabulate(topic_year_list, headers="firstrow", floatfmt=".3f")
+
+
+
 def main():
     # parser = init_argparser()
     # args = parser.parse_args()
@@ -108,7 +149,7 @@ def main():
     json_path = "dsm-output/lda_docs-topics_2021-05-10_151431.json"
 
     papers_list, topics_list = prepare_papers(ris_path, json_path)
-    journals_dict = prepare_journals(papers_list)
+    topics_dict = report_year(papers_list, topics_list)
 
 
 if __name__ == "__main__":
