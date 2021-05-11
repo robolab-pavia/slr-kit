@@ -83,20 +83,29 @@ def report_journal_topics(journals_dict, papers_list):
                     topics = paper["topics"]
                     for topic in topics:
                         journal_topic[journal][topic] = journal_topic[journal].get(topic, 0) + 1
+    print(journal_topic)
 
     return journal_topic
 
 
 def report_journal_years(papers_list, journals_dict):
-    journal_year = dict()
+    journal_year = collections.defaultdict(dict)
 
+    for journal, value in journals_dict[0:10]:
+        for paper in papers_list:
+            if "secondary_title" in paper:
+                if paper["secondary_title"] == journal:
+                    year = int(paper["year"])
+                    journal_year[journal][year] = journal_year[journal].get(year, 0) + 1
+
+    return journal_year
 
 
 def main():
     # parser = init_argparser()
     # args = parser.parse_args()
     ris_path = "dsm-facchinetti-main/dsm.ris"
-    json_path = "dsm_output/lda_docs-topics_2021-05-06_113444.json"
+    json_path = "dsm-output/lda_docs-topics_2021-05-10_151431.json"
 
     papers_list, topics_list = prepare_papers(ris_path, json_path)
     journals_dict = prepare_journals(papers_list)
