@@ -4,6 +4,7 @@ from RISparser import readris
 import collections
 from tabulate import tabulate
 from matplotlib import pyplot as plt
+from jinja2 import Environment, FileSystemLoader
 
 
 def init_argparser():
@@ -85,7 +86,6 @@ def report_journal_topics(journals_dict, papers_list):
                     topics = paper["topics"]
                     for topic in topics:
                         journal_topic[journal][topic] = journal_topic[journal].get(topic, 0) + 1
-    print(journal_topic)
 
     return journal_topic
 
@@ -115,14 +115,14 @@ def plot_years(topics_dict):
     plt.legend()
     plt.title("topics yearly graph ")
     plt.xlabel("Year")
-    plt.ylabel("# of papers")
+    plt.ylabel("# of papers (weighted by coherence)")
     plt.tight_layout()
-    plt.show()
+    plt.savefig('year_dsm.png')
 
 
-def prepare_tables(topics_dict):
+def prepare_tables(topics_dict, journals_topic, journals_year):
 
-    min_year = 2005
+    min_year = 2007
     first_line = ["Topic"]
     first_line.extend(list(range(min_year, 2021)))
     topic_year_list = [first_line]
@@ -138,8 +138,43 @@ def prepare_tables(topics_dict):
                 line.append(0)
         topic_year_list.append(line)
 
-    topic_year_table = tabulate(topic_year_list, headers="firstrow", floatfmt=".3f")
+    topic_year_table = tabulate(topic_year_list, headers="firstrow", floatfmt=".3f", tablefmt="github")
 
+    first_line = ["Journal"]
+    topics_list = list(range(0, len(topics_dict)))
+    first_line.extend(topics_list)
+    journal_topic_list = [first_line]
+
+    for journal in journals_topic:
+        line = [journal]
+        sorted_dic = sorted(journals_topic[journal].items())
+        x, y = zip(*sorted_dic)
+        for topic in first_line[1:]:
+            if str(topic) in x:
+                line.append(y[x.index(str(topic))])
+            else:
+                line.append(0)
+        journal_topic_list.append(line)
+
+    journal_topic_table = tabulate(journal_topic_list, headers="firstrow", floatfmt=".3f", tablefmt="github")
+
+    first_line = ["Journal"]
+    first_line.extend(list(range(min_year, 2021)))
+    journal_year_list = [first_line]
+    for journal in journals_year:
+        sorted_dic = sorted(journals_year[journal].items())
+        line = [journal]
+        x, y = zip(*sorted_dic)
+        for year in first_line[1:]:
+            if year in x:
+                line.append(y[x.index(year)])
+            else:
+                line.append(0)
+        journal_year_list.append(line)
+
+    journal_year_table = tabulate(journal_year_list, headers="firstrow", floatfmt=".3f", tablefmt="github")
+
+    return topic_year_table, journal_topic_table, journal_year_table
 
 
 def main():
@@ -150,6 +185,26 @@ def main():
 
     papers_list, topics_list = prepare_papers(ris_path, json_path)
     topics_dict = report_year(papers_list, topics_list)
+    plot_years(topics_dict)
+    journals_dict = prepare_journals(papers_list)
+    journals_year = report_journal_years(papers_list, journals_dict)
+    journals_topics = report_journal_topics(journals_dict, papers_list)
+    topic_year_table, journal_topic_table, journal_year_table = prepare_tables(topics_dict,
+                                                                               journals_topics,
+                                                                               journals_year)
+
+    env = Environment(loader=FileSystemLoader('.'),
+                      autoescape=True)
+
+    template = env.get_template('report_markdown.md')
+    year_report = 'year_dsm.png'
+    md_file = template.render(year_report=year_report,
+                              year_table=topic_year_table,
+                              journal_topic_table=journal_topic_table,
+                              journal_year_table=journal_year_table)
+
+    with open("md_report.md", "w") as fh:
+        fh.write(md_file)
 
 
 if __name__ == "__main__":
