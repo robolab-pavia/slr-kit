@@ -43,6 +43,8 @@ def init_argparser():
                         default=DEFAULT_PARAMS['column'],
                         help='Column in datafile to process. '
                              'If omitted %(default)r is used.')
+    parser.add_argument('--logfile', default='slr-kit.log',
+                        help='log file name. If omitted %(default)r is used')
     return parser
 
 
@@ -127,7 +129,7 @@ def main():
     n_grams = convert_int_parameter(args, 'n_grams', default=4)
     min_frequency = convert_int_parameter(args, 'min_frequency', default=5)
 
-    debug_logger = setup_logger('debug_logger', 'slr-kit.log',
+    debug_logger = setup_logger('debug_logger', args.logfile,
                                 level=logging.DEBUG)
     # TODO: write log string with values of the parameters used in the execution
 

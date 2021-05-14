@@ -165,6 +165,8 @@ def init_argparser():
                         default=DEFAULT_PARAMS['language'],
                         help='language of text. Must be a ISO 639-1 two-letter '
                              'code. Default: %(default)r')
+    parser.add_argument('--logfile', default='slr-kit.log',
+                        help='log file name. If omitted %(default)r is used')
     parser.add_argument('--regex',
                         help='Regex .csv for specific substitutions')
     return parser
@@ -459,7 +461,7 @@ def main():
         get_lemmatizer(args.language)
 
     target_column = args.target_column
-    debug_logger = setup_logger('debug_logger', 'slr-kit.log',
+    debug_logger = setup_logger('debug_logger', args.logfile,
                                 level=logging.DEBUG)
     name = 'preprocess'
     log_start(args, debug_logger, name)
