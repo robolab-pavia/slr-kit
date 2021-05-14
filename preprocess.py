@@ -8,6 +8,7 @@ from itertools import repeat
 from multiprocessing import Pool
 from typing import Generator, Tuple, Sequence
 from timeit import default_timer as timer
+
 import pandas as pd
 from nltk.stem.wordnet import WordNetLemmatizer
 from psutil import cpu_count
@@ -258,35 +259,43 @@ def language_specific_regex(text, lang='en'):
         # punctuation
         out_text = re.sub('[,.;:!?()"\']', ' --- ', text)
         # Remove special characters (not the hyphen) and digits
+        # also preserve the '__' used by some placeholders
         return re.sub(r'(\d|[^-\w])+|(?<=[^_])_(?=[^_])', ' ', out_text)
     if lang == 'it':
         # punctuation - preserve "'"
         out_text = re.sub('[,.;:!?()"]', ' --- ', text)
         # Remove special characters (not the hyphen) and digits. but preserve
         # accented letters. Also preserve "'" if surrounded by non blank chars
-        return re.sub(r'(\d|[^-\wà_èéìòù\']|(?<=\s)\'(?=\S)|(?<=\S)\'(?!\S))+|(?<=[^_])_(?=[^_])',
+        # and the '__' used by some placeholders
+        return re.sub(r'(\d|[^-\wàèéìòù_\']'
+                      r'|(?<=\s)\'(?=\S)|(?<=\S)\'(?!\S))+'
+                      r'|(?<=[^_])_(?=[^_])',
                       ' ', out_text)
 
 
 def regex(text, barrier_placeholder=BARRIER_PLACEHOLDER, lang='en',
-          regexDF=None):
+          regex_df=None):
     # If a regex DataFrame for the specific project is passed,
-    # this function will replace the patterns with the corresponding repl parameter
-    if regexDF is not None:
+    # this function will replace the patterns with the corresponding repl
+    # parameter
+    if regex_df is not None:
         # Some of the regex are not actually regex. Like <br>
-        notRegex = regexDF[regexDF["regexBoolean"]==False]
-        for _, row in notRegex.iterrows():
-            text = text.replace(row["pattern"], "__{}__".format(row["repl"]))
+        not_regex = regex_df[~regex_df['regexBoolean']]
+        for _, row in not_regex.iterrows():
+            text = text.replace(row['pattern'], '__{}__'.format(row['repl']))
 
-        regexDF = regexDF[~regexDF['pattern'].isin(notRegex['pattern'])]
-        regex_with_spaces = regexDF[regexDF["pattern"].str.contains("\s", regex=False)]
+        regex_df = regex_df[~regex_df['pattern'].isin(not_regex['pattern'])]
+        regex_with_spaces = regex_df[regex_df['pattern'].str.contains(r'\s',
+                                                                      regex=False)]
 
         for _, row in regex_with_spaces.iterrows():
-            text = re.sub(row["pattern"], "__{}__".format(row["repl"]), text)
+            text = re.sub(row['pattern'], '__{}__'.format(row['repl']), text)
 
-        for _, row in regexDF[~regexDF["pattern"].isin(regex_with_spaces["pattern"])].iterrows():
-            text = ' '.join([re.sub(row["pattern"], "__{}__".format(row["repl"]), gram) for gram in text.split()])
-
+        rows = regex_df[~regex_df['pattern'].isin(regex_with_spaces['pattern'])]
+        for _, row in rows.iterrows():
+            text = ' '.join([re.sub(row['pattern'],
+                                    '__{}__'.format(row['repl']), gram)
+                             for gram in text.split()])
     # Change punctuation and remove special characters (not the hyphen) and
     # digits. The definition of special character and punctuation, changes with
     # the language
@@ -312,7 +321,7 @@ def relevant_generator(relevant, relevant_prefix):
 
 def preprocess_item(item, relevant_terms, barrier_words, acronyms,
                     language='en', barrier=BARRIER_PLACEHOLDER,
-                    relevant_prefix=RELEVANT_PREFIX, regexDF=None):
+                    relevant_prefix=RELEVANT_PREFIX, regex_df=None):
     """
     Preprocess the text of a document.
 
@@ -355,7 +364,7 @@ def preprocess_item(item, relevant_terms, barrier_words, acronyms,
     # Convert to lowercase
     text = item.lower()
     # apply some regex to clean the text
-    text = regex(text, barrier, language, regexDF=regexDF)
+    text = regex(text, barrier, language, regex_df=regex_df)
     text = text.split(' ')
 
     # replace acronyms
@@ -377,7 +386,7 @@ def preprocess_item(item, relevant_terms, barrier_words, acronyms,
 
 def process_corpus(dataset, relevant_terms, barrier_words, acronyms,
                    language='en', barrier=BARRIER_PLACEHOLDER,
-                   relevant_prefix=RELEVANT_PREFIX, regexDF=None):
+                   relevant_prefix=RELEVANT_PREFIX, regex_df=None):
     """
     Process a corpus of documents.
 
@@ -411,7 +420,7 @@ def process_corpus(dataset, relevant_terms, barrier_words, acronyms,
                                                    repeat(language),
                                                    repeat(barrier),
                                                    repeat(relevant_prefix),
-                                                   repeat(regexDF)))
+                                                   repeat(regex_df)))
     return corpus
 
 
@@ -464,10 +473,9 @@ def main():
 
     # csvFileName da CLI
     if args.regex is not None:
-        regexDF = pd.read_csv(args.regex, sep=',', quotechar='"')
+        regex_df = pd.read_csv(args.regex, sep=',', quotechar='"')
     else:
-        regexDF = None
-
+        regex_df = None
 
     barrier_placeholder = args.placeholder
     relevant_prefix = barrier_placeholder
@@ -507,8 +515,7 @@ def main():
     corpus = process_corpus(dataset[target_column], rel_terms, barrier_words,
                             acronyms, language=args.language,
                             barrier=barrier_placeholder,
-                            relevant_prefix=relevant_prefix,
-                            regexDF=regexDF)
+                            relevant_prefix=relevant_prefix, regex_df=regex_df)
     stop = timer()
     elapsed_time = stop - start
     debug_logger.debug('Corpus processed')
