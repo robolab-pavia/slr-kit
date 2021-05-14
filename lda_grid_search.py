@@ -15,9 +15,25 @@ from gensim.models import CoherenceModel, LdaModel
 from lda import (PHYSICAL_CPUS, BARRIER_PLACEHOLDER, prepare_documents,
                  output_topics)
 
-# these globals are used by the multiprocess workers used in compute_optimal_model
 from utils import AppendMultipleFilesAction, assert_column
 
+DEFAULT_PARAMS = {
+    'preproc_file': None,
+    'terms_file': None,
+    'outdir': '',
+    'additional-terms': None,
+    'acronyms': None,
+    'min-topics': 5,
+    'max-topics': 20,
+    'step-topics': 1,
+    'result': '-',
+    'seed': None,
+    'ngrams': None,
+    'model': False,
+    'placeholder': BARRIER_PLACEHOLDER,
+}
+
+# these globals are used by the multiprocess workers used in compute_optimal_model
 _corpora: Optional[Dict[Tuple[str], Tuple[List[Tuple[int, int]],
                                           Dictionary, List[List[str]]]]] = None
 _seed: Optional[int] = None
@@ -66,15 +82,18 @@ def init_argparser():
     parser.add_argument('--model', action='store_true',
                         help='if set, the best lda model is saved to directory '
                              '<outdir>/lda_model')
-    parser.add_argument('--min-topics', '-m', type=int, default=5,
+    parser.add_argument('--min-topics', '-m', type=int,
+                        default=DEFAULT_PARAMS['min-topics'],
                         action=_ValidateInt,
                         help='Minimum number of topics to retrieve '
                              '(default: %(default)s)')
-    parser.add_argument('--max-topics', '-M', type=int, default=20,
+    parser.add_argument('--max-topics', '-M', type=int,
+                        default=DEFAULT_PARAMS['max-topics'],
                         action=_ValidateInt,
                         help='Maximum number of topics to retrieve '
                              '(default: %(default)s)')
-    parser.add_argument('--step-topics', '-s', type=int, default=1,
+    parser.add_argument('--step-topics', '-s', type=int,
+                        default=DEFAULT_PARAMS['step-topics'],
                         action=_ValidateInt,
                         help='Step in range(min,max,step) for topics retrieving '
                              '(default: %(default)s)')
@@ -86,7 +105,8 @@ def init_argparser():
                         help='if set, it saves the plot of the coherence as '
                              '<outdir>/lda_plot.pdf')
     parser.add_argument('--result', '-r', metavar='FILENAME',
-                        type=argparse.FileType('w'), default='-',
+                        type=argparse.FileType('w'),
+                        default=DEFAULT_PARAMS['result'],
                         help='Where to save the training results in CSV format.'
                              ' If omitted or -, stdout is used.')
     parser.add_argument('--output', '-o', action='store_true',
@@ -94,7 +114,8 @@ def init_argparser():
                              '<outdir>/lda_terms-topics_<date>_<time>.json, '
                              'and the document topic assignment in '
                              '<outdir>/lda_docs-topics_<date>_<time>.json')
-    parser.add_argument('--placeholder', '-p', default=BARRIER_PLACEHOLDER,
+    parser.add_argument('--placeholder', '-p',
+                        default=DEFAULT_PARAMS['placeholder'],
                         help='Placeholder for barrier word. Also used as a '
                              'prefix for the relevant words. '
                              'Default: %(default)s')
