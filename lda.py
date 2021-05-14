@@ -24,6 +24,23 @@ from utils import (substring_index, AppendMultipleFilesAction,
                    BARRIER_PLACEHOLDER, RELEVANT_PREFIX, assert_column)
 
 PHYSICAL_CPUS = cpu_count(logical=False)
+DEFAULT_PARAMS = {
+    'preproc_file': None,
+    'terms_file': None,
+    'outdir': '',
+    'additional-terms': None,
+    'acronyms': None,
+    'topics': 20,
+    'alpha': 'auto',
+    'beta': 'auto',
+    'no_below': 20,
+    'no_above': 0.5,
+    'seed': None,
+    'ngrams': False,
+    'model': False,
+    'no-relevant': False,
+    'placeholder': BARRIER_PLACEHOLDER,
+}
 
 
 def init_argparser():
@@ -61,19 +78,24 @@ def init_argparser():
                         help='Additional keywords files')
     parser.add_argument('--acronyms', '-a',
                         help='TSV files with the approved acronyms')
-    parser.add_argument('--topics', action='store', type=int, default=20,
+    parser.add_argument('--topics', action='store', type=int,
+                        default=DEFAULT_PARAMS['topics'],
                         help='Number of topics. If omitted %(default)s is used')
-    parser.add_argument('--alpha', action='store', type=str, default='auto',
+    parser.add_argument('--alpha', action='store', type=str,
+                        default=DEFAULT_PARAMS['alpha'],
                         help='alpha parameter of LDA. If omitted %(default)s is'
                              ' used')
-    parser.add_argument('--beta', action='store', type=str, default='auto',
+    parser.add_argument('--beta', action='store', type=str,
+                        default=DEFAULT_PARAMS['beta'],
                         help='beta parameter of LDA. If omitted %(default)s is '
                              'used')
-    parser.add_argument('--no_below', action='store', type=int, default=20,
+    parser.add_argument('--no_below', action='store', type=int,
+                        default=DEFAULT_PARAMS['no_below'],
                         help='Keep tokens which are contained in at least'
                              'this number of documents. If omitted %(default)s '
                              'is used')
-    parser.add_argument('--no_above', action='store', type=float, default=0.5,
+    parser.add_argument('--no_above', action='store', type=float,
+                        default=DEFAULT_PARAMS['no_above'],
                         help='Keep tokens which are contained in no more than '
                              'this fraction of documents (fraction of total '
                              'corpus size, not an absolute number). If omitted '
@@ -93,7 +115,8 @@ def init_argparser():
                              'named "model" is searched. the loaded model is '
                              'used with the dataset file to generate the topics'
                              ' and the topic document association')
-    parser.add_argument('--placeholder', '-p', default=BARRIER_PLACEHOLDER,
+    parser.add_argument('--placeholder', '-p',
+                        default=DEFAULT_PARAMS['placeholder'],
                         help='Placeholder for barrier word. Also used as a '
                              'prefix for the relevant words. '
                              'Default: %(default)s')
