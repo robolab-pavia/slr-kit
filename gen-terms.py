@@ -8,6 +8,15 @@ import logging
 import argparse
 from utils import setup_logger, BARRIER_PLACEHOLDER
 
+DEFAULT_PARAMS = {
+    'datafile': None,
+    'output': None,
+    'stdout': False,
+    'n-grams': 4,
+    'min-frequency': 5,
+    'placeholder': BARRIER_PLACEHOLDER,
+    'column': 'abstract_lem',
+}
 
 def init_argparser():
     """Initialize the command line parser."""
@@ -19,15 +28,19 @@ def init_argparser():
     parser.add_argument('--stdout', '-s', action='store_true',
                         help='Also print on stdout the output file')
     parser.add_argument('--n-grams', '-n', metavar='N', dest='n_grams',
-                        default=4, help='Maximum size of n-grams number')
+                        default=DEFAULT_PARAMS['n-grams'],
+                        help='Maximum size of n-grams number')
     parser.add_argument('--min-frequency', '-m', metavar='N',
-                        dest='min_frequency', default=5,
+                        dest='min_frequency',
+                        default=DEFAULT_PARAMS['min-frequency'],
                         help='Minimum frequency of the n-grams')
-    parser.add_argument('--placeholder', '-p', default=BARRIER_PLACEHOLDER,
+    parser.add_argument('--placeholder', '-p',
+                        default=DEFAULT_PARAMS['placeholder'],
                         help='Placeholder for barrier word. Also used as a '
                              'prefix for the relevant words. '
                              'Default: %(default)r')
-    parser.add_argument('--column', '-c', default='abstract_lem',
+    parser.add_argument('--column', '-c',
+                        default=DEFAULT_PARAMS['column'],
                         help='Column in datafile to process. '
                              'If omitted %(default)r is used.')
     return parser
