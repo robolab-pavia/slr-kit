@@ -18,6 +18,20 @@ from utils import (setup_logger, assert_column,
                    BARRIER_PLACEHOLDER, RELEVANT_PREFIX)
 
 PHYSICAL_CPUS = cpu_count(logical=False)
+DEFAULT_PARAMS = {
+    'datafile': None,
+    'output': '-',
+    'placeholder': BARRIER_PLACEHOLDER,
+    'barrier-words': None,
+    'relevant-term': None,
+    'acronyms': None,
+    'target-column': 'abstract',
+    'output-column': 'abstract_lem',
+    'input-delimiter': '\t',
+    'output-delimiter': '\t',
+    'language': 'en',
+    'regex': '',
+}
 
 
 class Lemmatizer(abc.ABC):
@@ -96,10 +110,12 @@ def init_argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument('datafile', action='store', type=str,
                         help="input CSV data file")
-    parser.add_argument('--output', '-o', metavar='FILENAME', default='-',
+    parser.add_argument('--output', '-o', metavar='FILENAME',
+                        default=DEFAULT_PARAMS['output'],
                         help='output file name. If omitted or %(default)r '
                              'stdout is used')
-    parser.add_argument('--placeholder', '-p', default=BARRIER_PLACEHOLDER,
+    parser.add_argument('--placeholder', '-p',
+                        default=DEFAULT_PARAMS['placeholder'],
                         help='Placeholder for barrier word. Also used as a '
                              'prefix for the relevant words. '
                              'Default: %(default)r')
@@ -122,25 +138,30 @@ def init_argparser():
     parser.add_argument('--acronyms', '-a',
                         help='TSV files with the approved acronyms')
     parser.add_argument('--target-column', '-t', action='store', type=str,
-                        default='abstract', dest='target_column',
+                        default=DEFAULT_PARAMS['target-column'],
+                        dest='target_column',
                         help='Column in datafile to process. '
                              'If omitted %(default)r is used.')
     parser.add_argument('--output-column', action='store', type=str,
-                        default='abstract_lem', dest='output_column',
+                        default=DEFAULT_PARAMS['output-column'],
+                        dest='output_column',
                         help='name of the column to save. '
                              'If omitted %(default)r is used.')
     parser.add_argument('--input-delimiter', action='store', type=str,
-                        default='\t', dest='input_delimiter',
+                        default=DEFAULT_PARAMS['input-delimiter'],
+                        dest='input_delimiter',
                         help='Delimiter used in datafile. '
                              'Default %(default)r')
     parser.add_argument('--output-delimiter', action='store', type=str,
-                        default='\t', dest='output_delimiter',
+                        default=DEFAULT_PARAMS['output-delimiter'],
+                        dest='output_delimiter',
                         help='Delimiter used in output file. '
                              'Default %(default)r')
     parser.add_argument('--rows', '-R', type=int,
-                        dest='input_rows', default=None,
+                        dest='input_rows',
                         help="Select maximum number of samples")
-    parser.add_argument('--language', '-l', default='en',
+    parser.add_argument('--language', '-l',
+                        default=DEFAULT_PARAMS['language'],
                         help='language of text. Must be a ISO 639-1 two-letter '
                              'code. Default: %(default)r')
     parser.add_argument('--regex',
