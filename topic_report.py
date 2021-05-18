@@ -1,10 +1,12 @@
 import argparse
 import json
+import csv
 from RISparser import readris
 import collections
 from tabulate import tabulate
 from matplotlib import pyplot as plt
 from jinja2 import Environment, FileSystemLoader
+from itertools import islice
 
 
 def init_argparser():
@@ -105,18 +107,34 @@ def report_journal_years(papers_list, journals_dict):
 
 def plot_years(topics_dict):
 
-    for topic in topics_dict:
+    fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
+    size = len(topics_dict)
+
+    for topic in islice(topics_dict, 10):
         sorted_dic = sorted(topics_dict[topic].items())
         x, y = zip(*sorted_dic)
 
-        plt.grid(True)
-        plt.plot(x, y, label="topic " + str(topic))
+        ax[0].plot(x, y, label="topic " + str(topic))
+        ax[0].grid(True)
 
-    plt.legend()
-    plt.title("topics yearly graph ")
-    plt.xlabel("Year")
-    plt.ylabel("# of papers (weighted by coherence)")
-    plt.tight_layout()
+    for topic in islice(topics_dict, 10, None):
+        sorted_dic = sorted(topics_dict[topic].items())
+        x, y = zip(*sorted_dic)
+
+        ax[1].plot(x, y, label="topic " + str(topic))
+        ax[1].grid(True)
+
+    ax[0].set_title('topics yearly graph (1st half)')
+    ax[0].set_xlabel('Year')
+    ax[0].set_ylabel('# of papers (weighted by coherence)')
+    ax[0].legend()
+
+    ax[1].set_xlabel('year')
+    ax[1].set_ylabel('# of papers (weighted by coherence)')
+    ax[1].set_title('topics yearly graph (2nd half)')
+    ax[1].legend()
+
+    fig.tight_layout()
     plt.savefig('year_dsm.png')
 
 
@@ -133,12 +151,12 @@ def prepare_tables(topics_dict, journals_topic, journals_year):
         x, y = zip(*sorted_dic)
         for year in first_line[1:]:
             if year in x:
-                line.append(y[x.index(year)])
+                line.append("{:.2f}".format(y[x.index(year)]))
             else:
                 line.append(0)
         topic_year_list.append(line)
 
-    topic_year_table = tabulate(topic_year_list, headers="firstrow", floatfmt=".3f", tablefmt="github")
+    topic_year_table = tabulate(topic_year_list, headers="firstrow", tablefmt="github")
 
     first_line = ["Journal"]
     topics_list = list(range(0, len(topics_dict)))
@@ -173,6 +191,21 @@ def prepare_tables(topics_dict, journals_topic, journals_year):
         journal_year_list.append(line)
 
     journal_year_table = tabulate(journal_year_list, headers="firstrow", floatfmt=".3f", tablefmt="github")
+
+    with open('tables/topic_year.csv', 'w', newline='') as csv_file:
+        writer = csv.writer(csv_file, delimiter=',')
+        for row in topic_year_list:
+            writer.writerow(row)
+
+    with open('tables/journal_topic.csv', 'w', newline='') as csv_file:
+        writer = csv.writer(csv_file, delimiter=',')
+        for row in journal_topic_list:
+            writer.writerow(row)
+
+    with open('tables/journal_year.csv', 'w', newline='') as csv_file:
+        writer = csv.writer(csv_file, delimiter=',')
+        for row in journal_year_list:
+            writer.writerow(row)
 
     return topic_year_table, journal_topic_table, journal_year_table
 
