@@ -47,6 +47,10 @@ def init_argparser():
     parser.add_argument('outdir', action='store', type=Path, nargs='?',
                         default=Path.cwd(),
                         help='path to the directory where to save the results.')
+    parser.add_argument('--text-column', '-t', action='store', type=str,
+                        default='abstract_lem', dest='target_column',
+                        help='Column in preproc_file to process. '
+                             'If omitted %(default)r is used.')
     parser.add_argument('--ngrams', action='store_true',
                         help='if set use all the ngrams')
     parser.add_argument('--additional-terms', '-T',
@@ -245,7 +249,7 @@ def main():
     no_above_list = [0.5, 0.6, 0.75, 1.0]
     for labels in [('keyword', 'relevant'), ('keyword', )]:
         docs, titles = prepare_documents(preproc_file, terms_file,
-                                         args.ngrams, labels,
+                                         args.ngrams, labels, args.target_column,
                                          additional_keyword=additional_keyword,
                                          acronyms=acronyms,
                                          barrier_placeholder=barrier_placeholder,

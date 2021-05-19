@@ -121,7 +121,8 @@ def list_comparer(sorted_list, relevant_list):
     return sorted_list
 
 
-def lda_iterator(terms_file, preproc_file, output_path, minimum, increment):
+def lda_iterator(terms_file, preproc_file, output_path, minimum, increment,
+                 target_col='abstract_lem'):
     """
     Executes LDA algorithm on an increasing size sorted list of only relevant or keyword classified terms.
 
@@ -135,6 +136,8 @@ def lda_iterator(terms_file, preproc_file, output_path, minimum, increment):
     :type minimum: int
     :param increment: the value of words to consider in addiction to the previous iteration.
     :type increment: int
+    :param target_col: name of the column in preproc_file with the document text
+    :type target_col: str
     """
 
     dict_path = output_path + "/dictionary"
@@ -159,9 +162,13 @@ def lda_iterator(terms_file, preproc_file, output_path, minimum, increment):
                 writer.writerow(row)
         x += y
 
-    # applying LDA algorithm to every list generated from upper loop and saving results in json file
+    # applying LDA algorithm to every list generated from upper loop and saving
+    # results in json file
     for filename in tqdm(os.listdir(list_path)):
-        docs, titles = lda.prepare_documents(preproc_file, list_path + "/" + filename, True, ('keyword', 'relevant'))
+        docs, titles = lda.prepare_documents(preproc_file,
+                                             list_path + "/" + filename, True,
+                                             ('keyword', 'relevant'),
+                                             target_col=target_col)
         model, dictionary = lda.train_lda_model(docs, 20, "auto", "auto", 1, 1)
         dictionary.save_as_text(dict_path + "/dic_" + filename[:-4] + ".txt")
         docs_topics, topics, avg_topic_coherence = lda.prepare_topics(model, docs, titles, dictionary)
