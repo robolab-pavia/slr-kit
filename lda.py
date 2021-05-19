@@ -50,6 +50,10 @@ def init_argparser():
                         default='abstract_lem', dest='target_column',
                         help='Column in preproc_file to process. '
                              'If omitted %(default)r is used.')
+    parser.add_argument('--title-column', action='store', type=str,
+                        default='title', dest='title',
+                        help='Column in preproc_file to use as document title. '
+                             'If omitted %(default)r is used.')
     parser.add_argument('--additional-terms', '-T',
                         action=AppendMultipleFilesAction, nargs='+',
                         metavar='FILENAME', dest='additional_file',
@@ -155,7 +159,7 @@ def load_terms(terms_file, labels=('keyword', 'relevant')):
 
 
 def generate_filtered_docs_ngrams(terms_file, preproc_file,
-                                  target_col='abstract_lem',
+                                  target_col='abstract_lem', title_col='title',
                                   labels=('keyword', 'relevant'),
                                   additional=None, acronyms=None,
                                   barrier_placeholder=BARRIER_PLACEHOLDER,
@@ -178,7 +182,7 @@ def generate_filtered_docs_ngrams(terms_file, preproc_file,
             terms[n] = {kw}
 
     ngram_len = sorted(terms, reverse=True)
-    documents, titles = load_documents(preproc_file, target_col,
+    documents, titles = load_documents(preproc_file, target_col, title_col,
                                        barrier_placeholder, relevant_prefix)
     with Pool(processes=PHYSICAL_CPUS) as pool:
         docs = pool.starmap(filter_doc, zip(documents, repeat(ngram_len),
@@ -188,7 +192,7 @@ def generate_filtered_docs_ngrams(terms_file, preproc_file,
 
 
 def generate_filtered_docs(terms_file, preproc_file,
-                           target_col='abstract_lem',
+                           target_col='abstract_lem', title_col='title',
                            labels=('keyword', 'relevant'), additional=None,
                            acronyms=None,
                            barrier_placeholder=BARRIER_PLACEHOLDER,
@@ -200,7 +204,7 @@ def generate_filtered_docs(terms_file, preproc_file,
         additional |= {acro for acro in acronyms['Acronym']}
 
     terms = load_terms(terms_file, labels) | additional
-    documents, titles = load_documents(preproc_file, target_col,
+    documents, titles = load_documents(preproc_file, target_col, title_col,
                                        barrier_placeholder, relevant_prefix)
     docs = [d.split(' ') for d in documents]
 
@@ -233,7 +237,7 @@ def load_additional_terms(input_file):
 
 
 def prepare_documents(preproc_file, terms_file, ngrams, labels,
-                      target_col='abstract_lem',
+                      target_col='abstract_lem', title_col='title',
                       additional_keyword=None, acronyms=None,
                       barrier_placeholder=BARRIER_PLACEHOLDER,
                       relevant_prefix=BARRIER_PLACEHOLDER):
@@ -246,6 +250,8 @@ def prepare_documents(preproc_file, terms_file, ngrams, labels,
     :type terms_file: str
     :param target_col: name of the column in preproc_file with the document text
     :type target_col: str
+    :param title_col: name of the column used as document title
+    :type title_col: str
     :param ngrams: if True use all the ngrams
     :type ngrams: bool
     :param labels: use only the terms classified with the labels specified here
@@ -266,13 +272,13 @@ def prepare_documents(preproc_file, terms_file, ngrams, labels,
         additional_keyword = set()
     if ngrams:
         ret = generate_filtered_docs_ngrams(terms_file, preproc_file, target_col,
-                                            labels, acronyms=acronyms,
+                                            title_col, labels, acronyms=acronyms,
                                             additional=additional_keyword,
                                             barrier_placeholder=barrier_placeholder,
                                             relevant_prefix=relevant_prefix)
     else:
         ret = generate_filtered_docs(terms_file, preproc_file, target_col,
-                                     labels, acronyms=acronyms,
+                                     title_col, labels, acronyms=acronyms,
                                      additional=additional_keyword,
                                      barrier_placeholder=barrier_placeholder,
                                      relevant_prefix=relevant_prefix)
@@ -392,7 +398,7 @@ def filter_barriers(doc: str, barrier_placeholder, relevant_prefix):
     return ' '.join(words)
 
 
-def load_documents(preproc_file, target_col,
+def load_documents(preproc_file, target_col, title_col,
                    barrier_placeholder=BARRIER_PLACEHOLDER,
                    relevant_prefix=RELEVANT_PREFIX):
     dataset = pd.read_csv(preproc_file, delimiter='\t', encoding='utf-8')
@@ -403,7 +409,7 @@ def load_documents(preproc_file, target_col,
                                      repeat(barrier_placeholder),
                                      repeat(relevant_prefix)))
 
-    titles = dataset['title'].to_list()
+    titles = dataset[title_col].to_list()
     return documents, titles
 
 
@@ -453,7 +459,8 @@ def main():
         acronyms = None
 
     docs, titles = prepare_documents(preproc_file, terms_file,
-                                     args.ngrams, labels, args.target_column,
+                                     args.ngrams, labels,
+                                     args.target_column, args.title,
                                      additional_keyword=additional_keyword,
                                      acronyms=acronyms,
                                      barrier_placeholder=barrier_placeholder,

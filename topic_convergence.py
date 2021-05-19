@@ -168,7 +168,8 @@ def lda_iterator(terms_file, preproc_file, output_path, minimum, increment,
         docs, titles = lda.prepare_documents(preproc_file,
                                              list_path + "/" + filename, True,
                                              ('keyword', 'relevant'),
-                                             target_col=target_col)
+                                             target_col=target_col,
+                                             title_col='title')
         model, dictionary = lda.train_lda_model(docs, 20, "auto", "auto", 1, 1)
         dictionary.save_as_text(dict_path + "/dic_" + filename[:-4] + ".txt")
         docs_topics, topics, avg_topic_coherence = lda.prepare_topics(model, docs, titles, dictionary)

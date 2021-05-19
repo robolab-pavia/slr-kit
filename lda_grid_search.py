@@ -51,6 +51,10 @@ def init_argparser():
                         default='abstract_lem', dest='target_column',
                         help='Column in preproc_file to process. '
                              'If omitted %(default)r is used.')
+    parser.add_argument('--title-column', action='store', type=str,
+                        default='title', dest='title',
+                        help='Column in preproc_file to use as document title. '
+                             'If omitted %(default)r is used.')
     parser.add_argument('--ngrams', action='store_true',
                         help='if set use all the ngrams')
     parser.add_argument('--additional-terms', '-T',
@@ -249,7 +253,8 @@ def main():
     no_above_list = [0.5, 0.6, 0.75, 1.0]
     for labels in [('keyword', 'relevant'), ('keyword', )]:
         docs, titles = prepare_documents(preproc_file, terms_file,
-                                         args.ngrams, labels, args.target_column,
+                                         args.ngrams, labels,
+                                         args.target_column, args.title,
                                          additional_keyword=additional_keyword,
                                          acronyms=acronyms,
                                          barrier_placeholder=barrier_placeholder,
