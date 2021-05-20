@@ -15,25 +15,9 @@ from gensim.models import CoherenceModel, LdaModel
 from lda import (PHYSICAL_CPUS, BARRIER_PLACEHOLDER, prepare_documents,
                  output_topics)
 
+from scripts_defaults import GENTERMS_DEFAULTS as DEFAULT_PARAMS
 from utils import AppendMultipleFilesAction, assert_column
 
-DEFAULT_PARAMS = {
-    'preproc_file': None,
-    'terms_file': None,
-    'outdir': '',
-    'text-column': 'abstract_lem',
-    'title-column': 'title',
-    'additional-terms': None,
-    'acronyms': None,
-    'min-topics': 5,
-    'max-topics': 20,
-    'step-topics': 1,
-    'result': '-',
-    'seed': None,
-    'ngrams': None,
-    'model': False,
-    'placeholder': BARRIER_PLACEHOLDER,
-}
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
 _corpora: Optional[Dict[Tuple[str], Tuple[List[Tuple[int, int]],

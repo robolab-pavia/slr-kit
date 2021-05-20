@@ -20,29 +20,11 @@ from gensim.models import LdaModel
 from gensim.models.coherencemodel import CoherenceModel
 from psutil import cpu_count
 
+from scripts_defaults import GENTERMS_DEFAULTS as DEFAULT_PARAMS
 from utils import (substring_index, AppendMultipleFilesAction,
                    BARRIER_PLACEHOLDER, RELEVANT_PREFIX, assert_column)
 
 PHYSICAL_CPUS = cpu_count(logical=False)
-DEFAULT_PARAMS = {
-    'preproc_file': None,
-    'terms_file': None,
-    'outdir': '',
-    'text-column': 'abstract_lem',
-    'title-column': 'title',
-    'additional-terms': None,
-    'acronyms': None,
-    'topics': 20,
-    'alpha': 'auto',
-    'beta': 'auto',
-    'no_below': 20,
-    'no_above': 0.5,
-    'seed': None,
-    'ngrams': False,
-    'model': False,
-    'no-relevant': False,
-    'placeholder': BARRIER_PLACEHOLDER,
-}
 
 
 def init_argparser():

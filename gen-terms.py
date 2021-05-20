@@ -6,17 +6,10 @@ import sys
 import csv
 import logging
 import argparse
-from utils import setup_logger, BARRIER_PLACEHOLDER
 
-DEFAULT_PARAMS = {
-    'datafile': None,
-    'output': None,
-    'stdout': False,
-    'n-grams': 4,
-    'min-frequency': 5,
-    'placeholder': BARRIER_PLACEHOLDER,
-    'column': 'abstract_lem',
-}
+from scripts_defaults import GENTERMS_DEFAULTS as DEFAULT_PARAMS
+from utils import setup_logger
+
 
 def init_argparser():
     """Initialize the command line parser."""

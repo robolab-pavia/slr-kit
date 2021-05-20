@@ -13,26 +13,13 @@ import pandas as pd
 from nltk.stem.wordnet import WordNetLemmatizer
 from psutil import cpu_count
 
+from scripts_defaults import PREPROCESS_DEFAULTS as DEFAULT_PARAMS
 from utils import (setup_logger, assert_column,
                    log_end, log_start,
                    AppendMultipleFilesAction, AppendMultiplePairsAction,
                    BARRIER_PLACEHOLDER, RELEVANT_PREFIX)
 
 PHYSICAL_CPUS = cpu_count(logical=False)
-DEFAULT_PARAMS = {
-    'datafile': None,
-    'output': '-',
-    'placeholder': BARRIER_PLACEHOLDER,
-    'barrier-words': None,
-    'relevant-term': None,
-    'acronyms': None,
-    'target-column': 'abstract',
-    'output-column': 'abstract_lem',
-    'input-delimiter': '\t',
-    'output-delimiter': '\t',
-    'language': 'en',
-    'regex': '',
-}
 
 
 class Lemmatizer(abc.ABC):
