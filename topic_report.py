@@ -1,8 +1,10 @@
 import argparse
 import json
 import csv
-from RISparser import readris
+import os
 import collections
+
+from RISparser import readris
 from tabulate import tabulate
 from matplotlib import pyplot as plt
 from jinja2 import Environment, FileSystemLoader
@@ -13,6 +15,7 @@ def init_argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument('ris_file', type=str, help='the path to the ris file containing papers data')
     parser.add_argument('json_file', type=str, help='the path to the json file containing lda results')
+    parser.add_argument('dataset_name', type=str, help='name of the dataset to be reported')
 
     return parser
 
@@ -107,10 +110,9 @@ def report_journal_years(papers_list, journals_dict):
     return journal_year
 
 
-def plot_years(topics_dict):
+def plot_years(topics_dict, dataset_name):
 
     fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
-    size = len(topics_dict)
 
     for topic in islice(topics_dict, 10):
         sorted_dic = sorted(topics_dict[topic].items())
@@ -137,10 +139,10 @@ def plot_years(topics_dict):
     ax[1].legend()
 
     fig.tight_layout()
-    plt.savefig('year_dsm.png')
+    plt.savefig(dataset_name+'_year.png')
 
 
-def prepare_tables(topics_dict, journals_topic, journals_year):
+def prepare_tables(topics_dict, journals_topic, journals_year, dataset_name):
 
     min_year = 2007
     first_line = ["Topic"]
@@ -193,18 +195,20 @@ def prepare_tables(topics_dict, journals_topic, journals_year):
         journal_year_list.append(line)
 
     journal_year_table = tabulate(journal_year_list, headers="firstrow", floatfmt=".3f", tablefmt="github")
+    if (dataset_name+'-tables') not in os.listdir():
+        os.mkdir(dataset_name+'-tables')
 
-    with open('tables/topic_year.csv', 'w', newline='') as csv_file:
+    with open(dataset_name+'-tables/topic_year.csv', 'w', newline='') as csv_file:
         writer = csv.writer(csv_file, delimiter=',')
         for row in topic_year_list:
             writer.writerow(row)
 
-    with open('tables/journal_topic.csv', 'w', newline='') as csv_file:
+    with open(dataset_name+'-tables/journal_topic.csv', 'w', newline='') as csv_file:
         writer = csv.writer(csv_file, delimiter=',')
         for row in journal_topic_list:
             writer.writerow(row)
 
-    with open('tables/journal_year.csv', 'w', newline='') as csv_file:
+    with open(dataset_name+'-tables/journal_year.csv', 'w', newline='') as csv_file:
         writer = csv.writer(csv_file, delimiter=',')
         for row in journal_year_list:
             writer.writerow(row)
@@ -217,22 +221,24 @@ def main():
     args = parser.parse_args()
     ris_path = args.ris_file
     json_path = args.json_file
+    dataset = args.dataset_name
 
     papers_list, topics_list = prepare_papers(ris_path, json_path)
     topics_dict = report_year(papers_list, topics_list)
-    plot_years(topics_dict)
+    plot_years(topics_dict, dataset)
     journals_dict = prepare_journals(papers_list)
     journals_year = report_journal_years(papers_list, journals_dict)
     journals_topics = report_journal_topics(journals_dict, papers_list)
     topic_year_table, journal_topic_table, journal_year_table = prepare_tables(topics_dict,
                                                                                journals_topics,
-                                                                               journals_year)
+                                                                               journals_year,
+                                                                               dataset)
 
     env = Environment(loader=FileSystemLoader('.'),
                       autoescape=True)
 
     template = env.get_template('report_markdown.md')
-    year_report = 'year_dsm.png'
+    year_report = dataset + '_year.png'
     md_file = template.render(year_report=year_report,
                               year_table=topic_year_table,
                               journal_topic_table=journal_topic_table,
