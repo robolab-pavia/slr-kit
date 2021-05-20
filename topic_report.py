@@ -12,6 +12,12 @@ from itertools import islice
 
 
 def init_argparser():
+    """
+    Initialize the command line parser.
+
+    :return: the command line parser
+    :rtype: argparse.ArgumentParser
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('ris_file', type=str, help='the path to the ris file containing papers data')
     parser.add_argument('json_file', type=str, help='the path to the json file containing lda results')
@@ -21,6 +27,17 @@ def init_argparser():
 
 
 def prepare_papers(ris_path, json_path):
+    """
+    Extracts all data for each paper in the ris file and the json file to create a
+    list of dictionaries containing all grouped data.
+
+    :param ris_path: path to the ris file containing papers data
+    :type ris_path: str
+    :param json_path: path to json file containing lda results
+    :type json_path: str
+    :return: the list of dictionaries and the list of topics
+    :rtype: tuple[list, list]
+    """
     papers_list = []
 
     with open(json_path) as file:
@@ -50,6 +67,17 @@ def prepare_papers(ris_path, json_path):
 
 
 def report_year(papers_list, topics_list):
+    """
+    Creates a dictionary with number of papers published each year for every topic.
+    Papers are weighted by coherence.
+
+    :param papers_list: list of dictionaries with data for every paper
+    :type papers_list: list
+    :param topics_list: list of topics
+    :type topics_list: list
+    :return: dictionary with topic-year data
+    :rtype: dict
+    """
 
     topics_dict = collections.defaultdict(dict)
 
@@ -64,6 +92,14 @@ def report_year(papers_list, topics_list):
 
 
 def prepare_journals(papers_list):
+    """
+    Check how many papers were published by each journal.
+
+    :param papers_list: list with data of every paper
+    :type papers_list: list
+    :return: list of journals and their number of publications
+    :rtype: list
+    """
 
     journals = []
     journals_dict = dict()
@@ -84,6 +120,17 @@ def prepare_journals(papers_list):
 
 
 def report_journal_topics(journals_dict, papers_list):
+    """
+    Creates a dictionary with for each journal the number of papers published for
+    each topic.
+
+    :param journals_dict: list of dictionary with data of journals and their publications
+    :type journals_dict: list
+    :param papers_list: list with data of every paper
+    :type papers_list: list
+    :return: dictionary with journal-topic data
+    :rtype: dict
+    """
 
     journal_topic = collections.defaultdict(dict)
     for journal, value in journals_dict[0:10]:
@@ -98,6 +145,17 @@ def report_journal_topics(journals_dict, papers_list):
 
 
 def report_journal_years(papers_list, journals_dict):
+    """
+    Creates a dictionary with for each journal the number of papers published for
+    each year.
+
+    :param papers_list: list with data of every paper
+    :type papers_list: list
+    :param journals_dict: list of dictionary with data of journals and their publications
+    :type journals_dict: list
+    :return: dictionary with journal-year data
+    :rtype: dict
+    """
     journal_year = collections.defaultdict(dict)
 
     for journal, value in journals_dict[0:10]:
@@ -111,6 +169,14 @@ def report_journal_years(papers_list, journals_dict):
 
 
 def plot_years(topics_dict, dataset_name):
+    """
+    Creates a plot for the number of papers published each year for each topic
+
+    :param topics_dict: dictionary with topic-year data
+    :type topics_dict: dict
+    :param dataset_name: name of the dataset
+    :type dataset_name: str
+    """
 
     fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
 
@@ -143,6 +209,21 @@ def plot_years(topics_dict, dataset_name):
 
 
 def prepare_tables(topics_dict, journals_topic, journals_year, dataset_name):
+    """
+    Creates tables for every data created in previous function, with the Tabulate
+    module and saves them in a directory
+
+    :param topics_dict: dictionary with topic-year data
+    :type topics_dict: dict
+    :param journals_topic: dictionary with journal-topic data
+    :type journals_topic: dict
+    :param journals_year: dictionary with journal-year data
+    :type journals_year: dict
+    :param dataset_name: name of the dataset
+    :type dataset_name: str
+    :return: three tables for every dictionary
+    :rtype: tuple[str, str, str]
+    """
 
     min_year = 2007
     first_line = ["Topic"]
