@@ -11,6 +11,8 @@ from itertools import islice
 
 def init_argparser():
     parser = argparse.ArgumentParser()
+    parser.add_argument('ris_file', type=str, help='the path to the ris file containing papers data')
+    parser.add_argument('json_file', type=str, help='the path to the json file containing lda results')
 
     return parser
 
@@ -211,10 +213,10 @@ def prepare_tables(topics_dict, journals_topic, journals_year):
 
 
 def main():
-    # parser = init_argparser()
-    # args = parser.parse_args()
-    ris_path = "dsm-facchinetti-main/dsm.ris"
-    json_path = "dsm-output/lda_docs-topics_2021-05-10_151431.json"
+    parser = init_argparser()
+    args = parser.parse_args()
+    ris_path = args.ris_file
+    json_path = args.json_file
 
     papers_list, topics_list = prepare_papers(ris_path, json_path)
     topics_dict = report_year(papers_list, topics_list)
