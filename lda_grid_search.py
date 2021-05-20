@@ -21,6 +21,8 @@ DEFAULT_PARAMS = {
     'preproc_file': None,
     'terms_file': None,
     'outdir': '',
+    'text-column': 'abstract_lem',
+    'title-column': 'title',
     'additional-terms': None,
     'acronyms': None,
     'min-topics': 5,
@@ -64,11 +66,12 @@ def init_argparser():
                         default=Path.cwd(),
                         help='path to the directory where to save the results.')
     parser.add_argument('--text-column', '-t', action='store', type=str,
-                        default='abstract_lem', dest='target_column',
+                        default=DEFAULT_PARAMS['text-column'],
+                        dest='target_column',
                         help='Column in preproc_file to process. '
                              'If omitted %(default)r is used.')
     parser.add_argument('--title-column', action='store', type=str,
-                        default='title', dest='title',
+                        default=DEFAULT_PARAMS['title-column'], dest='title',
                         help='Column in preproc_file to use as document title. '
                              'If omitted %(default)r is used.')
     parser.add_argument('--ngrams', action='store_true',
