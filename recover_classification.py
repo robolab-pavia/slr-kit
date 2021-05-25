@@ -28,8 +28,8 @@ def main():
     args = parser.parse_args()
     
     oc = pd.read_csv(args.old_classification, sep='\t',
-                                        usecols=['term', 'label'])
-    nc = nc1 = pd.read_csv(args.new_classification, sep='\t').dropna(subset=['term', 'label'])
+                                        usecols=['term', 'label']).dropna(subset=['label'])
+    nc = nc1 = pd.read_csv(args.new_classification, sep='\t').dropna(subset=['term'])
     
     nc = nc.merge(oc, on='term', how='left')
     nc = nc.assign(label = nc['label_x'].combine_first(nc['label_y']))
