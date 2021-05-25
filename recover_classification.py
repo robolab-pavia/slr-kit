@@ -1,3 +1,11 @@
+'''
+    This scipt is used to recover a classification already done.
+    Let's say you had a .csv output from gen-ngrams that was already classified
+    (at least partially) with FAWOC. Than you went back on preprocess or
+    something like that to refine the grams to extract and classify.
+    With this script you can match the new terms with no label with the old
+    classifications eventually made. 
+'''
 import pandas as pd
 import argparse
 
@@ -21,7 +29,7 @@ def main():
     
     oc = pd.read_csv(args.old_classification, sep='\t',
                                         usecols=['term', 'label'])
-    nc = nc1 = pd.read_csv(args.new_classification, sep='\t').dropna(subset=['term'])
+    nc = nc1 = pd.read_csv(args.new_classification, sep='\t').dropna(subset=['term', 'label'])
     
     nc = nc.merge(oc, on='term', how='left')
     nc = nc.assign(label = nc['label_x'].combine_first(nc['label_y']))
