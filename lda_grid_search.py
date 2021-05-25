@@ -110,8 +110,13 @@ def prepare_corpus(docs, no_above, no_below):
     # compute the frequency of each word, including the bigrams.
     # Bag-of-words representation of the documents.
     corpus = [dictionary.doc2bow(doc) for doc in docs]
-    _ = dictionary[0]  # This is only to "load" the dictionary.
-    return corpus, dictionary
+    try:
+        _ = dictionary[0]  # This is only to "load" the dictionary.
+    except KeyError:
+        # nothing in this corpus
+        return None, None
+    else:
+        return corpus, dictionary
 
 
 def init_train(corpora, seed):
@@ -265,7 +270,14 @@ def main():
         no_below_list = [b for b in no_below_list_base if b <= tenth_of_titles]
         for no_below, no_above in product(no_below_list, no_above_list):
             corpus, dictionary = prepare_corpus(docs, no_above, no_below)
-            corpora[(labels, no_below, no_above)] = (corpus, dictionary, docs)
+            if corpus is None:
+                msg = (f'Combination {(labels, no_below, no_above)!r} skipped: '
+                       f'all documents are empty')
+                print(msg, file=sys.stderr)
+            else:
+                corpora[(labels, no_below, no_above)] = (corpus,
+                                                         dictionary,
+                                                         docs)
 
     results = compute_optimal_model(corpora, topics_range, alpha, beta,
                                     args.seed)

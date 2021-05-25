@@ -8,6 +8,7 @@ Introduces Gensim's LDA model and demonstrates its use on the NIPS corpus.
 
 import argparse
 import json
+import sys
 from datetime import datetime
 from itertools import repeat, chain
 from multiprocessing import Pool
@@ -318,7 +319,12 @@ def train_lda_model(docs, topics=20, alpha='auto', beta='auto', no_above=0.5,
     dictionary = Dictionary(docs)
     dictionary.filter_extremes(no_below=no_below,
                                no_above=no_above)
-    _ = dictionary[0]  # This is only to "load" the dictionary.
+    try:
+        _ = dictionary[0]  # This is only to "load" the dictionary.
+    except KeyError:
+        sys.exit('Filtered documents are empty. Check the filter parameters '
+                 'and the input files.')
+
     id2word = dictionary.id2token
     corpus = [dictionary.doc2bow(doc) for doc in docs]
     # Train LDA model.
