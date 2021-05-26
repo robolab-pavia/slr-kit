@@ -325,6 +325,8 @@ def preprocess_item(item, relevant_terms, barrier_words, acronyms,
     :type barrier: str
     :param relevant_prefix: prefix string used when replacing the relevant terms
     :type relevant_prefix: str
+    :param regex_df: dataframe with the regex to apply
+    :type regex_df: pd.DataFrame
     :return: the processed text
     :rtype: list[str]
     """
@@ -375,6 +377,8 @@ def process_corpus(dataset, relevant_terms, barrier_words, acronyms,
     :type barrier: str
     :param relevant_prefix: prefix used to replace the relevant terms
     :type relevant_prefix: str
+    :param regex_df: dataframe with the regex to apply
+    :type regex_df: pd.DataFrame
     :return: the corpus processed
     :rtype: list[str]
     """
