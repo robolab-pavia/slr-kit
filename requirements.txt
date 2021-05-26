@@ -8,10 +8,9 @@ RISparser
 scikit-learn
 regex
 scipy
-sklearn
-prompt_toolkit
 joblib
 seaborn
 active-semi-supervised-clustering
 psutil
 treetaggerwrapper
+toml
