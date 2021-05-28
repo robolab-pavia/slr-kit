@@ -215,9 +215,17 @@ def init_argparser():
                                           help='Run the preprocess stage in a '
                                                'slr-kit project')
     parser_preproc.add_argument('--config', '-c', action='store', type=str,
-                                help='Alternative configuration file, in toml, '
+                                help='Alternative toml configuration file '
                                      'to be used instead of the project one')
     parser_preproc.set_defaults(func=run_preproc)
+    # gen_terms
+    parser_genterms = subparser.add_parser('gen_terms',
+                                           help='Run the gen_terms stage in a '
+                                                'slr-kit project')
+    parser_genterms.add_argument('--config', '-c', action='store', type=str,
+                                 help='Alternative toml configuration file '
+                                      'to be used instead of the project one')
+    parser_genterms.set_defaults(func=run_genterms)
     return parser
 
 
