@@ -1,4 +1,5 @@
 import argparse
+import os
 import pathlib
 import shutil
 import sys
@@ -89,6 +90,29 @@ def init_project(args):
 
     with open(metafile, 'w') as file:
         toml.dump(meta, file)
+
+
+def check_project(args, filename):
+    metafile = args.cwd / 'META.toml'
+    try:
+        with open(metafile) as file:
+            meta = toml.load(file)
+    except FileNotFoundError:
+        msg = 'Error: {} is not an slr-kit project, no META.toml found'
+        sys.exit(msg.format(args.cwd.resolve().absolute()))
+    try:
+        config_dir = args.cwd / meta['Project']['Config']
+    except KeyError:
+        msg = 'Error: {} is invalid invalid, no "Config" entry found'
+        sys.exit(msg.format(metafile.resolve().absolute()))
+    config_file = config_dir / filename
+    try:
+        with open(config_file) as file:
+            config = toml.load(file)
+    except FileNotFoundError:
+        msg = 'Error: file {} not found'
+        sys.exit(msg.format(config_file.resolve().absolute()))
+    return config, config_dir, meta
 
 
 def init_argparser():
