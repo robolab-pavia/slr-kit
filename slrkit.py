@@ -244,6 +244,13 @@ def init_argparser():
                                  help='Alternative toml configuration file '
                                       'to be used instead of the project one')
     parser_genterms.set_defaults(func=run_genterms)
+    # lda
+    parser_lda = subparser.add_parser('lda', help='Run the lda stage in a '
+                                                  'slr-kit project')
+    parser_lda.add_argument('--config', '-c', action='store', type=str,
+                            help='Alternative toml configuration file '
+                                 'to be used instead of the project one')
+    parser_lda.set_defaults(func=run_lda)
     return parser
 
 
