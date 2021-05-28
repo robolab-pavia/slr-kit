@@ -167,6 +167,17 @@ def run_preproc(args):
     preprocess(cmd_args)
 
 
+def run_genterms(args):
+    script_name = 'gen_terms'
+    confname = '.'.join([script_name, 'toml'])
+    config, config_dir, meta = check_project(args, confname)
+    cmd_args = prepare_script_arguments(config, config_dir, confname, script_name)
+    setattr(cmd_args, 'logfile', str(config_dir / 'slr-kit.log'))
+    os.chdir(args.cwd)
+    from gen_terms import gen_terms
+    gen_terms(cmd_args)
+
+
 def init_argparser():
     """
     Initialize the command line parser.
