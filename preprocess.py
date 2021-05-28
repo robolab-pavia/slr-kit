@@ -435,10 +435,7 @@ def load_relevant_terms(input_file):
     return rel_words_list
 
 
-def main():
-    parser = init_argparser()
-    args = parser.parse_args()
-
+def preprocess(args):
     if args.language not in AVAILABLE_LEMMATIZERS:
         print(f'Language {args.language!r} is not available', file=sys.stderr)
         sys.exit(1)
@@ -519,6 +516,12 @@ def main():
     print('Elapsed time:', elapsed_time, file=sys.stderr)
     debug_logger.info(f'elapsed time: {elapsed_time}')
     log_end(debug_logger, name)
+
+
+def main():
+    parser = init_argparser()
+    args = parser.parse_args()
+    preprocess(args)
 
 
 if __name__ == '__main__':
