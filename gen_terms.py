@@ -177,8 +177,9 @@ def gen_terms(args):
         writer = csv.writer(sys.stdout, delimiter='\t', quotechar='"',
                             quoting=csv.QUOTE_MINIMAL)
         writer.writerow(['id', 'term', 'label'])
+        index = -1
         for terms in list_of_grams:
-            for index, key in enumerate(terms):
+            for index, key in enumerate(terms, start=index + 1):
                 writer.writerow([index, key, ''])
 
 
