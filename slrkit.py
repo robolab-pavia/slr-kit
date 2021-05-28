@@ -273,6 +273,17 @@ def init_argparser():
                             help='Alternative toml configuration file '
                                  'to be used instead of the project one')
     parser_lda.set_defaults(func=run_lda)
+    # lda_grid_search
+    parser_lda_grid_search = subparser.add_parser('lda_grid_search',
+                                                  help='Run the lda_grid_search'
+                                                       ' stage in a slr-kit '
+                                                       'project')
+    parser_lda_grid_search.add_argument('--config', '-c', action='store',
+                                        type=str, help='Alternative toml '
+                                                       'configuration file to '
+                                                       'be used instead of the '
+                                                       'project one')
+    parser_lda_grid_search.set_defaults(func=run_lda_grid_search)
     return parser
 
 
