@@ -199,6 +199,14 @@ def init_argparser():
     parser_init.add_argument('--description', '-D', action='store', type=str,
                              default='', help='Description of the project')
     parser_init.set_defaults(func=init_project)
+    # preproc
+    parser_preproc = subparser.add_parser('preprocess',
+                                          help='Run the preprocess stage in a '
+                                               'slr-kit project')
+    parser_preproc.add_argument('--config', '-c', action='store', type=str,
+                                help='Alternative configuration file, in toml, '
+                                     'to be used instead of the project one')
+    parser_preproc.set_defaults(func=run_preproc)
     return parser
 
 
