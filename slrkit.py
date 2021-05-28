@@ -115,6 +115,27 @@ def check_project(args, filename):
     return config, config_dir, meta
 
 
+def prepare_script_arguments(config, config_dir, confname, script_name):
+    args = argparse.Namespace()
+    for k, v in scripts_defaults.defaults[script_name].items():
+        if v.get('non-standard', False):
+            continue
+
+        dest = v.get('dest', k.replace('-', '_'))
+        param = config.get(k, v['value'])
+        def_val = (param == v['value'])
+        if v['required']:
+            if def_val:
+                msg = 'Missing valid value for required parameter {!r} in {}'
+                sys.exit(msg.format(k, config_dir / confname))
+
+        if param == '' or param == []:
+            setattr(args, dest, None)
+        else:
+            setattr(args, dest, param)
+    return args
+
+
 def init_argparser():
     """
     Initialize the command line parser.
