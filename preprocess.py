@@ -247,7 +247,8 @@ def language_specific_regex(text, lang='en'):
                       ' ', out_text)
 
 
-def regex(text, lang='en', regexDF=None):
+def regex(text, barrier_placeholder=BARRIER_PLACEHOLDER, lang='en',
+          regexDF=None):
     # If a regex DataFrame for the specific project is passed,
     # this function will replace the patterns with the corresponding repl parameter
     if regexDF is not None:
@@ -264,14 +265,14 @@ def regex(text, lang='en', regexDF=None):
 
         for _, row in regexDF[~regexDF["pattern"].isin(regex_with_spaces["pattern"])].iterrows():
             text = ' '.join([re.sub(row["pattern"], "__{}__".format(row["repl"]), gram) for gram in text.split()])
-    
+
     # Change punctuation and remove special characters (not the hyphen) and
     # digits. The definition of special character and punctuation, changes with
     # the language
     text = language_specific_regex(text, lang)
     # now we can search for ' --- ' and place the barrier placeholder
     # the positive look-ahead and look-behind are to preserve the spaces
-    text = re.sub(r'(?<=\s)---(?=\s)', BARRIER_PLACEHOLDER, text)
+    text = re.sub(r'(?<=\s)---(?=\s)', barrier_placeholder, text)
     # remove any run of hyphens not surrounded by non space
     text = re.sub(r'(\s+-+\s+|(?<=\S)-+\s+|\s+-+(?=\S))', ' ', text)
 
@@ -331,7 +332,7 @@ def preprocess_item(item, relevant_terms, barrier_words, acronyms,
     # Convert to lowercase
     text = item.lower()
     # apply some regex to clean the text
-    text = regex(text, language, regexDF=regexDF)
+    text = regex(text, barrier, language, regexDF=regexDF)
     text = text.split(' ')
 
     # replace acronyms
