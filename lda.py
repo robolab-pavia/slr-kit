@@ -443,9 +443,7 @@ def output_topics(model, dictionary, docs, titles, outdir, file_prefix):
         json.dump(docs_topics, file, indent='\t')
 
 
-def main():
-    args = init_argparser().parse_args()
-
+def lda(args):
     terms_file = args.terms_file
     preproc_file = args.preproc_file
     output_dir = args.outdir
@@ -506,6 +504,11 @@ def main():
         lda_path.mkdir(exist_ok=True)
         model.save(str(lda_path / 'model'))
         dictionary.save(str(lda_path / 'model_dictionary'))
+
+
+def main():
+    args = init_argparser().parse_args()
+    lda(args)
 
 
 if __name__ == '__main__':
