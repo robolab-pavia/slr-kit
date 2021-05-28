@@ -136,6 +136,37 @@ def prepare_script_arguments(config, config_dir, confname, script_name):
     return args
 
 
+def run_preproc(args):
+    script_name = 'preprocess'
+    confname = '.'.join([script_name, 'toml'])
+    config, config_dir, meta = check_project(args, confname)
+    cmd_args = prepare_script_arguments(config, config_dir, confname, script_name)
+    # handle the special parameter relevant-terms
+    relterms_default = scripts_defaults.defaults[script_name]['relevant-terms']
+    param = config.get('relevant-terms', relterms_default['value'])
+    msg = ('parameter "relevant-terms" is not a list of list '
+           'in file {}').format(config_dir / confname)
+    value = None
+    if param != relterms_default['value']:
+        if not isinstance(param, list):
+            sys.exit(msg)
+        value = []
+        for p in param:
+            if not isinstance(p, list):
+                sys.exit(msg)
+            if len(p) >= 2:
+                value.append(tuple(p[:2]))
+            else:
+                value.append((p[0], None))
+    dest = relterms_default.get('dest', 'relevant_terms')
+    setattr(cmd_args, dest, value)
+
+    setattr(cmd_args, 'logfile', str(config_dir / 'slr-kit.log'))
+    os.chdir(args.cwd)
+    from preprocess import preprocess
+    preprocess(cmd_args)
+
+
 def init_argparser():
     """
     Initialize the command line parser.
