@@ -138,7 +138,7 @@ The following example processes the `dataset_abstracts.csv` file, replacing the 
 ```
 preprocess.py --relevant-term relevant_terms.txt - -r other_relevant.txt PLACEHOLDER dataset_abstracts.csv > dataset_preproc.csv
 ```
-## `gen-terms.py`
+## `gen_terms.py`
 
 - ACTION: Extracts the terms ({1,2,3,4}-grams) from the abstracts.
 - INPUT: The TSV file produced by `preprocess.py` (it works on the column `abstract_lem`).
@@ -159,7 +159,7 @@ preprocess.py --relevant-term relevant_terms.txt - -r other_relevant.txt PLACEHO
 Extracts terms from `dataset_preproc.csv` and store them in `dataset_terms.csv` and `dataset_terms_fawoc_data.tsv`:
 
 ```
-gen-n-grams.py dataset_preproc.csv dataset_terms.csv
+gen_terms.py dataset_preproc.csv dataset_terms.csv
 ```
 
 ## `cumulative-frequency.py`

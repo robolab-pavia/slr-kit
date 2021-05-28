@@ -18,7 +18,7 @@ defaults = {
         'regex': {'value': '', 'required': False},
         'rows': {'value': '', 'required': False, 'dest': 'input_rows'},
     },
-    'gen-terms': {
+    'gen_terms': {
         'datafile': {'value': '', 'required': True},
         'output': {'value': '', 'required': True},
         'stdout': {'value': False, 'required': False},
@@ -79,7 +79,7 @@ scripts_defaults = {script: {k: v['value'] for k, v in default.items()}
                     for script, default in defaults.items()}
 
 PREPROCESS_DEFAULTS = scripts_defaults['preprocess']
-GENTERMS_DEFAULTS = scripts_defaults['gen-terms']
+GENTERMS_DEFAULTS = scripts_defaults['gen_terms']
 LDA_DEFAULTS = scripts_defaults['lda']
 LDAGRIDSEARCH_DEFAULTS = scripts_defaults['lda_grid_search']
 
