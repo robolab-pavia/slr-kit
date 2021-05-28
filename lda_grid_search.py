@@ -227,8 +227,7 @@ def load_additional_terms(input_file):
     return rel_words_list
 
 
-def main():
-    args = init_argparser().parse_args()
+def lda_grid_search(args):
     terms_file = args.terms_file
     preproc_file = args.preproc_file
     output_dir = args.outdir
@@ -331,6 +330,11 @@ def main():
         if args.plot_save:
             fig_file = output_dir / 'lda_plot.pdf'
             plt.savefig(str(fig_file), dpi=1000)
+
+
+def main():
+    args = init_argparser().parse_args()
+    lda_grid_search(args)
 
 
 if __name__ == '__main__':
