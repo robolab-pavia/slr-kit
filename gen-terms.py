@@ -113,9 +113,7 @@ def convert_int_parameter(args, arg_name, default=None):
     return value
 
 
-def main():
-    parser = init_argparser()
-    args = parser.parse_args()
+def gen_terms(args):
     target_column = args.column
 
     # set the value of n_grams, possibly from the command line
@@ -182,6 +180,12 @@ def main():
         for terms in list_of_grams:
             for index, key in enumerate(terms):
                 writer.writerow([index, key, ''])
+
+
+def main():
+    parser = init_argparser()
+    args = parser.parse_args()
+    gen_terms(args)
 
 
 if __name__ == '__main__':
