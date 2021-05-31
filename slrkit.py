@@ -215,7 +215,6 @@ def run_lda_grid_search(args):
     setattr(cmd_args, 'result', argparse.FileType('w')(param))
 
     from lda_grid_search import lda_grid_search
-    # TODO: verify code that closes stdout in lda_grid_search
     lda_grid_search(cmd_args)
 
 
