@@ -239,7 +239,7 @@ def lda_grid_search(args):
     barrier_placeholder = args.placeholder
     relevant_prefix = barrier_placeholder
 
-    if args.min_topics >= args.max_topics:
+    if args.min_topics > args.max_topics:
         sys.exit('max_topics must be greater than min_topics')
 
     additional_keyword = set()
