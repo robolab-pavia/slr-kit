@@ -230,9 +230,6 @@ def init_argparser():
                         default=pathlib.Path.cwd(), metavar='path',
                         help='Change directory to %(metavar)r before running '
                              'the specified command.')
-    parser.add_argument('--exec-path', type=_check_is_dir, metavar='path',
-                        help='Change directory to %(metavar)r before running '
-                             'the specified command.')
     subparser = parser.add_subparsers(required=True)
     # init
     parser_init = subparser.add_parser('init', help='Initialize a slr-kit '
