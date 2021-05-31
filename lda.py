@@ -237,8 +237,9 @@ def load_additional_terms(input_file):
     with open(input_file, 'r', encoding='utf-8') as f:
         rel_words_list = f.read().splitlines()
 
-    rel_words_list = {w for w in rel_words_list if w != '' and w[0] != '#'}
-
+    rel_words_list = {w.replace(' ', '_')
+                      for w in rel_words_list
+                      if w != '' and w[0] != '#'}
     return rel_words_list
 
 
@@ -406,7 +407,7 @@ def filter_barriers(doc: str, barrier_placeholder, relevant_prefix):
         if word == barrier_placeholder:
             continue
         if word.startswith(relevant_prefix) and word.endswith(relevant_prefix):
-            words.extend(word.strip(relevant_prefix).split('_'))
+            words.append(word.strip(relevant_prefix))
         else:
             words.append(word)
 
