@@ -67,6 +67,7 @@ defaults = {
         'max-topics': {'value': 20, 'required': False},
         'step-topics': {'value': 1, 'required': False},
         'result': {'value': '-', 'required': False, 'non-standard': True},
+        'output': {'value': False, 'required': False},
         'seed': {'value': '', 'required': False},
         'ngrams': {'value': False, 'required': False},
         'model': {'value': False, 'required': False},
