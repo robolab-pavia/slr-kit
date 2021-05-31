@@ -183,15 +183,15 @@ def run_lda(args):
     confname = '.'.join([script_name, 'toml'])
     config, config_dir, meta = check_project(args, confname)
     cmd_args = prepare_script_arguments(config, config_dir, confname, script_name)
-    os.chdir(args.cwd)
     # handle the outdir parameter
     outdir_default = scripts_defaults.defaults[script_name]['outdir']
     param = config.get('outdir', outdir_default['value'])
     if param != outdir_default['value']:
-        setattr(cmd_args, 'outdir', pathlib.Path(param))
+        setattr(cmd_args, 'outdir', (args.cwd / param).resolve())
     else:
-        setattr(cmd_args, 'outdir', args.cwd)
+        setattr(cmd_args, 'outdir', args.cwd.resolve())
 
+    os.chdir(args.cwd)
     from lda import lda
     lda(cmd_args)
 
@@ -201,14 +201,15 @@ def run_lda_grid_search(args):
     confname = '.'.join([script_name, 'toml'])
     config, config_dir, meta = check_project(args, confname)
     cmd_args = prepare_script_arguments(config, config_dir, confname, script_name)
-    os.chdir(args.cwd)
     # handle the outdir and result parameter
     outdir_default = scripts_defaults.defaults[script_name]['outdir']
     param = config.get('outdir', outdir_default['value'])
     if param != outdir_default['value']:
-        setattr(cmd_args, 'outdir', pathlib.Path(param))
+        setattr(cmd_args, 'outdir', (args.cwd / param).resolve())
     else:
-        setattr(cmd_args, 'outdir', args.cwd)
+        setattr(cmd_args, 'outdir', args.cwd.resolve())
+
+    os.chdir(args.cwd)
     result_default = scripts_defaults.defaults[script_name]['result']
     param = config.get('result', result_default['value'])
     setattr(cmd_args, 'result', argparse.FileType('w')(param))
