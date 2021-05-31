@@ -30,6 +30,9 @@ def init_argparser():
     parser.add_argument('--column', '-c', default='abstract_lem',
                         help='Column in datafile to process. '
                              'If omitted %(default)r is used.')
+    parser.add_argument('--delimiter', action='store', type=str,
+                        default='\t', help='Delimiter used in datafile. '
+                                           'Default %(default)r')
     return parser
 
 
@@ -119,7 +122,8 @@ def main():
     # TODO: write log string with values of the parameters used in the execution
 
     # load the dataset
-    dataset = pandas.read_csv(args.datafile, delimiter='\t', encoding='utf-8')
+    dataset = pandas.read_csv(args.datafile, delimiter=args.delimiter,
+                              encoding='utf-8')
     dataset.fillna('', inplace=True)
     if target_column not in dataset:
         msg = 'File "{}" must contain a column labelled as "{}".'
