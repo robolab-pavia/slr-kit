@@ -26,6 +26,7 @@ defaults = {
         'min-frequency': {'value': 5, 'required': False},
         'placeholder': {'value': BARRIER_PLACEHOLDER, 'required': False},
         'column': {'value': 'abstract_lem', 'required': False},
+        'delimiter': {'value': '\t', 'required': False},
     },
     'lda': {
         'preproc_file': {'value': '', 'required': True},
@@ -48,7 +49,8 @@ defaults = {
         'model': {'value': False, 'required': False},
         'no-relevant': {'value': False, 'required': False},
         'placeholder': {'value': BARRIER_PLACEHOLDER, 'required': False},
-        'load-model': {'value': '', 'required': False}
+        'load-model': {'value': '', 'required': False},
+        'delimiter': {'value': '\t', 'required': False},
     },
     'lda_grid_search': {
         'preproc_file': {'value': '', 'required': True},
@@ -72,6 +74,7 @@ defaults = {
         'placeholder': {'value': BARRIER_PLACEHOLDER, 'required': False},
         'plot-show': {'value': False, 'required': False},
         'plot-save': {'value': False, 'required': False},
+        'delimiter': {'value': '\t', 'required': False},
     }
 }
 # create a dict with the default value of each parameter for each script

@@ -36,6 +36,10 @@ def init_argparser():
                         default=DEFAULT_PARAMS['column'],
                         help='Column in datafile to process. '
                              'If omitted %(default)r is used.')
+    parser.add_argument('--delimiter', action='store', type=str,
+                        default=DEFAULT_PARAMS['delimiter'],
+                        help='Delimiter used in datafile. '
+                             'Default %(default)r')
     parser.add_argument('--logfile', default='slr-kit.log',
                         help='log file name. If omitted %(default)r is used')
     return parser
@@ -125,7 +129,8 @@ def gen_terms(args):
     # TODO: write log string with values of the parameters used in the execution
 
     # load the dataset
-    dataset = pandas.read_csv(args.datafile, delimiter='\t', encoding='utf-8')
+    dataset = pandas.read_csv(args.datafile, delimiter=args.delimiter,
+                              encoding='utf-8')
     dataset.fillna('', inplace=True)
     if target_column not in dataset:
         msg = 'File "{}" must contain a column labelled as "{}".'

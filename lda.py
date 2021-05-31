@@ -105,6 +105,10 @@ def init_argparser():
                         help='Placeholder for barrier word. Also used as a '
                              'prefix for the relevant words. '
                              'Default: %(default)s')
+    parser.add_argument('--delimiter', action='store', type=str,
+                        default=DEFAULT_PARAMS['delimiter'],
+                        help='Delimiter used in preproc_file. '
+                             'Default %(default)r')
     return parser
 
 
@@ -169,7 +173,7 @@ def load_terms(terms_file, labels=('keyword', 'relevant')):
 
 def generate_filtered_docs_ngrams(terms_file, preproc_file,
                                   target_col='abstract_lem', title_col='title',
-                                  labels=('keyword', 'relevant'),
+                                  delimiter='\t', labels=('keyword', 'relevant'),
                                   additional=None, acronyms=None,
                                   barrier_placeholder=BARRIER_PLACEHOLDER,
                                   relevant_prefix=BARRIER_PLACEHOLDER):
@@ -192,7 +196,8 @@ def generate_filtered_docs_ngrams(terms_file, preproc_file,
 
     ngram_len = sorted(terms, reverse=True)
     documents, titles = load_documents(preproc_file, target_col, title_col,
-                                       barrier_placeholder, relevant_prefix)
+                                       delimiter, barrier_placeholder,
+                                       relevant_prefix)
     with Pool(processes=PHYSICAL_CPUS) as pool:
         docs = pool.starmap(filter_doc, zip(documents, repeat(ngram_len),
                                             repeat(terms)))
@@ -202,8 +207,8 @@ def generate_filtered_docs_ngrams(terms_file, preproc_file,
 
 def generate_filtered_docs(terms_file, preproc_file,
                            target_col='abstract_lem', title_col='title',
-                           labels=('keyword', 'relevant'), additional=None,
-                           acronyms=None,
+                           delimiter='\t', labels=('keyword', 'relevant'),
+                           additional=None, acronyms=None,
                            barrier_placeholder=BARRIER_PLACEHOLDER,
                            relevant_prefix=BARRIER_PLACEHOLDER):
     if additional is None:
@@ -214,7 +219,8 @@ def generate_filtered_docs(terms_file, preproc_file,
 
     terms = load_terms(terms_file, labels) | additional
     documents, titles = load_documents(preproc_file, target_col, title_col,
-                                       barrier_placeholder, relevant_prefix)
+                                       delimiter, barrier_placeholder,
+                                       relevant_prefix)
     docs = [d.split(' ') for d in documents]
 
     good_docs = []
@@ -247,8 +253,8 @@ def load_additional_terms(input_file):
 
 def prepare_documents(preproc_file, terms_file, ngrams, labels,
                       target_col='abstract_lem', title_col='title',
-                      additional_keyword=None, acronyms=None,
-                      barrier_placeholder=BARRIER_PLACEHOLDER,
+                      delimiter='\t', additional_keyword=None,
+                      acronyms=None, barrier_placeholder=BARRIER_PLACEHOLDER,
                       relevant_prefix=BARRIER_PLACEHOLDER):
     """
     Elaborates the documents preparing the bag of word representation
@@ -261,6 +267,8 @@ def prepare_documents(preproc_file, terms_file, ngrams, labels,
     :type target_col: str
     :param title_col: name of the column used as document title
     :type title_col: str
+    :param delimiter: delimiter used in preproc_file
+    :type delimiter: str
     :param ngrams: if True use all the ngrams
     :type ngrams: bool
     :param labels: use only the terms classified with the labels specified here
@@ -281,13 +289,15 @@ def prepare_documents(preproc_file, terms_file, ngrams, labels,
         additional_keyword = set()
     if ngrams:
         ret = generate_filtered_docs_ngrams(terms_file, preproc_file, target_col,
-                                            title_col, labels, acronyms=acronyms,
+                                            title_col, delimiter, labels,
+                                            acronyms=acronyms,
                                             additional=additional_keyword,
                                             barrier_placeholder=barrier_placeholder,
                                             relevant_prefix=relevant_prefix)
     else:
         ret = generate_filtered_docs(terms_file, preproc_file, target_col,
-                                     title_col, labels, acronyms=acronyms,
+                                     title_col, delimiter, labels,
+                                     acronyms=acronyms,
                                      additional=additional_keyword,
                                      barrier_placeholder=barrier_placeholder,
                                      relevant_prefix=relevant_prefix)
@@ -412,10 +422,10 @@ def filter_barriers(doc: str, barrier_placeholder, relevant_prefix):
     return ' '.join(words)
 
 
-def load_documents(preproc_file, target_col, title_col,
+def load_documents(preproc_file, target_col, title_col, delimiter,
                    barrier_placeholder=BARRIER_PLACEHOLDER,
                    relevant_prefix=RELEVANT_PREFIX):
-    dataset = pd.read_csv(preproc_file, delimiter='\t', encoding='utf-8')
+    dataset = pd.read_csv(preproc_file, delimiter=delimiter, encoding='utf-8')
     dataset.fillna('', inplace=True)
     with Pool(processes=PHYSICAL_CPUS) as pool:
         documents = pool.starmap(filter_barriers,
@@ -473,6 +483,7 @@ def lda(args):
     docs, titles = prepare_documents(preproc_file, terms_file,
                                      args.ngrams, labels,
                                      args.target_column, args.title,
+                                     delimiter=args.delimiter,
                                      additional_keyword=additional_keyword,
                                      acronyms=acronyms,
                                      barrier_placeholder=barrier_placeholder,

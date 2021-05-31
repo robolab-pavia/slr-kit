@@ -106,6 +106,10 @@ def init_argparser():
                         help='Placeholder for barrier word. Also used as a '
                              'prefix for the relevant words. '
                              'Default: %(default)s')
+    parser.add_argument('--delimiter', action='store', type=str,
+                        default=DEFAULT_PARAMS['delimiter'],
+                        help='Delimiter used in preproc_file. '
+                             'Default %(default)r')
     return parser
 
 
@@ -267,6 +271,7 @@ def lda_grid_search(args):
         docs, titles = prepare_documents(preproc_file, terms_file,
                                          args.ngrams, labels,
                                          args.target_column, args.title,
+                                         delimiter=args.delimiter,
                                          additional_keyword=additional_keyword,
                                          acronyms=acronyms,
                                          barrier_placeholder=barrier_placeholder,
