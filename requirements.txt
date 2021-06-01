@@ -14,3 +14,4 @@ active-semi-supervised-clustering
 psutil
 treetaggerwrapper
 toml
+git+https://github.com/robolab-pavia/fawoc.git
