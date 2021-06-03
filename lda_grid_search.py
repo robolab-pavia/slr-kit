@@ -12,12 +12,11 @@ import pandas as pd
 from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel, LdaModel
 
-from lda import (PHYSICAL_CPUS, BARRIER_PLACEHOLDER, prepare_documents,
-                 output_topics)
+from lda import (PHYSICAL_CPUS, prepare_documents, output_topics)
 
 from scripts_defaults import GENTERMS_DEFAULTS as DEFAULT_PARAMS
-from utils import AppendMultipleFilesAction, assert_column
-
+from utils import assert_column
+from arguments import AppendMultipleFilesAction
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
 _corpora: Optional[Dict[Tuple[str], Tuple[List[Tuple[int, int]],

@@ -16,8 +16,8 @@ from psutil import cpu_count
 from scripts_defaults import PREPROCESS_DEFAULTS as DEFAULT_PARAMS
 from utils import (setup_logger, assert_column,
                    log_end, log_start,
-                   AppendMultipleFilesAction, AppendMultiplePairsAction,
                    BARRIER_PLACEHOLDER, RELEVANT_PREFIX)
+from arguments import AppendMultipleFilesAction, AppendMultiplePairsAction
 
 PHYSICAL_CPUS = cpu_count(logical=False)
 

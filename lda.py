@@ -21,8 +21,8 @@ from gensim.models.coherencemodel import CoherenceModel
 from psutil import cpu_count
 
 from scripts_defaults import GENTERMS_DEFAULTS as DEFAULT_PARAMS
-from utils import (substring_index, AppendMultipleFilesAction,
-                   BARRIER_PLACEHOLDER, RELEVANT_PREFIX, assert_column)
+from utils import (substring_index, BARRIER_PLACEHOLDER, RELEVANT_PREFIX, assert_column)
+from arguments import AppendMultipleFilesAction
 
 PHYSICAL_CPUS = cpu_count(logical=False)
 
