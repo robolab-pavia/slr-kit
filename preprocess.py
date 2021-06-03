@@ -397,7 +397,7 @@ def process_corpus(dataset, relevant_terms, barrier_words, acronyms,
     :param relevant_prefix: prefix used to replace the relevant terms
     :type relevant_prefix: str
     :param regex_df: dataframe with the regex to apply
-    :type regex_df: pd.DataFrame
+    :type regex_df: pd.DataFrame or None
     :return: the corpus processed
     :rtype: list[str]
     """
