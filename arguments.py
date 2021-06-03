@@ -1,7 +1,11 @@
 import argparse
 
 
-class AppendMultipleFilesAction(argparse.Action):
+class SlrKitAction(argparse.Action):
+    pass
+
+
+class AppendMultipleFilesAction(SlrKitAction):
     """
     Action for argparse that collects multiple option arguments as a set
 
@@ -32,7 +36,7 @@ class AppendMultipleFilesAction(argparse.Action):
         setattr(namespace, self.dest, files)
 
 
-class AppendMultiplePairsAction(argparse.Action):
+class AppendMultiplePairsAction(SlrKitAction):
     """
     Action for argparse that collects multiple option pair of arguments
 
