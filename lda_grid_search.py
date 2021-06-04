@@ -14,7 +14,7 @@ from gensim.models import CoherenceModel, LdaModel
 
 from lda import (PHYSICAL_CPUS, prepare_documents, output_topics)
 
-from scripts_defaults import GENTERMS_DEFAULTS as DEFAULT_PARAMS
+from scripts_defaults import LDAGRIDSEARCH_DEFAULTS as DEFAULT_PARAMS
 from utils import assert_column
 from arguments import AppendMultipleFilesAction
 

@@ -20,7 +20,7 @@ from gensim.models import LdaModel
 from gensim.models.coherencemodel import CoherenceModel
 from psutil import cpu_count
 
-from scripts_defaults import GENTERMS_DEFAULTS as DEFAULT_PARAMS
+from scripts_defaults import LDA_DEFAULTS as DEFAULT_PARAMS
 from arguments import AppendMultipleFilesAction
 from utils import (substring_index, STOPWORD_PLACEHOLDER, RELEVANT_PREFIX, assert_column)
 
