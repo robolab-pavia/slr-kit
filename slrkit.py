@@ -4,9 +4,7 @@ import pathlib
 import shutil
 import sys
 
-import toml
-
-import scripts_defaults
+import tomlkit
 
 SLRKIT_PATH = pathlib.Path(__file__).parent
 
@@ -18,6 +16,12 @@ def _check_is_dir(path):
     else:
         msg = '{!r} is not a directory'
         raise argparse.ArgumentTypeError(msg.format(path))
+
+
+def toml_load(filename):
+    with open(filename) as file:
+        config = tomlkit.loads(file.read())
+    return config
 
 
 def init_project(args):
@@ -40,8 +44,7 @@ def init_project(args):
     config_dir: pathlib.Path = args.cwd / args.config_dir
     metafile = args.cwd / 'META.toml'
     if metafile.exists():
-        with open(metafile) as file:
-            obj = toml.load(file)
+        obj = toml_load(metafile)
 
         old_config_dir = args.cwd / obj['Project']['Config']
         for k in meta:
@@ -77,8 +80,22 @@ def init_project(args):
         old_p = (directory / s).with_suffix('.toml')
         if not old_p.exists():
             if not p.exists():
+                args: dict = __import__(s).init_argparser().slrkit_arguments
+                conf = tomlkit.document()
+                for arg_name, arg in args.items():
+                    if not arg['log']:
+                        conf.add(tomlkit.comment(arg['help']))
+                        conf.add(tomlkit.comment(f'required: {arg["required"]}'))
+                        if arg['value'] is not None:
+                            try:
+                                conf.add(arg_name, arg['value'])
+                            except ValueError:
+                                conf.add(arg_name, str(arg['value']))
+                        else:
+                            conf.add(arg_name, '')
+
                 with open(p, 'w') as file:
-                    toml.dump(scripts_defaults.scripts_defaults[s], file)
+                    file.write(tomlkit.dumps(conf))
         elif move:
             try:
                 # create a backup copy of the destination file if exists
@@ -88,15 +105,21 @@ def init_project(args):
                 pass
             shutil.copy2(str(old_p), str(p))
 
+    metadoc = tomlkit.document()
+    for mk, mv in meta.items():
+        tbl = tomlkit.table()
+        for k, v in mv.items():
+            tbl.add(k, v)
+
+        metadoc.add(mk, tbl)
     with open(metafile, 'w') as file:
-        toml.dump(meta, file)
+        file.write(tomlkit.dumps(metadoc))
 
 
 def check_project(args, filename):
     metafile = args.cwd / 'META.toml'
     try:
-        with open(metafile) as file:
-            meta = toml.load(file)
+        meta = toml_load(metafile)
     except FileNotFoundError:
         msg = 'Error: {} is not an slr-kit project, no META.toml found'
         sys.exit(msg.format(args.cwd.resolve().absolute()))
@@ -107,17 +130,19 @@ def check_project(args, filename):
         sys.exit(msg.format(metafile.resolve().absolute()))
     config_file = config_dir / filename
     try:
-        with open(config_file) as file:
-            config = toml.load(file)
+        config = toml_load(config_file)
     except FileNotFoundError:
         msg = 'Error: file {} not found'
         sys.exit(msg.format(config_file.resolve().absolute()))
     return config, config_dir, meta
 
 
-def prepare_script_arguments(config, config_dir, confname, script_name):
+def prepare_script_arguments(config, config_dir, confname, script_args):
     args = argparse.Namespace()
-    for k, v in scripts_defaults.defaults[script_name].items():
+    for k, v in script_args.items():
+        if v.get('log', False):
+            setattr(args, k, str((config_dir / 'slr-kit.log').resolve()))
+            continue
         if v.get('non-standard', False):
             continue
 
@@ -133,6 +158,7 @@ def prepare_script_arguments(config, config_dir, confname, script_name):
             setattr(args, dest, None)
         else:
             setattr(args, dest, param)
+
     return args
 
 
@@ -140,11 +166,14 @@ def run_preproc(args):
     script_name = 'preprocess'
     confname = '.'.join([script_name, 'toml'])
     config, config_dir, meta = check_project(args, confname)
-    cmd_args = prepare_script_arguments(config, config_dir, confname, script_name)
+    from preprocess import preprocess, init_argparser as preproc_argparse
+    script_args = preproc_argparse().slrkit_arguments
+    cmd_args = prepare_script_arguments(config, config_dir, confname,
+                                        script_args)
     # handle the special parameter relevant-terms
-    relterms_default = scripts_defaults.defaults[script_name]['relevant-terms']
-    param = config.get('relevant-terms', relterms_default['value'])
-    msg = ('parameter "relevant-terms" is not a list of list '
+    relterms_default = script_args['relevant-term']
+    param = config.get('relevant-term', relterms_default['value'])
+    msg = ('parameter "relevant-term" is not a list of list '
            'in file {}').format(config_dir / confname)
     value = None
     if param != relterms_default['value']:
@@ -161,9 +190,7 @@ def run_preproc(args):
     dest = relterms_default.get('dest', 'relevant_terms')
     setattr(cmd_args, dest, value)
 
-    setattr(cmd_args, 'logfile', str(config_dir / 'slr-kit.log'))
     os.chdir(args.cwd)
-    from preprocess import preprocess
     preprocess(cmd_args)
 
 
@@ -171,10 +198,11 @@ def run_genterms(args):
     script_name = 'gen_terms'
     confname = '.'.join([script_name, 'toml'])
     config, config_dir, meta = check_project(args, confname)
-    cmd_args = prepare_script_arguments(config, config_dir, confname, script_name)
-    setattr(cmd_args, 'logfile', str(config_dir / 'slr-kit.log'))
+    from gen_terms import gen_terms, init_argparser as gt_argparse
+    script_args = gt_argparse().slrkit_arguments
+    cmd_args = prepare_script_arguments(config, config_dir, confname,
+                                        script_args)
     os.chdir(args.cwd)
-    from gen_terms import gen_terms
     gen_terms(cmd_args)
 
 
@@ -182,9 +210,12 @@ def run_lda(args):
     script_name = 'lda'
     confname = '.'.join([script_name, 'toml'])
     config, config_dir, meta = check_project(args, confname)
-    cmd_args = prepare_script_arguments(config, config_dir, confname, script_name)
+    from lda import lda, init_argparser as lda_argparse
+    script_args = lda_argparse().slrkit_arguments
+    cmd_args = prepare_script_arguments(config, config_dir, confname,
+                                        script_args)
     # handle the outdir parameter
-    outdir_default = scripts_defaults.defaults[script_name]['outdir']
+    outdir_default = script_args['outdir']
     param = config.get('outdir', outdir_default['value'])
     if param != outdir_default['value']:
         setattr(cmd_args, 'outdir', (args.cwd / param).resolve())
@@ -192,7 +223,6 @@ def run_lda(args):
         setattr(cmd_args, 'outdir', args.cwd.resolve())
 
     os.chdir(args.cwd)
-    from lda import lda
     lda(cmd_args)
 
 
@@ -200,9 +230,12 @@ def run_lda_grid_search(args):
     script_name = 'lda_grid_search'
     confname = '.'.join([script_name, 'toml'])
     config, config_dir, meta = check_project(args, confname)
-    cmd_args = prepare_script_arguments(config, config_dir, confname, script_name)
+    from lda_grid_search import lda_grid_search, init_argparser as lda_gs_argparse
+    script_args = lda_gs_argparse().slrkit_arguments
+    cmd_args = prepare_script_arguments(config, config_dir, confname,
+                                        script_args)
     # handle the outdir and result parameter
-    outdir_default = scripts_defaults.defaults[script_name]['outdir']
+    outdir_default = script_args['outdir']
     param = config.get('outdir', outdir_default['value'])
     if param != outdir_default['value']:
         setattr(cmd_args, 'outdir', (args.cwd / param).resolve())
@@ -210,11 +243,10 @@ def run_lda_grid_search(args):
         setattr(cmd_args, 'outdir', args.cwd.resolve())
 
     os.chdir(args.cwd)
-    result_default = scripts_defaults.defaults[script_name]['result']
+    result_default = script_args['result']
     param = config.get('result', result_default['value'])
     setattr(cmd_args, 'result', argparse.FileType('w')(param))
 
-    from lda_grid_search import lda_grid_search
     lda_grid_search(cmd_args)
 
 
