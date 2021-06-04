@@ -21,8 +21,8 @@ from gensim.models.coherencemodel import CoherenceModel
 from psutil import cpu_count
 
 from scripts_defaults import GENTERMS_DEFAULTS as DEFAULT_PARAMS
-from utils import (substring_index, BARRIER_PLACEHOLDER, RELEVANT_PREFIX, assert_column)
 from arguments import AppendMultipleFilesAction
+from utils import (substring_index, STOPWORD_PLACEHOLDER, RELEVANT_PREFIX, assert_column)
 
 PHYSICAL_CPUS = cpu_count(logical=False)
 
@@ -175,8 +175,8 @@ def generate_filtered_docs_ngrams(terms_file, preproc_file,
                                   target_col='abstract_lem', title_col='title',
                                   delimiter='\t', labels=('keyword', 'relevant'),
                                   additional=None, acronyms=None,
-                                  barrier_placeholder=BARRIER_PLACEHOLDER,
-                                  relevant_prefix=BARRIER_PLACEHOLDER):
+                                  placeholder=STOPWORD_PLACEHOLDER,
+                                  relevant_prefix=STOPWORD_PLACEHOLDER):
     terms = load_ngrams(terms_file, labels)
     keywords = []
     if additional is not None:
@@ -196,8 +196,7 @@ def generate_filtered_docs_ngrams(terms_file, preproc_file,
 
     ngram_len = sorted(terms, reverse=True)
     documents, titles = load_documents(preproc_file, target_col, title_col,
-                                       delimiter, barrier_placeholder,
-                                       relevant_prefix)
+                                       delimiter, placeholder, relevant_prefix)
     with Pool(processes=PHYSICAL_CPUS) as pool:
         docs = pool.starmap(filter_doc, zip(documents, repeat(ngram_len),
                                             repeat(terms)))
@@ -205,12 +204,11 @@ def generate_filtered_docs_ngrams(terms_file, preproc_file,
     return docs, titles
 
 
-def generate_filtered_docs(terms_file, preproc_file,
-                           target_col='abstract_lem', title_col='title',
-                           delimiter='\t', labels=('keyword', 'relevant'),
-                           additional=None, acronyms=None,
-                           barrier_placeholder=BARRIER_PLACEHOLDER,
-                           relevant_prefix=BARRIER_PLACEHOLDER):
+def generate_filtered_docs(terms_file, preproc_file, target_col='abstract_lem',
+                           title_col='title', delimiter='\t',
+                           labels=('keyword', 'relevant'), additional=None,
+                           acronyms=None, placeholder=STOPWORD_PLACEHOLDER,
+                           relevant_prefix=STOPWORD_PLACEHOLDER):
     if additional is None:
         additional = set()
 
@@ -219,8 +217,7 @@ def generate_filtered_docs(terms_file, preproc_file,
 
     terms = load_terms(terms_file, labels) | additional
     documents, titles = load_documents(preproc_file, target_col, title_col,
-                                       delimiter, barrier_placeholder,
-                                       relevant_prefix)
+                                       delimiter, placeholder, relevant_prefix)
     docs = [d.split(' ') for d in documents]
 
     good_docs = []
@@ -255,8 +252,8 @@ def load_additional_terms(input_file):
 def prepare_documents(preproc_file, terms_file, ngrams, labels,
                       target_col='abstract_lem', title_col='title',
                       delimiter='\t', additional_keyword=None,
-                      acronyms=None, barrier_placeholder=BARRIER_PLACEHOLDER,
-                      relevant_prefix=BARRIER_PLACEHOLDER):
+                      acronyms=None, placeholder=STOPWORD_PLACEHOLDER,
+                      relevant_prefix=STOPWORD_PLACEHOLDER):
     """
     Elaborates the documents preparing the bag of word representation
 
@@ -279,8 +276,8 @@ def prepare_documents(preproc_file, terms_file, ngrams, labels,
     :param acronyms: approved acronyms to be considered as keyword. Must have
         the columns 'Acronym' and 'Extended'
     :type acronyms: pd.DataFrame
-    :param barrier_placeholder: placeholder for barrier words
-    :type barrier_placeholder: str
+    :param placeholder: placeholder for stop-words
+    :type placeholder: str
     :param relevant_prefix: prefix used to mark relevant terms
     :type relevant_prefix: str
     :return: the documents as bag of words and the document titles
@@ -289,18 +286,18 @@ def prepare_documents(preproc_file, terms_file, ngrams, labels,
     if additional_keyword is None:
         additional_keyword = set()
     if ngrams:
-        ret = generate_filtered_docs_ngrams(terms_file, preproc_file, target_col,
-                                            title_col, delimiter, labels,
-                                            acronyms=acronyms,
+        ret = generate_filtered_docs_ngrams(terms_file, preproc_file,
+                                            target_col, title_col, delimiter,
+                                            labels,
                                             additional=additional_keyword,
-                                            barrier_placeholder=barrier_placeholder,
+                                            acronyms=acronyms,
+                                            placeholder=placeholder,
                                             relevant_prefix=relevant_prefix)
     else:
         ret = generate_filtered_docs(terms_file, preproc_file, target_col,
                                      title_col, delimiter, labels,
-                                     acronyms=acronyms,
                                      additional=additional_keyword,
-                                     barrier_placeholder=barrier_placeholder,
+                                     acronyms=acronyms, placeholder=placeholder,
                                      relevant_prefix=relevant_prefix)
 
     docs, titles = ret
@@ -410,10 +407,10 @@ def prepare_topics(model, docs, titles, dictionary):
     return topics, docs_topics, avg_topic_coherence
 
 
-def filter_barriers(doc: str, barrier_placeholder, relevant_prefix):
+def filter_placeholders(doc: str, placeholder, relevant_prefix):
     words = []
     for word in doc.split(' '):
-        if word == barrier_placeholder:
+        if word == placeholder:
             continue
         if word.startswith(relevant_prefix) and word.endswith(relevant_prefix):
             words.append(word.strip(relevant_prefix))
@@ -424,14 +421,14 @@ def filter_barriers(doc: str, barrier_placeholder, relevant_prefix):
 
 
 def load_documents(preproc_file, target_col, title_col, delimiter,
-                   barrier_placeholder=BARRIER_PLACEHOLDER,
+                   placeholder=STOPWORD_PLACEHOLDER,
                    relevant_prefix=RELEVANT_PREFIX):
     dataset = pd.read_csv(preproc_file, delimiter=delimiter, encoding='utf-8')
     dataset.fillna('', inplace=True)
     with Pool(processes=PHYSICAL_CPUS) as pool:
-        documents = pool.starmap(filter_barriers,
+        documents = pool.starmap(filter_placeholders,
                                  zip(dataset[target_col].to_list(),
-                                     repeat(barrier_placeholder),
+                                     repeat(placeholder),
                                      repeat(relevant_prefix)))
 
     titles = dataset[title_col].to_list()
@@ -459,8 +456,8 @@ def lda(args):
     preproc_file = args.preproc_file
     output_dir = args.outdir
 
-    barrier_placeholder = args.placeholder
-    relevant_prefix = barrier_placeholder
+    placeholder = args.placeholder
+    relevant_prefix = placeholder
 
     if args.no_relevant:
         labels = ('keyword',)
@@ -481,13 +478,11 @@ def lda(args):
     else:
         acronyms = None
 
-    docs, titles = prepare_documents(preproc_file, terms_file,
-                                     args.ngrams, labels,
-                                     args.target_column, args.title,
+    docs, titles = prepare_documents(preproc_file, terms_file, args.ngrams,
+                                     labels, args.target_column, args.title,
                                      delimiter=args.delimiter,
                                      additional_keyword=additional_keyword,
-                                     acronyms=acronyms,
-                                     barrier_placeholder=barrier_placeholder,
+                                     acronyms=acronyms, placeholder=placeholder,
                                      relevant_prefix=relevant_prefix)
 
     if args.load_model is not None:

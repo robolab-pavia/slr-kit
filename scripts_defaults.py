@@ -1,10 +1,10 @@
-from utils import BARRIER_PLACEHOLDER
+from utils import STOPWORD_PLACEHOLDER
 
 defaults = {
     'preprocess': {
         'datafile': {'value': '', 'required': True},
         'output': {'value': '-', 'required': False},
-        'placeholder': {'value': BARRIER_PLACEHOLDER, 'required': False},
+        'placeholder': {'value': STOPWORD_PLACEHOLDER, 'required': False},
         'barrier-words': {'value': [], 'required': False,
                           'dest': 'barrier_words_file'},
         'relevant-terms': {'value': [[]], 'required': False,
@@ -24,7 +24,7 @@ defaults = {
         'stdout': {'value': False, 'required': False},
         'n-grams': {'value': 4, 'required': False},
         'min-frequency': {'value': 5, 'required': False},
-        'placeholder': {'value': BARRIER_PLACEHOLDER, 'required': False},
+        'placeholder': {'value': STOPWORD_PLACEHOLDER, 'required': False},
         'column': {'value': 'abstract_lem', 'required': False},
         'delimiter': {'value': '\t', 'required': False},
     },
@@ -48,7 +48,7 @@ defaults = {
         'ngrams': {'value': False, 'required': False},
         'model': {'value': False, 'required': False},
         'no-relevant': {'value': False, 'required': False},
-        'placeholder': {'value': BARRIER_PLACEHOLDER, 'required': False},
+        'placeholder': {'value': STOPWORD_PLACEHOLDER, 'required': False},
         'load-model': {'value': '', 'required': False},
         'delimiter': {'value': '\t', 'required': False},
     },
@@ -72,7 +72,7 @@ defaults = {
         'ngrams': {'value': False, 'required': False},
         'model': {'value': False, 'required': False},
         'no-relevant': {'value': False, 'required': False},
-        'placeholder': {'value': BARRIER_PLACEHOLDER, 'required': False},
+        'placeholder': {'value': STOPWORD_PLACEHOLDER, 'required': False},
         'plot-show': {'value': False, 'required': False},
         'plot-save': {'value': False, 'required': False},
         'delimiter': {'value': '\t', 'required': False},

@@ -81,8 +81,8 @@ def init_argparser():
     parser.add_argument('--step-topics', '-s', type=int,
                         default=DEFAULT_PARAMS['step-topics'],
                         action=_ValidateInt,
-                        help='Step in range(min,max,step) for topics retrieving '
-                             '(default: %(default)s)')
+                        help='Step in range(min,max,step) for topics retrieving'
+                             ' (default: %(default)s)')
     parser.add_argument('--seed', type=int, action=_ValidateInt,
                         help='Seed to be used in training')
     parser.add_argument('--plot-show', action='store_true',
@@ -235,8 +235,8 @@ def lda_grid_search(args):
     preproc_file = args.preproc_file
     output_dir = args.outdir
 
-    barrier_placeholder = args.placeholder
-    relevant_prefix = barrier_placeholder
+    placeholder = args.placeholder
+    relevant_prefix = placeholder
 
     if args.min_topics > args.max_topics:
         sys.exit('max_topics must be greater than min_topics')
@@ -267,13 +267,12 @@ def lda_grid_search(args):
     corpora = {}
     no_above_list = [0.5, 0.6, 0.75, 1.0]
     for labels in [('keyword', 'relevant'), ('keyword', )]:
-        docs, titles = prepare_documents(preproc_file, terms_file,
-                                         args.ngrams, labels,
-                                         args.target_column, args.title,
+        docs, titles = prepare_documents(preproc_file, terms_file, args.ngrams,
+                                         labels, args.target_column, args.title,
                                          delimiter=args.delimiter,
                                          additional_keyword=additional_keyword,
                                          acronyms=acronyms,
-                                         barrier_placeholder=barrier_placeholder,
+                                         placeholder=placeholder,
                                          relevant_prefix=relevant_prefix)
 
         tenth_of_titles = len(titles) // 10
