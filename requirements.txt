@@ -8,7 +8,6 @@ RISparser
 scikit-learn
 regex
 scipy
-sklearn
 prompt_toolkit
 joblib
 seaborn
