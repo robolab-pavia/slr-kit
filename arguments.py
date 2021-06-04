@@ -1,8 +1,12 @@
+import abc
 import argparse
 
 
-class SlrKitAction(argparse.Action):
-    pass
+class SlrKitAction(argparse.Action, metaclass=abc.ABCMeta):
+    @property
+    @abc.abstractmethod
+    def slrkit_conf_default(self):
+        raise NotImplementedError
 
 
 class AppendMultipleFilesAction(SlrKitAction):
@@ -21,6 +25,10 @@ class AppendMultipleFilesAction(SlrKitAction):
                 raise ValueError(f'nargs = {nargs} is not allowed')
 
         super().__init__(option_strings, dest, nargs, **kwargs)
+
+    @property
+    def slrkit_conf_default(self):
+        return []
 
     def __call__(self, parser, namespace, values, option_string=None):
         files = getattr(namespace, self.dest, None)
@@ -66,6 +74,10 @@ class AppendMultiplePairsAction(SlrKitAction):
             self._tocheck.append((1, 'second'))
 
         super().__init__(option_strings, dest, nargs, **kwargs)
+
+    @property
+    def slrkit_conf_default(self):
+        return [[]]
 
     def __call__(self, parser, namespace, values, option_string=None):
         pairs = getattr(namespace, self.dest, None)
