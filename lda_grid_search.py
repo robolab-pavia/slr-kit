@@ -12,11 +12,9 @@ import pandas as pd
 from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel, LdaModel
 
+from arguments import AppendMultipleFilesAction, ArgParse
 from lda import (PHYSICAL_CPUS, prepare_documents, output_topics)
-
-from scripts_defaults import LDAGRIDSEARCH_DEFAULTS as DEFAULT_PARAMS
-from utils import assert_column
-from arguments import AppendMultipleFilesAction
+from utils import assert_column, STOPWORD_PLACEHOLDER
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
 _corpora: Optional[Dict[Tuple[str], Tuple[List[Tuple[int, int]],
@@ -38,23 +36,22 @@ def init_argparser():
              'parameters and it tries to find the best model. The optimal ' \
              'number of topic is searched in the interval specified by the ' \
              'user on the command line.'
-    parser = argparse.ArgumentParser(description='Performs the LDA on a dataset',
-                                     epilog=epilog)
+    parser = ArgParse(description='Performs the LDA on a dataset', epilog=epilog)
     parser.add_argument('preproc_file', action='store', type=Path,
                         help='path to the the preprocess file with the text to '
                              'elaborate.')
     parser.add_argument('terms_file', action='store', type=Path,
                         help='path to the file with the classified terms.')
     parser.add_argument('outdir', action='store', type=Path, nargs='?',
-                        default=Path.cwd(),
-                        help='path to the directory where to save the results.')
+                        default=Path.cwd(), help='path to the directory where '
+                                                 'to save the results.',
+                        non_standard=True)
     parser.add_argument('--text-column', '-t', action='store', type=str,
-                        default=DEFAULT_PARAMS['text-column'],
-                        dest='target_column',
+                        default='abstract_lem', dest='target_column',
                         help='Column in preproc_file to process. '
                              'If omitted %(default)r is used.')
     parser.add_argument('--title-column', action='store', type=str,
-                        default=DEFAULT_PARAMS['title-column'], dest='title',
+                        default='title', dest='title',
                         help='Column in preproc_file to use as document title. '
                              'If omitted %(default)r is used.')
     parser.add_argument('--ngrams', action='store_true',
@@ -69,18 +66,15 @@ def init_argparser():
                         help='if set, the best lda model is saved to directory '
                              '<outdir>/lda_model')
     parser.add_argument('--min-topics', '-m', type=int,
-                        default=DEFAULT_PARAMS['min-topics'],
-                        action=_ValidateInt,
+                        default=5, action=_ValidateInt,
                         help='Minimum number of topics to retrieve '
                              '(default: %(default)s)')
     parser.add_argument('--max-topics', '-M', type=int,
-                        default=DEFAULT_PARAMS['max-topics'],
-                        action=_ValidateInt,
+                        default=20, action=_ValidateInt,
                         help='Maximum number of topics to retrieve '
                              '(default: %(default)s)')
     parser.add_argument('--step-topics', '-s', type=int,
-                        default=DEFAULT_PARAMS['step-topics'],
-                        action=_ValidateInt,
+                        default=1, action=_ValidateInt,
                         help='Step in range(min,max,step) for topics retrieving'
                              ' (default: %(default)s)')
     parser.add_argument('--seed', type=int, action=_ValidateInt,
@@ -92,23 +86,23 @@ def init_argparser():
                              '<outdir>/lda_plot.pdf')
     parser.add_argument('--result', '-r', metavar='FILENAME',
                         type=argparse.FileType('w'),
-                        default=DEFAULT_PARAMS['result'],
-                        help='Where to save the training results in CSV format.'
-                             ' If omitted or -, stdout is used.')
+                        default='-', help='Where to save the training results '
+                                          'in CSV format.If omitted or -, '
+                                          'stdout is  used.',
+                        non_standard=True)
     parser.add_argument('--output', '-o', action='store_true',
                         help='if set, it stores the topic description in '
                              '<outdir>/lda_terms-topics_<date>_<time>.json, '
                              'and the document topic assignment in '
                              '<outdir>/lda_docs-topics_<date>_<time>.json')
     parser.add_argument('--placeholder', '-p',
-                        default=DEFAULT_PARAMS['placeholder'],
+                        default=STOPWORD_PLACEHOLDER,
                         help='Placeholder for barrier word. Also used as a '
                              'prefix for the relevant words. '
                              'Default: %(default)s')
     parser.add_argument('--delimiter', action='store', type=str,
-                        default=DEFAULT_PARAMS['delimiter'],
-                        help='Delimiter used in preproc_file. '
-                             'Default %(default)r')
+                        default='\t', help='Delimiter used in preproc_file. '
+                                           'Default %(default)r')
     return parser
 
 

@@ -1,22 +1,20 @@
 import abc
-import argparse
 import logging
 import re
 import sys
-
 from itertools import repeat
 from multiprocessing import Pool
-from typing import Generator, Tuple, Sequence
 from timeit import default_timer as timer
+from typing import Generator, Tuple, Sequence
 
 import pandas as pd
 from nltk.stem.wordnet import WordNetLemmatizer
 from psutil import cpu_count
 
-from scripts_defaults import PREPROCESS_DEFAULTS as DEFAULT_PARAMS
+from arguments import (AppendMultipleFilesAction, AppendMultiplePairsAction,
+                       ArgParse)
 from utils import (setup_logger, assert_column,
                    log_end, log_start, STOPWORD_PLACEHOLDER, RELEVANT_PREFIX)
-from arguments import AppendMultipleFilesAction, AppendMultiplePairsAction
 
 PHYSICAL_CPUS = cpu_count(logical=False)
 
@@ -94,15 +92,15 @@ def get_lemmatizer(lang='en'):
 
 def init_argparser():
     """Initialize the command line parser."""
-    parser = argparse.ArgumentParser()
+    parser = ArgParse()
     parser.add_argument('datafile', action='store', type=str,
                         help="input CSV data file")
     parser.add_argument('--output', '-o', metavar='FILENAME',
-                        default=DEFAULT_PARAMS['output'],
+                        default='-',
                         help='output file name. If omitted or %(default)r '
                              'stdout is used')
     parser.add_argument('--placeholder', '-p',
-                        default=DEFAULT_PARAMS['placeholder'],
+                        default=STOPWORD_PLACEHOLDER,
                         help='Placeholder for stopwords. Also used as a '
                              'prefix for the relevant words. '
                              'Default: %(default)r')
@@ -121,40 +119,34 @@ def init_argparser():
                              'file, is replaced with the stopword placeholder, '
                              'followed by the term itself with each space '
                              'changed with the "_" character and then another '
-                             'stopword placeholder.')
+                             'stopword placeholder.', non_standard=True)
     parser.add_argument('--acronyms', '-a',
                         help='TSV files with the approved acronyms')
     parser.add_argument('--target-column', '-t', action='store', type=str,
-                        default=DEFAULT_PARAMS['target-column'],
-                        dest='target_column',
+                        default='abstract', dest='target_column',
                         help='Column in datafile to process. '
                              'If omitted %(default)r is used.')
     parser.add_argument('--output-column', action='store', type=str,
-                        default=DEFAULT_PARAMS['output-column'],
-                        dest='output_column',
+                        default='abstract_lem', dest='output_column',
                         help='name of the column to save. '
                              'If omitted %(default)r is used.')
     parser.add_argument('--input-delimiter', action='store', type=str,
-                        default=DEFAULT_PARAMS['input-delimiter'],
-                        dest='input_delimiter',
+                        default='\t', dest='input_delimiter',
                         help='Delimiter used in datafile. '
                              'Default %(default)r')
     parser.add_argument('--output-delimiter', action='store', type=str,
-                        default=DEFAULT_PARAMS['output-delimiter'],
-                        dest='output_delimiter',
+                        default='\t', dest='output_delimiter',
                         help='Delimiter used in output file. '
                              'Default %(default)r')
-    parser.add_argument('--rows', '-R', type=int,
-                        dest='input_rows',
+    parser.add_argument('--rows', '-R', type=int, dest='input_rows',
                         help="Select maximum number of samples")
-    parser.add_argument('--language', '-l',
-                        default=DEFAULT_PARAMS['language'],
+    parser.add_argument('--language', '-l', default='en',
                         help='language of text. Must be a ISO 639-1 two-letter '
                              'code. Default: %(default)r')
     parser.add_argument('--logfile', default='slr-kit.log',
-                        help='log file name. If omitted %(default)r is used')
-    parser.add_argument('--regex',
-                        help='Regex .csv for specific substitutions')
+                        help='log file name. If omitted %(default)r is used',
+                        logfile=True)
+    parser.add_argument('--regex', help='Regex .csv for specific substitutions')
     return parser
 
 

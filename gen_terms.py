@@ -1,19 +1,17 @@
+import csv
+import logging
 import pathlib
+import sys
 
 import pandas
 
-import sys
-import csv
-import logging
-import argparse
-
-from scripts_defaults import GENTERMS_DEFAULTS as DEFAULT_PARAMS
-from utils import setup_logger
+from arguments import ArgParse
+from utils import setup_logger, STOPWORD_PLACEHOLDER
 
 
 def init_argparser():
     """Initialize the command line parser."""
-    parser = argparse.ArgumentParser()
+    parser = ArgParse()
     parser.add_argument('datafile', action='store', type=str,
                         help='Input TSV data file')
     parser.add_argument('output', action='store', type=str,
@@ -21,27 +19,26 @@ def init_argparser():
     parser.add_argument('--stdout', '-s', action='store_true',
                         help='Also print on stdout the output file')
     parser.add_argument('--n-grams', '-n', metavar='N', dest='n_grams',
-                        default=DEFAULT_PARAMS['n-grams'],
-                        help='Maximum size of n-grams number')
+                        default=4, help='Maximum size of n-grams number')
     parser.add_argument('--min-frequency', '-m', metavar='N',
                         dest='min_frequency',
-                        default=DEFAULT_PARAMS['min-frequency'],
-                        help='Minimum frequency of the n-grams')
+                        default=5, help='Minimum frequency of the n-grams')
     parser.add_argument('--placeholder', '-p',
-                        default=DEFAULT_PARAMS['placeholder'],
+                        default=STOPWORD_PLACEHOLDER,
                         help='Placeholder for barrier word. Also used as a '
                              'prefix for the relevant words. '
                              'Default: %(default)r')
     parser.add_argument('--column', '-c',
-                        default=DEFAULT_PARAMS['column'],
+                        default='abstract_lem',
                         help='Column in datafile to process. '
                              'If omitted %(default)r is used.')
     parser.add_argument('--delimiter', action='store', type=str,
-                        default=DEFAULT_PARAMS['delimiter'],
+                        default='\t',
                         help='Delimiter used in datafile. '
                              'Default %(default)r')
     parser.add_argument('--logfile', default='slr-kit.log',
-                        help='log file name. If omitted %(default)r is used')
+                        help='log file name. If omitted %(default)r is used',
+                        logfile=True)
     return parser
 
 

@@ -20,8 +20,7 @@ from gensim.models import LdaModel
 from gensim.models.coherencemodel import CoherenceModel
 from psutil import cpu_count
 
-from scripts_defaults import LDA_DEFAULTS as DEFAULT_PARAMS
-from arguments import AppendMultipleFilesAction
+from arguments import AppendMultipleFilesAction, ArgParse
 from utils import (substring_index, STOPWORD_PLACEHOLDER, RELEVANT_PREFIX, assert_column)
 
 PHYSICAL_CPUS = cpu_count(logical=False)
@@ -38,23 +37,22 @@ def init_argparser():
              "<outdir>/lda_terms-topics_<date>_<time>.json and the topics" \
              "assigned to each document in" \
              "<outdir>/lda_docs-topics_<date>_<time>.json"
-    parser = argparse.ArgumentParser(description='Performs the LDA on a dataset',
-                                     epilog=epilog)
+    parser = ArgParse(description='Performs the LDA on a dataset', epilog=epilog)
     parser.add_argument('preproc_file', action='store', type=Path,
                         help='path to the the preprocess file with the text to '
                              'elaborate.')
     parser.add_argument('terms_file', action='store', type=Path,
                         help='path to the file with the classified terms.')
     parser.add_argument('outdir', action='store', type=Path, nargs='?',
-                        default=Path.cwd(),
-                        help='path to the directory where to save the results.')
+                        default=Path.cwd(), help='path to the directory where '
+                                                 'to save the results.',
+                        non_standard=True)
     parser.add_argument('--text-column', '-t', action='store', type=str,
-                        default=DEFAULT_PARAMS['text-column'],
-                        dest='target_column',
+                        default='abstract_lem', dest='target_column',
                         help='Column in preproc_file to process. '
                              'If omitted %(default)r is used.')
     parser.add_argument('--title-column', action='store', type=str,
-                        default=DEFAULT_PARAMS['title-column'], dest='title',
+                        default='title', dest='title',
                         help='Column in preproc_file to use as document title. '
                              'If omitted %(default)r is used.')
     parser.add_argument('--additional-terms', '-T',
@@ -64,27 +62,24 @@ def init_argparser():
     parser.add_argument('--acronyms', '-a',
                         help='TSV files with the approved acronyms')
     parser.add_argument('--topics', action='store', type=int,
-                        default=DEFAULT_PARAMS['topics'],
-                        help='Number of topics. If omitted %(default)s is used')
+                        default=20, help='Number of topics. If omitted '
+                                         '%(default)s is used')
     parser.add_argument('--alpha', action='store', type=str,
-                        default=DEFAULT_PARAMS['alpha'],
-                        help='alpha parameter of LDA. If omitted %(default)s is'
-                             ' used')
+                        default='auto', help='alpha parameter of LDA. If '
+                                             'omitted %(default)s is used')
     parser.add_argument('--beta', action='store', type=str,
-                        default=DEFAULT_PARAMS['beta'],
-                        help='beta parameter of LDA. If omitted %(default)s is '
-                             'used')
+                        default='auto', help='beta parameter of LDA. If omitted'
+                                             ' %(default)s is used')
     parser.add_argument('--no_below', action='store', type=int,
-                        default=DEFAULT_PARAMS['no_below'],
-                        help='Keep tokens which are contained in at least'
-                             'this number of documents. If omitted %(default)s '
-                             'is used')
+                        default=20, help='Keep tokens which are contained in at'
+                                         ' least this number of documents. If '
+                                         'omitted %(default)s is used')
     parser.add_argument('--no_above', action='store', type=float,
-                        default=DEFAULT_PARAMS['no_above'],
-                        help='Keep tokens which are contained in no more than '
-                             'this fraction of documents (fraction of total '
-                             'corpus size, not an absolute number). If omitted '
-                             '%(default)s is used')
+                        default=0.5, help='Keep tokens which are contained in '
+                                          'no more than this fraction of '
+                                          'documents (fraction of total corpus '
+                                          'size, not an absolute number). If '
+                                          'omitted %(default)s is used')
     parser.add_argument('--seed', type=int, help='Seed to be used in training')
     parser.add_argument('--ngrams', action='store_true',
                         help='if set use all the ngrams')
@@ -101,14 +96,13 @@ def init_argparser():
                              'used with the dataset file to generate the topics'
                              ' and the topic document association')
     parser.add_argument('--placeholder', '-p',
-                        default=DEFAULT_PARAMS['placeholder'],
+                        default=STOPWORD_PLACEHOLDER,
                         help='Placeholder for barrier word. Also used as a '
                              'prefix for the relevant words. '
                              'Default: %(default)s')
     parser.add_argument('--delimiter', action='store', type=str,
-                        default=DEFAULT_PARAMS['delimiter'],
-                        help='Delimiter used in preproc_file. '
-                             'Default %(default)r')
+                        default='\t', help='Delimiter used in preproc_file. '
+                                           'Default %(default)r')
     return parser
 
 
