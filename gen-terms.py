@@ -6,7 +6,7 @@ import sys
 import csv
 import logging
 import argparse
-from utils import setup_logger, BARRIER_PLACEHOLDER
+from utils import setup_logger, STOPWORD_PLACEHOLDER
 
 
 def init_argparser():
@@ -23,8 +23,8 @@ def init_argparser():
     parser.add_argument('--min-frequency', '-m', metavar='N',
                         dest='min_frequency', default=5,
                         help='Minimum frequency of the n-grams')
-    parser.add_argument('--placeholder', '-p', default=BARRIER_PLACEHOLDER,
-                        help='Placeholder for barrier word. Also used as a '
+    parser.add_argument('--placeholder', '-p', default=STOPWORD_PLACEHOLDER,
+                        help='Placeholder for stop-words. Also used as a '
                              'prefix for the relevant words. '
                              'Default: %(default)r')
     parser.add_argument('--column', '-c', default='abstract_lem',
@@ -36,7 +36,7 @@ def init_argparser():
     return parser
 
 
-def get_n_grams(corpus, n_terms=1, min_frequency=5, barrier=None,
+def get_n_grams(corpus, n_terms=1, min_frequency=5, placeholder=None,
                 relevant_prefix=None):
     """
     Extracts n-grams from the corpus.
@@ -51,9 +51,9 @@ def get_n_grams(corpus, n_terms=1, min_frequency=5, barrier=None,
     :param min_frequency: min. number of occurrences. n-grams with less than
         this frequency are discarded
     :type min_frequency: int
-    :param barrier: placeholder for the barrier word. No n-gram with this
+    :param placeholder: placeholder for the stop-words. No n-gram with this
         placeholder is returned
-    :type barrier: str or None
+    :type placeholder: str or None
     :param relevant_prefix: prefix used to mark the relevant terms. No n-gram
         containing a word with this prefix is returned
     :type relevant_prefix: str or None
@@ -70,8 +70,8 @@ def get_n_grams(corpus, n_terms=1, min_frequency=5, barrier=None,
         doc_list = doc.split()  # default separator is the whitespace char
         for i in range(len(doc_list) - n_terms + 1):
             words = doc_list[i:i+n_terms]
-            # skip the terms that contain a barrier or a relevant term
-            if any(word == barrier or word.startswith(relevant_prefix)
+            # skip the terms that contain a placeholder or a relevant term
+            if any(word == placeholder or word.startswith(relevant_prefix)
                    for word in words):
                 continue
 
@@ -134,13 +134,13 @@ def main():
     debug_logger.debug(msg.format(len(dataset[target_column])))
     corpus = dataset[target_column].to_list()
 
-    barrier_placeholder = args.placeholder
-    relevant_prefix = barrier_placeholder
+    placeholder = args.placeholder
+    relevant_prefix = placeholder
 
     list_of_grams = []
     for n in range(1, n_grams + 1):
         top_terms = get_n_grams(corpus, n_terms=n, min_frequency=min_frequency,
-                                barrier=barrier_placeholder,
+                                placeholder=placeholder,
                                 relevant_prefix=relevant_prefix)
         list_of_grams.append(top_terms)
 
@@ -166,7 +166,8 @@ def main():
 
     with open(path.parent / name, 'w') as fawoc_file:
         fawoc_data_writer = csv.DictWriter(fawoc_file, delimiter='\t',
-                                           quotechar='"', quoting=csv.QUOTE_MINIMAL,
+                                           quotechar='"',
+                                           quoting=csv.QUOTE_MINIMAL,
                                            fieldnames=fawoc_data[0].keys())
         fawoc_data_writer.writeheader()
         fawoc_data_writer.writerows(fawoc_data)
