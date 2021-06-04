@@ -15,7 +15,7 @@ from psutil import cpu_count
 from utils import (setup_logger, assert_column,
                    log_end, log_start,
                    AppendMultipleFilesAction, AppendMultiplePairsAction,
-                   BARRIER_PLACEHOLDER, RELEVANT_PREFIX)
+                   STOPWORD_PLACEHOLDER, RELEVANT_PREFIX)
 
 PHYSICAL_CPUS = cpu_count(logical=False)
 
@@ -99,14 +99,14 @@ def init_argparser():
     parser.add_argument('--output', '-o', metavar='FILENAME', default='-',
                         help='output file name. If omitted or %(default)r '
                              'stdout is used')
-    parser.add_argument('--placeholder', '-p', default=BARRIER_PLACEHOLDER,
-                        help='Placeholder for barrier word. Also used as a '
+    parser.add_argument('--placeholder', '-p', default=STOPWORD_PLACEHOLDER,
+                        help='Placeholder for stopwords. Also used as a '
                              'prefix for the relevant words. '
                              'Default: %(default)r')
-    parser.add_argument('--barrier-words', '-b',
+    parser.add_argument('--stop-words', '-s',
                         action=AppendMultipleFilesAction, nargs='+',
-                        metavar='FILENAME', dest='barrier_words_file',
-                        help='barrier words file name')
+                        metavar='FILENAME', dest='stopwords_file',
+                        help='stop words file name')
     parser.add_argument('--relevant-term', '-r', nargs=2,
                         metavar=('FILENAME', 'PLACEHOLDER'),
                         dest='relevant_terms_file',
@@ -115,10 +115,10 @@ def init_argparser():
                              'use with those terms. The placeholder must not '
                              'contains any space. If the placeholder is a "-"'
                              ' or the empty string, each relevant term from '
-                             'this file, is replaced with the barrier '
+                             'this file, is replaced with the stopword '
                              'placeholder, followed by the term itself with '
                              'each space changed with the "-" character and '
-                             'then another barrier placeholder.')
+                             'then another stopword placeholder.')
     parser.add_argument('--acronyms', '-a',
                         help='TSV files with the approved acronyms')
     parser.add_argument('--target-column', '-t', action='store', type=str,
@@ -148,9 +148,9 @@ def init_argparser():
     return parser
 
 
-def load_barrier_words(input_file):
+def load_stopwords(input_file):
     """
-    Loads a list of barrier words from a file
+    Loads a list of stopwords from a file
 
     This functions skips all the lines that starts with a '#'.
 
@@ -203,7 +203,7 @@ def replace_ngram(text, n_grams):
     return text2
 
 
-def acronyms_generator(acronyms, prefix_suffix=BARRIER_PLACEHOLDER):
+def acronyms_generator(acronyms, prefix_suffix=STOPWORD_PLACEHOLDER):
     """
     Generator that yields acronyms and the relative placeholder for replace_ngram
 
@@ -229,9 +229,9 @@ def acronyms_generator(acronyms, prefix_suffix=BARRIER_PLACEHOLDER):
 
 
 def language_specific_regex(text, lang='en'):
-    # The first step in every language is to change punctuations to barrier.
-    # The barrier placeholder can be anything, so we have to change the
-    # punctuation with something that will survive the special char removal.
+    # The first step in every language is to change punctuations to the stop-word
+    # placeholder. The stop-word placeholder can be anything, so we have to change
+    # the punctuation with something that will survive the special char removal.
     # '---' it's ok because hyphens are preserved in every language.
     if lang == 'en':
         # punctuation
@@ -247,7 +247,7 @@ def language_specific_regex(text, lang='en'):
                       ' ', out_text)
 
 
-def regex(text, barrier_placeholder=BARRIER_PLACEHOLDER, lang='en',
+def regex(text, stopword_placeholder=STOPWORD_PLACEHOLDER, lang='en',
           regexDF=None):
     # If a regex DataFrame for the specific project is passed,
     # this function will replace the patterns with the corresponding repl parameter
@@ -270,9 +270,9 @@ def regex(text, barrier_placeholder=BARRIER_PLACEHOLDER, lang='en',
     # digits. The definition of special character and punctuation, changes with
     # the language
     text = language_specific_regex(text, lang)
-    # now we can search for ' --- ' and place the barrier placeholder
+    # now we can search for ' --- ' and place the stop-word placeholder
     # the positive look-ahead and look-behind are to preserve the spaces
-    text = re.sub(r'(?<=\s)---(?=\s)', barrier_placeholder, text)
+    text = re.sub(r'(?<=\s)---(?=\s)', stopword_placeholder, text)
     # remove any run of hyphens not surrounded by non space
     text = re.sub(r'(\s+-+\s+|(?<=\S)-+\s+|\s+-+(?=\S))', ' ', text)
 
@@ -289,9 +289,10 @@ def relevant_generator(relevant, relevant_prefix):
                 yield f'{relevant_prefix}{"_".join(rel)}{relevant_prefix}', rel
 
 
-def preprocess_item(item, relevant_terms, barrier_words, acronyms,
-                    language='en', barrier=BARRIER_PLACEHOLDER,
-                    relevant_prefix=RELEVANT_PREFIX, regexDF=None):
+def preprocess_item(item, relevant_terms, stopwords, acronyms, language='en',
+                    placeholder=STOPWORD_PLACEHOLDER,
+                    relevant_prefix=RELEVANT_PREFIX,
+                    regexDF=None):
     """
     Preprocess the text of a document.
 
@@ -306,23 +307,23 @@ def preprocess_item(item, relevant_terms, barrier_words, acronyms,
     relevant_prefix.
     The function then searches for the acronyms, changing the words composing
     them with the corresponding abbreviation.
-    It also filters the barrier words changing them with the barrier string as
-    placeholder.
+    It also filters the stop-words changing them with the stopword_placeholder
+    string as placeholder.
 
     :param item: the text to process
     :type item: str
     :param relevant_terms: the relevant words to search. Each n-gram must be a
         tuple of strings
     :type relevant_terms: list[tuple[set[tuple[str]], str or None]]
-    :param barrier_words: the barrier words to filter
-    :type barrier_words: set[str]
+    :param stopwords: the stop-words to filter
+    :type stopwords: set[str]
     :param acronyms: the acronyms to replace in each document. Must have two
         columns 'Acronym' and 'Extended'
     :type acronyms: pd.DataFrame
     :param language: code of the language to be used to lemmatize text
     :type language: str
-    :param barrier: placeholder for the barrier words
-    :type barrier: str
+    :param placeholder: placeholder for the stop-words
+    :type placeholder: str
     :param relevant_prefix: prefix string used when replacing the relevant terms
     :type relevant_prefix: str
     :return: the processed text
@@ -332,7 +333,7 @@ def preprocess_item(item, relevant_terms, barrier_words, acronyms,
     # Convert to lowercase
     text = item.lower()
     # apply some regex to clean the text
-    text = regex(text, barrier, language, regexDF=regexDF)
+    text = regex(text, placeholder, language, regexDF=regexDF)
     text = text.split(' ')
 
     # replace acronyms
@@ -345,16 +346,17 @@ def preprocess_item(item, relevant_terms, barrier_words, acronyms,
                           relevant_generator(relevant_terms, relevant_prefix))
 
     for i, word in enumerate(text2):
-        if word in barrier_words:
-            text2[i] = barrier
+        if word in stopwords:
+            text2[i] = placeholder
 
     text2 = ' '.join(text2)
     return text2
 
 
-def process_corpus(dataset, relevant_terms, barrier_words, acronyms,
-                   language='en', barrier=BARRIER_PLACEHOLDER,
-                   relevant_prefix=RELEVANT_PREFIX, regexDF=None):
+def process_corpus(dataset, relevant_terms, stopwords, acronyms, language='en',
+                   placeholder=STOPWORD_PLACEHOLDER,
+                   relevant_prefix=RELEVANT_PREFIX,
+                   regexDF=None):
     """
     Process a corpus of documents.
 
@@ -364,15 +366,15 @@ def process_corpus(dataset, relevant_terms, barrier_words, acronyms,
     :type dataset: pd.Sequence
     :param relevant_terms: the related terms to search in each document
     :type relevant_terms: list[tuple[set[tuple[str]], str]]
-    :param barrier_words: the barrier words to filter in each document
-    :type barrier_words: set[str]
+    :param stopwords: the stop-words to filter in each document
+    :type stopwords: set[str]
     :param acronyms: the acronyms to replace in each document. Must have two
         columns 'Acronym' and 'Extended'
     :type acronyms: pd.Dataframe
     :param language: code of the language to be used to lemmatize text
     :type language: str
-    :param barrier: placeholder for the barrier words
-    :type barrier: str
+    :param placeholder: placeholder for the stop-words
+    :type placeholder: str
     :param relevant_prefix: prefix used to replace the relevant terms
     :type relevant_prefix: str
     :return: the corpus processed
@@ -381,10 +383,10 @@ def process_corpus(dataset, relevant_terms, barrier_words, acronyms,
     with Pool(processes=PHYSICAL_CPUS) as pool:
         corpus = pool.starmap(preprocess_item, zip(dataset,
                                                    repeat(relevant_terms),
-                                                   repeat(barrier_words),
+                                                   repeat(stopwords),
                                                    repeat(acronyms),
                                                    repeat(language),
-                                                   repeat(barrier),
+                                                   repeat(placeholder),
                                                    repeat(relevant_prefix),
                                                    repeat(regexDF)))
     return corpus
@@ -443,16 +445,15 @@ def main():
     else:
         regexDF = None
 
+    placeholder = args.placeholder
+    relevant_prefix = placeholder
 
-    barrier_placeholder = args.placeholder
-    relevant_prefix = barrier_placeholder
+    stopwords = set()
+    if args.stopwords_file is not None:
+        for sfile in args.stopwords_file:
+            stopwords |= load_stopwords(sfile)
 
-    barrier_words = set()
-    if args.barrier_words_file is not None:
-        for sfile in args.barrier_words_file:
-            barrier_words |= load_barrier_words(sfile)
-
-        debug_logger.debug('Barrier words loaded and updated')
+        debug_logger.debug('Stop-words loaded and updated')
 
     if args.acronyms is not None:
         conv = {
@@ -479,11 +480,9 @@ def main():
         debug_logger.debug('Relevant words loaded and updated')
 
     start = timer()
-    corpus = process_corpus(dataset[target_column], rel_terms, barrier_words,
-                            acronyms, language=args.language,
-                            barrier=barrier_placeholder,
-                            relevant_prefix=relevant_prefix,
-                            regexDF=regexDF)
+    corpus = process_corpus(dataset[target_column], rel_terms, stopwords, acronyms,
+                            language=args.language, placeholder=placeholder,
+                            relevant_prefix=relevant_prefix, regexDF=regexDF)
     stop = timer()
     elapsed_time = stop - start
     debug_logger.debug('Corpus processed')
