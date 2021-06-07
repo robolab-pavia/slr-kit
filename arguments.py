@@ -120,6 +120,7 @@ class ArgParse(argparse.ArgumentParser):
     def add_argument(self, *name_or_flags, **kwargs):
         non_standard = kwargs.pop('non_standard', False)
         log = kwargs.pop('logfile', False)
+        suggest = kwargs.pop('suggest_suffix', None)
         action = kwargs.get('action', 'store')
         ret = super().add_argument(*name_or_flags, **kwargs)
         if action not in ['help', 'version']:
@@ -149,6 +150,7 @@ class ArgParse(argparse.ArgumentParser):
                 'required': ret.required,
                 'dest': ret.dest,
                 'log': log,
+                'suggest-suffix': suggest,
             }
 
         return ret
