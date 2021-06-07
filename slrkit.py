@@ -149,7 +149,7 @@ def prepare_script_arguments(config, config_dir, confname, script_args):
         if v.get('logfile', False):
             setattr(args, k, str((config_dir / 'slr-kit.log').resolve()))
             continue
-        if v.get('non-standard', False):
+        if v.get('non-standard', False) or v.get('cli-only', False):
             continue
 
         dest = v.get('dest', k.replace('-', '_'))
