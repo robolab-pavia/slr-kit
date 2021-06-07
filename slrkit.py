@@ -85,7 +85,7 @@ def init_project(args):
                 args: dict = __import__(s).init_argparser().slrkit_arguments
                 conf = tomlkit.document()
                 for arg_name, arg in args.items():
-                    if not arg['log']:
+                    if not arg['log'] and not arg['cli_only']:
                         conf.add(tomlkit.comment(arg['help']))
                         conf.add(tomlkit.comment(f'required: {arg["required"]}'))
                         if arg['suggest-suffix'] is not None:
