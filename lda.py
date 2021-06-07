@@ -5,10 +5,14 @@ LDA Model
 Introduces Gensim's LDA model and demonstrates its use on the NIPS corpus.
 
 """
+import sys
+# disable warnings if they are not explicitly wanted
+if not sys.warnoptions:
+    import warnings
+    warnings.simplefilter('ignore')
 
 import argparse
 import json
-import sys
 from datetime import datetime
 from itertools import repeat, chain
 from multiprocessing import Pool

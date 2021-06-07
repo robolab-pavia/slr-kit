@@ -1,5 +1,10 @@
-import argparse
 import sys
+# disable warnings if they are not explicitly wanted
+if not sys.warnoptions:
+    import warnings
+    warnings.simplefilter('ignore')
+
+import argparse
 from itertools import product
 from multiprocessing import Pool
 from pathlib import Path
