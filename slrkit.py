@@ -88,7 +88,11 @@ def init_project(args):
                     if not arg['log']:
                         conf.add(tomlkit.comment(arg['help']))
                         conf.add(tomlkit.comment(f'required: {arg["required"]}'))
-                        if arg['value'] is not None:
+                        if arg['suggest-suffix'] is not None:
+                            val = '_'.join([meta['Project']['Name'],
+                                            arg['suggest-suffix']])
+                            conf.add(arg_name, val)
+                        elif arg['value'] is not None:
                             try:
                                 conf.add(arg_name, arg['value'])
                             except ValueError:
