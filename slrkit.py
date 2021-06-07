@@ -41,7 +41,10 @@ def init_project(args):
         }
     }
     old_config_dir = None
-    config_dir: pathlib.Path = args.cwd / args.config_dir
+    if args.config_dir is not None:
+        config_dir: pathlib.Path = args.cwd / args.config_dir
+    else:
+        config_dir: pathlib.Path = args.cwd / f'slrkit-{args.name}'
     metafile = args.cwd / 'META.toml'
     if metafile.exists():
         obj = toml_load(metafile)
@@ -53,12 +56,11 @@ def init_project(args):
                 if val != '':
                     meta[k][h] = val
 
+    meta['Project']['Name'] = args.name
     if args.author:
         meta['Project']['Author'] = args.author
     if args.description:
         meta['Project']['Description'] = args.description
-    if args.name:
-        meta['Project']['Name'] = args.name
 
     directory = config_dir
     move = False
@@ -71,7 +73,7 @@ def init_project(args):
     try:
         config_dir.mkdir(exist_ok=True)
     except FileExistsError:
-        msg = 'Error {} exist and is not a directory'
+        msg = 'Error: {} exist and is not a directory'
         sys.exit(msg.format(config_dir))
 
     scripts = ['preprocess', 'gen_terms', 'lda', 'lda_grid_search']
@@ -266,13 +268,16 @@ def init_argparser():
     # init
     parser_init = subparser.add_parser('init', help='Initialize a slr-kit '
                                                     'project')
-    parser_init.add_argument('config_dir', action='store', type=str,
-                             default='slr-conf',
-                             help='Name of the project config directory that '
-                                  'will be created. If omitted %(default)r is '
-                                  'used')
-    parser_init.add_argument('--name', '-N', action='store', type=str,
-                             default='', help='Name of the project')
+    parser_init.add_argument('name', action='store', type=str,
+                             help='Name of the project.')
+    parser_init.add_argument('--config_dir', '-c', action='store', type=str,
+                             help='Name of the configuration directory of the '
+                                  'project. This directory will be created and '
+                                  'populated with the template configuration '
+                                  'files. If this directory already exists, '
+                                  'only the missing template file are created. '
+                                  'If this option is omitted, the directory '
+                                  'will be named slrkit-<project name>.')
     parser_init.add_argument('--author', '-A', action='store', type=str,
                              default='', help='Name of the author of the '
                                               'project')
