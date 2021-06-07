@@ -121,6 +121,7 @@ class ArgParse(argparse.ArgumentParser):
         non_standard = kwargs.pop('non_standard', False)
         log = kwargs.pop('logfile', False)
         suggest = kwargs.pop('suggest_suffix', None)
+        cli_only = kwargs.pop('cli_only', None)
         action = kwargs.get('action', 'store')
         ret = super().add_argument(*name_or_flags, **kwargs)
         if action not in ['help', 'version']:
@@ -151,6 +152,7 @@ class ArgParse(argparse.ArgumentParser):
                 'dest': ret.dest,
                 'log': log,
                 'suggest-suffix': suggest,
+                'cli_only': cli_only,
             }
 
         return ret
