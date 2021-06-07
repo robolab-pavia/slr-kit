@@ -98,7 +98,8 @@ def init_argparser():
     parser.add_argument('--output', '-o', metavar='FILENAME',
                         default='-',
                         help='output file name. If omitted or %(default)r '
-                             'stdout is used')
+                             'stdout is used',
+                        suggest_suffix='preproc.csv')
     parser.add_argument('--placeholder', '-p',
                         default=STOPWORD_PLACEHOLDER,
                         help='Placeholder for stopwords. Also used as a '
