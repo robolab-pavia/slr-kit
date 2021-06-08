@@ -349,6 +349,18 @@ def init_argparser():
                                                        'be used instead of the '
                                                        'project one')
     parser_lda_grid_search.set_defaults(func=run_lda_grid_search)
+    # fawoc
+    parser_fawoc = subparser.add_parser('fawoc', help='Run fawoc in a slr-kit '
+                                                      'project')
+    parser_fawoc.add_argument('--config', '-c', action='store', type=str,
+                              help='Alternative toml configuration file to be '
+                                   'used instead of the project one')
+    parser_fawoc.add_argument('--input', '-i', metavar='LABEL',
+                              help='Input only the terms classified with the '
+                                   'specified label')
+    parser_fawoc.add_argument('--width', '-w', action='store', type=int,
+                              help='Width of fawoc windows.')
+    parser_fawoc.set_defaults(func=run_fawoc)
     return parser
 
 
