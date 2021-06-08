@@ -87,7 +87,7 @@ def init_project(args):
                 conf = tomlkit.document()
                 for arg_name, arg in args.items():
                     if not arg['logfile'] and not arg['cli_only']:
-                        conf.add(tomlkit.comment(arg['help']))
+                        conf.add(tomlkit.comment(arg['help'].replace('\n', ' ')))
                         conf.add(tomlkit.comment(f'required: {arg["required"]}'))
                         if arg['suggest-suffix'] is not None:
                             val = '_'.join([meta['Project']['Name'],
