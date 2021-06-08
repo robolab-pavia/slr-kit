@@ -261,6 +261,28 @@ def run_lda_grid_search(args):
     lda_grid_search(cmd_args)
 
 
+def run_fawoc(args):
+    script_name = 'fawoc'
+    confname = '.'.join([script_name, 'toml'])
+    config, config_dir, meta = check_project(args, confname)
+    from fawoc.fawoc import fawoc_run, init_argparser as fawoc_argparse
+    script_args = fawoc_argparse().slrkit_arguments
+    cmd_args = prepare_script_arguments(config, config_dir, confname,
+                                        script_args)
+    # command line overrides
+    if args.input is not None:
+        setattr(cmd_args, 'input', args.input)
+    if args.width is not None:
+        setattr(cmd_args, 'width', args.width)
+
+    # set profiler
+    setattr(cmd_args, 'profiler_name',
+            (config_dir / 'fawoc_profiler.log').resolve())
+
+    os.chdir(args.cwd)
+    fawoc_run(cmd_args)
+
+
 def init_argparser():
     """
     Initialize the command line parser.
