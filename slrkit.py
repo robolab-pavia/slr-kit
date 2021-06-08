@@ -1,4 +1,5 @@
 import argparse
+import importlib
 import os
 import pathlib
 import shutil
@@ -82,7 +83,7 @@ def init_project(args):
         old_p = (directory / s).with_suffix('.toml')
         if not old_p.exists():
             if not p.exists():
-                args: dict = __import__(s).init_argparser().slrkit_arguments
+                args = importlib.import_module(s).init_argparser().slrkit_arguments
                 conf = tomlkit.document()
                 for arg_name, arg in args.items():
                     if not arg['logfile'] and not arg['cli_only']:
