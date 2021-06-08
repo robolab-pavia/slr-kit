@@ -77,13 +77,17 @@ def init_project(args):
         msg = 'Error: {} exist and is not a directory'
         sys.exit(msg.format(config_dir))
 
-    scripts = ['preprocess', 'gen_terms', 'lda', 'lda_grid_search']
+    scripts = ['preprocess', 'gen_terms', 'lda', 'lda_grid_search', 'fawoc']
     for s in scripts:
         p = (config_dir / s).with_suffix('.toml')
         old_p = (directory / s).with_suffix('.toml')
         if not old_p.exists():
             if not p.exists():
-                args = importlib.import_module(s).init_argparser().slrkit_arguments
+                if s == 'fawoc':
+                    module = importlib.import_module('fawoc.fawoc')
+                else:
+                    module = importlib.import_module(s)
+                args = module.init_argparser().slrkit_arguments
                 conf = tomlkit.document()
                 for arg_name, arg in args.items():
                     if not arg['logfile'] and not arg['cli_only']:
