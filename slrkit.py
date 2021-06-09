@@ -319,42 +319,25 @@ def init_argparser():
     parser_preproc = subparser.add_parser('preprocess',
                                           help='Run the preprocess stage in a '
                                                'slr-kit project')
-    parser_preproc.add_argument('--config', '-c', action='store', type=str,
-                                help='Alternative toml configuration file '
-                                     'to be used instead of the project one')
     parser_preproc.set_defaults(func=run_preproc)
     # gen_terms
     parser_genterms = subparser.add_parser('gen_terms',
                                            help='Run the gen_terms stage in a '
                                                 'slr-kit project')
-    parser_genterms.add_argument('--config', '-c', action='store', type=str,
-                                 help='Alternative toml configuration file '
-                                      'to be used instead of the project one')
     parser_genterms.set_defaults(func=run_genterms)
     # lda
     parser_lda = subparser.add_parser('lda', help='Run the lda stage in a '
                                                   'slr-kit project')
-    parser_lda.add_argument('--config', '-c', action='store', type=str,
-                            help='Alternative toml configuration file '
-                                 'to be used instead of the project one')
     parser_lda.set_defaults(func=run_lda)
     # lda_grid_search
     parser_lda_grid_search = subparser.add_parser('lda_grid_search',
                                                   help='Run the lda_grid_search'
                                                        ' stage in a slr-kit '
                                                        'project')
-    parser_lda_grid_search.add_argument('--config', '-c', action='store',
-                                        type=str, help='Alternative toml '
-                                                       'configuration file to '
-                                                       'be used instead of the '
-                                                       'project one')
     parser_lda_grid_search.set_defaults(func=run_lda_grid_search)
     # fawoc
     parser_fawoc = subparser.add_parser('fawoc', help='Run fawoc in a slr-kit '
                                                       'project')
-    parser_fawoc.add_argument('--config', '-c', action='store', type=str,
-                              help='Alternative toml configuration file to be '
-                                   'used instead of the project one')
     parser_fawoc.add_argument('--input', '-i', metavar='LABEL',
                               help='Input only the terms classified with the '
                                    'specified label')
