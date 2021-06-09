@@ -7,8 +7,6 @@ import sys
 
 import tomlkit
 
-SLRKIT_PATH = pathlib.Path(__file__).parent
-
 
 def _check_is_dir(path):
     p = pathlib.Path(path)
