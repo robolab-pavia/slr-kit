@@ -399,7 +399,8 @@ evaluate_clusters.py pckmeans_clusters.csv ground_truth.json
 
 - ACTION: Generate reports for various stats regarding topics and papers.
 - INPUT: the RIS file containing data for all papers and the json docs file containing results from LDA
-- OUTPUT: Set of tables in csv format and a graph for topic-year evolution. Also a markdown template will be automatically filled
+- OUTPUT: Set of tables in csv format saved authomatically in a directory with the dataset name and a graph for topic-year evolution.
+    Also a markdown template will be automatically filled
 
 ### Arguments
 
@@ -413,3 +414,6 @@ evaluate_clusters.py pckmeans_clusters.csv ground_truth.json
 ```
 topic_report.py dsm.ris dsm_docs.json dsm report_template.md
 ```
+
+there are also 2 templates for this script the first is `report_template.md` which is automatically filled by the script, the second is `report_template.tex`
+which needs to be filled with the csv tables and the graph saved by the script.
