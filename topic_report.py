@@ -22,6 +22,7 @@ def init_argparser():
     parser.add_argument('ris_file', type=str, help='the path to the ris file containing papers data')
     parser.add_argument('json_file', type=str, help='the path to the json file containing lda results')
     parser.add_argument('dataset_name', type=str, help='name of the dataset to be reported')
+    parser.add_argument('md_template', type=str, help='name of template for markdown report file')
 
     return parser
 
@@ -318,14 +319,15 @@ def main():
     env = Environment(loader=FileSystemLoader('.'),
                       autoescape=True)
 
-    template = env.get_template('report_markdown.md')
+    template = env.get_template(args.md_template)
     year_report = dataset + '_year.png'
     md_file = template.render(year_report=year_report,
                               year_table=topic_year_table,
                               journal_topic_table=journal_topic_table,
-                              journal_year_table=journal_year_table)
+                              journal_year_table=journal_year_table,
+                              dataset_name=args.dataset_name)
 
-    with open("md_report.md", "w") as fh:
+    with open(args.dataset_name+".md", "w") as fh:
         fh.write(md_file)
 
 
