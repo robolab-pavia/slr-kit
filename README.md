@@ -417,3 +417,13 @@ topic_report.py dsm.ris dsm_docs.json dsm report_template.md
 
 there are also 2 templates for this script the first is `report_template.md` which is automatically filled by the script, the second is `report_template.tex`
 which needs to be filled with the csv tables and the graph saved by the script.
+
+## `report_template.md`
+
+This is the Markdown template that will be automatically be cloned and filled by `topic_report.py`.
+The report will contain:
+- The title of the dataset analysed
+- A table containing data about Topic-Year evolution
+- A graph about Topic-Year evolution
+- A table containing data about the Journals that published the papers, and their topics distribution
+- A table containing data about the Journals that published the papers, and the publication year distribution
