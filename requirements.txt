@@ -15,3 +15,5 @@ seaborn
 active-semi-supervised-clustering
 psutil
 treetaggerwrapper
+tabulate
+Jinja2
