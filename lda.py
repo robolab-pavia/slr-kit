@@ -85,8 +85,8 @@ def init_argparser():
                                           'size, not an absolute number). If '
                                           'omitted %(default)s is used')
     parser.add_argument('--seed', type=int, help='Seed to be used in training')
-    parser.add_argument('--ngrams', action='store_true',
-                        help='if set use all the ngrams')
+    parser.add_argument('--no-ngrams', action='store_true',
+                        help='if set do not use the ngrams')
     parser.add_argument('--model', action='store_true',
                         help='if set, the lda model is saved to directory '
                              '<outdir>/lda_model. The model is saved '
@@ -476,8 +476,9 @@ def lda(args):
     else:
         acronyms = None
 
-    docs, titles = prepare_documents(preproc_file, terms_file, args.ngrams,
-                                     labels, args.target_column, args.title,
+    docs, titles = prepare_documents(preproc_file, terms_file,
+                                     not args.no_ngrams, labels,
+                                     args.target_column, args.title,
                                      delimiter=args.delimiter,
                                      additional_keyword=additional_keyword,
                                      acronyms=acronyms, placeholder=placeholder,
