@@ -46,6 +46,8 @@ def prepare_papers(ris_path, json_path):
     with open(ris_path, 'r', encoding='utf-8') as bibliography_file:
         entries = readris(bibliography_file)
         for entry in entries:
+            if 'title' not in entry:
+                continue
             papers_list.append(entry)
 
     for paper in papers_list:
