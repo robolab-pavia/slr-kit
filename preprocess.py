@@ -3,7 +3,6 @@ import argparse
 import logging
 import re
 import sys
-
 from itertools import repeat
 from multiprocessing import Pool
 from typing import Generator, Tuple, Sequence
@@ -274,7 +273,7 @@ def regex(text, stopword_placeholder=STOPWORD_PLACEHOLDER, lang='en',
     # the positive look-ahead and look-behind are to preserve the spaces
     text = re.sub(r'(?<=\s)---(?=\s)', stopword_placeholder, text)
     # remove any run of hyphens not surrounded by non space
-    text = re.sub(r'(\s+-+\s+|(?<=\S)-+\s+|\s+-+(?=\S))', ' ', text)
+    text = re.sub(r'(\s+-+\s+|(?<=\S)-+\s+|\s+-+(?=\S))|(-{2,})', ' ', text)
 
     return text
 
@@ -442,6 +441,7 @@ def main():
     # csvFileName da CLI
     if args.regex is not None:
         regexDF = pd.read_csv(args.regex, sep=',', quotechar='"')
+        regexDF['repl'].fillna('', inplace=True)
     else:
         regexDF = None
 
