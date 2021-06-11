@@ -22,7 +22,10 @@ def init_argparser():
     parser.add_argument('ris_file', type=str, help='the path to the ris file containing papers data')
     parser.add_argument('json_file', type=str, help='the path to the json file containing lda results')
     parser.add_argument('dataset_name', type=str, help='name of the dataset to be reported')
-    parser.add_argument('md_template', type=str, help='name of template for markdown report file')
+    parser.add_argument('md_template', type=str,
+                        help='path of the template for markdown report file. '
+                             'This is always interpreted as relative to the '
+                             'current directory.')
 
     return parser
 
