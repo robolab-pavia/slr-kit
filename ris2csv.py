@@ -1,13 +1,14 @@
-import argparse
 import sys
 
 import pandas as pd
 from RISparser import readris
 
+import arguments
+
 
 def init_argparser():
     """Initialize the command line parser."""
-    parser = argparse.ArgumentParser()
+    parser = arguments.ArgParse()
     parser.add_argument('input_file', action="store", type=str,
                         help='input RIS bibliography file')
     parser.add_argument('--output', '-o', metavar='FILENAME',
