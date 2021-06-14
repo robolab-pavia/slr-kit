@@ -1,5 +1,6 @@
 import argparse
 import sys
+
 import pandas as pd
 from RISparser import readris
 
@@ -8,11 +9,12 @@ def init_argparser():
     """Initialize the command line parser."""
     parser = argparse.ArgumentParser()
     parser.add_argument('input_file', action="store", type=str,
-                        help="input RIS bibliography file")
+                        help='input RIS bibliography file')
     parser.add_argument('--output', '-o', metavar='FILENAME',
                         help='output CSV file name')
     parser.add_argument('--columns', '-c', metavar='col1,..,coln',
-                        help='list of comma-separated columns to export; \'?\' for the list of available columns')
+                        help='list of comma-separated columns to export. Use '
+                             '\'?\' for the list of available columns')
     return parser
 
 
@@ -26,18 +28,15 @@ def main():
     parser = init_argparser()
     args = parser.parse_args()
 
-    output_file = open(args.output, 'w',
-                       encoding='utf-8') if args.output is not None else sys.stdout
-
     with open(args.input_file, 'r', encoding='utf-8') as bibliography_file:
         entries = readris(bibliography_file)
         risdf = pd.DataFrame(entries)
 
     # The number of citations lies in 'notes' column as element of a list
     # These 3 lines extract that information
-    citationSeries = pd.DataFrame(risdf['notes'].tolist(), index= risdf.index)[0]
-    citationSeriesN = citationSeries.str.extract(r'((?<=:)\d+)').astype(float)
-    risdf['citations'] = citationSeriesN.astype(float).fillna(0)
+    citation = pd.DataFrame(risdf['notes'].tolist(), index=risdf.index)[0]
+    citation_number = citation.str.extract(r'((?<=:)\d+)').astype(float)
+    risdf['citations'] = citation_number.astype(float).fillna(0)
 
     if args.columns is not None:
         cols = args.columns.split(',')
@@ -59,6 +58,11 @@ def main():
             show_columns(risdf)
             sys.exit(1)
 
+    if args.output is not None:
+        output_file = open(args.output, 'w', encoding='utf-8')
+    else:
+        output_file = sys.stdout
+
     export_csv = risdf.to_csv(
             output_file,
             columns=cols,
@@ -68,5 +72,5 @@ def main():
             sep='\t')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
