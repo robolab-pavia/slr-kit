@@ -13,8 +13,10 @@ def init_argparser():
     parser.add_argument('--output', '-o', metavar='FILENAME',
                         help='output CSV file name')
     parser.add_argument('--columns', '-c', metavar='col1,..,coln',
-                        help='list of comma-separated columns to export. Use '
-                             '\'?\' for the list of available columns')
+                        default='title,abstract',
+                        help='list of comma-separated columns to export. If '
+                             'absent %(default)r is used. Use \'?\' for the '
+                             'list of available columns')
     return parser
 
 
@@ -38,24 +40,15 @@ def main():
     citation_number = citation.str.extract(r'((?<=:)\d+)').astype(float)
     risdf['citations'] = citation_number.astype(float).fillna(0)
 
-    if args.columns is not None:
-        cols = args.columns.split(',')
-        # checks if help was requested
-        if len(cols) == 1 and cols[0] == '?':
-            show_columns(risdf)
-            sys.exit(1)
-        # checks that the requested items exist in the RIS file
-        for c in cols:
-            if c not in risdf:
-                print('Invalid column: "{}".'.format(c))
-                sys.exit(1)
-    else:
-        # uses 'title' as default column
-        if 'title' in risdf:
-            cols = ['title']
-        else:
-            print('Column "title" not present; no columns specified.')
-            show_columns(risdf)
+    cols = args.columns.split(',')
+    # checks if help was requested
+    if len(cols) == 1 and cols[0] == '?':
+        show_columns(risdf)
+        sys.exit(1)
+    # checks that the requested items exist in the RIS file
+    for c in cols:
+        if c not in risdf:
+            print('Invalid column: "{}".'.format(c))
             sys.exit(1)
 
     if args.output is not None:
