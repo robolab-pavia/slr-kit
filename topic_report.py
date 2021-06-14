@@ -3,6 +3,7 @@ import json
 import csv
 import os
 import collections
+import datetime
 
 from RISparser import readris
 from tabulate import tabulate
@@ -21,11 +22,8 @@ def init_argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument('ris_file', type=str, help='the path to the ris file containing papers data')
     parser.add_argument('json_file', type=str, help='the path to the json file containing lda results')
-    parser.add_argument('dataset_name', type=str, help='name of the dataset to be reported')
-    parser.add_argument('md_template', type=str,
-                        help='path of the template for markdown report file. '
-                             'This is always interpreted as relative to the '
-                             'current directory.')
+    #parser.add_argument('dataset_name', type=str, help='name of the dataset to be reported')
+    parser.add_argument('md_template', type=str, help='name of template for markdown report file')
 
     return parser
 
@@ -50,8 +48,6 @@ def prepare_papers(ris_path, json_path):
     with open(ris_path, 'r', encoding='utf-8') as bibliography_file:
         entries = readris(bibliography_file)
         for entry in entries:
-            if 'title' not in entry:
-                continue
             papers_list.append(entry)
 
     for paper in papers_list:
@@ -174,14 +170,14 @@ def report_journal_years(papers_list, journals_dict):
     return journal_year
 
 
-def plot_years(topics_dict, dataset_name):
+def plot_years(topics_dict, dirname):
     """
     Creates a plot for the number of papers published each year for each topic
 
     :param topics_dict: dictionary with topic-year data
     :type topics_dict: dict
-    :param dataset_name: name of the dataset
-    :type dataset_name: str
+    :param dirname: name of the directory where graph will be saved
+    :type dirname: str
     """
 
     fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
@@ -211,10 +207,10 @@ def plot_years(topics_dict, dataset_name):
     ax[1].legend()
 
     fig.tight_layout()
-    plt.savefig(dataset_name+'_year.png')
+    plt.savefig(dirname+'/reportyear.png')
 
 
-def prepare_tables(topics_dict, journals_topic, journals_year, dataset_name):
+def prepare_tables(topics_dict, journals_topic, journals_year, dirname):
     """
     Creates tables for every data created in previous function, with the Tabulate
     module and saves them in a directory
@@ -225,8 +221,8 @@ def prepare_tables(topics_dict, journals_topic, journals_year, dataset_name):
     :type journals_topic: dict
     :param journals_year: dictionary with journal-year data
     :type journals_year: dict
-    :param dataset_name: name of the dataset
-    :type dataset_name: str
+    :param dirname: name of the directory where the files will be saved
+    :type dirname: str
     :return: three tables for every dictionary
     :rtype: tuple[str, str, str]
     """
@@ -282,23 +278,21 @@ def prepare_tables(topics_dict, journals_topic, journals_year, dataset_name):
         journal_year_list.append(line)
 
     journal_year_table = tabulate(journal_year_list, headers="firstrow", floatfmt=".3f", tablefmt="github")
-    if (dataset_name+'-tables') not in os.listdir():
-        os.mkdir(dataset_name+'-tables')
+    if (dirname+'/tables') not in os.listdir():
+        os.mkdir(dirname+'/tables')
 
-    with open(dataset_name+'-tables/topic_year.csv', 'w', newline='') as csv_file:
-        writer = csv.writer(csv_file, delimiter=',')
-        for row in topic_year_list:
-            writer.writerow(row)
+    latex_year_topic = tabulate(topic_year_list, headers='firstrow', tablefmt='latex')
+    latex_journal_topic = tabulate(journal_topic_list, headers='firstrow', tablefmt='latex')
+    latex_journal_year = tabulate(journal_year_list, headers='firstrow', tablefmt='latex')
 
-    with open(dataset_name+'-tables/journal_topic.csv', 'w', newline='') as csv_file:
-        writer = csv.writer(csv_file, delimiter=',')
-        for row in journal_topic_list:
-            writer.writerow(row)
+    f1 = open(dirname + "/tables/yeartopic.tex", "x")
+    f1.write(latex_year_topic)
 
-    with open(dataset_name+'-tables/journal_year.csv', 'w', newline='') as csv_file:
-        writer = csv.writer(csv_file, delimiter=',')
-        for row in journal_year_list:
-            writer.writerow(row)
+    f2 = open(dirname + "/tables/journaltopic.tex", "x")
+    f2.write(latex_journal_topic)
+
+    f3 = open(dirname + "/tables/journalyear.tex", "x")
+    f3.write(latex_journal_year)
 
     return topic_year_table, journal_topic_table, journal_year_table
 
@@ -308,31 +302,36 @@ def main():
     args = parser.parse_args()
     ris_path = args.ris_file
     json_path = args.json_file
-    dataset = args.dataset_name
+
+    timestamp = str(datetime.datetime.now())
+    timestamp = timestamp.replace(':', '-')
+    timestamp = timestamp.replace(' ', '-')
+    dirname = 'report' + timestamp
+
+    os.mkdir(dirname)
 
     papers_list, topics_list = prepare_papers(ris_path, json_path)
     topics_dict = report_year(papers_list, topics_list)
-    plot_years(topics_dict, dataset)
+    plot_years(topics_dict, dirname)
     journals_dict = prepare_journals(papers_list)
     journals_year = report_journal_years(papers_list, journals_dict)
     journals_topics = report_journal_topics(journals_dict, papers_list)
     topic_year_table, journal_topic_table, journal_year_table = prepare_tables(topics_dict,
                                                                                journals_topics,
                                                                                journals_year,
-                                                                               dataset)
+                                                                               dirname)
 
     env = Environment(loader=FileSystemLoader('.'),
                       autoescape=True)
 
     template = env.get_template(args.md_template)
-    year_report = dataset + '_year.png'
+    year_report = os.path.abspath(dirname + '/reportyear.png')
     md_file = template.render(year_report=year_report,
                               year_table=topic_year_table,
                               journal_topic_table=journal_topic_table,
-                              journal_year_table=journal_year_table,
-                              dataset_name=args.dataset_name)
+                              journal_year_table=journal_year_table)
 
-    with open(args.dataset_name+".md", "w") as fh:
+    with open(dirname+"/report.md", "w") as fh:
         fh.write(md_file)
 
 
