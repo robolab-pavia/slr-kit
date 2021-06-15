@@ -260,10 +260,10 @@ def regex(text, stopword_placeholder=STOPWORD_PLACEHOLDER, lang='en',
         regex_with_spaces = regexDF[regexDF["pattern"].str.contains("\s", regex=False)]
 
         for _, row in regex_with_spaces.iterrows():
-            text = re.sub(row["pattern"], "__{}__".format(row["repl"]), text)
+            text = re.sub(row["pattern"], "__{}__".format(row["repl"]), text, flags=re.IGNORECASE)
 
         for _, row in regexDF[~regexDF["pattern"].isin(regex_with_spaces["pattern"])].iterrows():
-            text = ' '.join([re.sub(row["pattern"], "__{}__".format(row["repl"]), gram) for gram in text.split()])
+            text = ' '.join([re.sub(row["pattern"], "__{}__".format(row["repl"]), gram, flags=re.IGNORECASE) for gram in text.split()])    
 
     # Change punctuation and remove special characters (not the hyphen) and
     # digits. The definition of special character and punctuation, changes with
