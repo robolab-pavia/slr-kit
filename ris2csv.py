@@ -27,10 +27,7 @@ def show_columns(df):
         print('   {}'.format(c))
 
 
-def main():
-    parser = init_argparser()
-    args = parser.parse_args()
-
+def ris2csv(args):
     with open(args.input_file, 'r', encoding='utf-8') as bibliography_file:
         entries = readris(bibliography_file)
         risdf = pd.DataFrame(entries)
@@ -59,6 +56,12 @@ def main():
 
     risdf.to_csv(output_file, columns=cols, index=[i for i in risdf.index],
                  index_label='id', header=True, sep='\t')
+
+
+def main():
+    parser = init_argparser()
+    args = parser.parse_args()
+    ris2csv(args)
 
 
 if __name__ == '__main__':
