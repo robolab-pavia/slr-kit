@@ -43,7 +43,7 @@ def init_project(args):
     if args.config_dir is not None:
         config_dir: pathlib.Path = args.cwd / args.config_dir
     else:
-        config_dir: pathlib.Path = args.cwd / f'slrkit-{args.name}'
+        config_dir: pathlib.Path = args.cwd / 'slrkit.conf'
     metafile = args.cwd / 'META.toml'
     if metafile.exists():
         obj = toml_load(metafile)
@@ -306,7 +306,7 @@ def init_argparser():
                                   'files. If this directory already exists, '
                                   'only the missing template file are created. '
                                   'If this option is omitted, the directory '
-                                  'will be named slrkit-<project name>.')
+                                  'will be named "slrkit.conf".')
     parser_init.add_argument('--author', '-A', action='store', type=str,
                              default='', help='Name of the author of the '
                                               'project')
