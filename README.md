@@ -419,7 +419,7 @@ which needs to be filled with the csv tables and the graph saved by the script.
 
 ## `report_template.md`
 
-This is the Markdown template that will be automatically be cloned and filled by `topic_report.py`.
+This is the Markdown template that will be automatically cloned and filled by `topic_report.py`.
 The report will contain:
 - A table containing data about Topic-Year evolution
 - A graph about Topic-Year evolution
