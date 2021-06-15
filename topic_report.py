@@ -22,7 +22,6 @@ def init_argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument('ris_file', type=str, help='the path to the ris file containing papers data')
     parser.add_argument('json_file', type=str, help='the path to the json file containing lda results')
-    #parser.add_argument('dataset_name', type=str, help='name of the dataset to be reported')
     parser.add_argument('md_template', type=str, help='name of template for markdown report file')
 
     return parser
@@ -284,6 +283,9 @@ def prepare_tables(topics_dict, journals_topic, journals_year, dirname):
     latex_year_topic = tabulate(topic_year_list, headers='firstrow', tablefmt='latex')
     latex_journal_topic = tabulate(journal_topic_list, headers='firstrow', tablefmt='latex')
     latex_journal_year = tabulate(journal_year_list, headers='firstrow', tablefmt='latex')
+
+    latex_journal_topic = latex_journal_topic.replace('lrrrrr', 'p{3cm}rrrrr')
+    latex_journal_year = latex_journal_year.replace('lrrrrr', 'p{3cm}rrrrr')
 
     f1 = open(dirname + "/tables/yeartopic.tex", "x")
     f1.write(latex_year_topic)
