@@ -1,6 +1,5 @@
 import argparse
 import json
-import csv
 import os
 import collections
 import datetime
