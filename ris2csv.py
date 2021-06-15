@@ -57,13 +57,8 @@ def main():
     else:
         output_file = sys.stdout
 
-    export_csv = risdf.to_csv(
-            output_file,
-            columns=cols,
-            index=[i for i in risdf.index],
-            index_label='id',
-            header=True,
-            sep='\t')
+    risdf.to_csv(output_file, columns=cols, index=[i for i in risdf.index],
+                 index_label='id', header=True, sep='\t')
 
 
 if __name__ == '__main__':
