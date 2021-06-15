@@ -398,9 +398,9 @@ evaluate_clusters.py pckmeans_clusters.csv ground_truth.json
 ## `topic_report.py`
 
 - ACTION: Generate reports for various stats regarding topics and papers.
-- INPUT: the RIS file containing data for all papers and the json docs file containing results from LDA
-- OUTPUT: A directory named report<current timestamp>, containing a graph in png format and 3 tables in tex format
-    Also a markdown template will be automatically filled
+- INPUT: the RIS file containing data for all papers and the json docs file containing results from LDA.
+- OUTPUT: A directory named report<current timestamp>, containing a graph in png format and 3 tables in tex format.
+    Also a markdown template will be automatically filled and saved inside the directory.
 
 ### Arguments
 
