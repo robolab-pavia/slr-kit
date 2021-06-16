@@ -3,6 +3,8 @@ import json
 import os
 import collections
 import datetime
+import pathlib
+import shutil
 
 from RISparser import readris
 from tabulate import tabulate
@@ -21,7 +23,6 @@ def init_argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument('ris_file', type=str, help='the path to the ris file containing papers data')
     parser.add_argument('json_file', type=str, help='the path to the json file containing lda results')
-    parser.add_argument('md_template', type=str, help='name of template for markdown report file')
 
     return parser
 
@@ -301,6 +302,15 @@ def prepare_tables(topics_dict, journals_topic, journals_year, dirname):
 
 
 def main():
+    script_dir = str(pathlib.Path(__file__).parent)
+    listdir = os.listdir(script_dir)
+
+    if 'report_template.md' not in listdir:
+        shutil.copy(script_dir+'/report_templates/report_template.md', script_dir)
+
+    if 'report_template.tex' not in listdir:
+        shutil.copy(script_dir+'/report_templates/report_template.tex', script_dir)
+
     parser = init_argparser()
     args = parser.parse_args()
     ris_path = args.ris_file
@@ -309,9 +319,10 @@ def main():
     timestamp = str(datetime.datetime.now())
     timestamp = timestamp.replace(':', '-')
     timestamp = timestamp.replace(' ', '-')
-    dirname = 'report' + timestamp
+    dirname = script_dir + '/report' + timestamp
 
     os.mkdir(dirname)
+    shutil.copy(script_dir + '/report_template.tex', dirname)
 
     papers_list, topics_list = prepare_papers(ris_path, json_path)
     topics_dict = report_year(papers_list, topics_list)
@@ -327,7 +338,7 @@ def main():
     env = Environment(loader=FileSystemLoader('.'),
                       autoescape=True)
 
-    template = env.get_template(args.md_template)
+    template = env.get_template('report_template.md')
     year_report = os.path.abspath(dirname + '/reportyear.png')
     md_file = template.render(year_report=year_report,
                               year_table=topic_year_table,
