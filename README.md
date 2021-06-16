@@ -414,6 +414,9 @@ evaluate_clusters.py pckmeans_clusters.csv ground_truth.json
 topic_report.py dsm.ris dsm_docs.json
 ```
 
+## report_templates
+In this directory there are the 2 templates, `report_template.md` and `report_template.tex` that are used by `topic_report.py`.
+
 ## `report_template.md`
 
 This is the Markdown template that will be automatically cloned and filled by `topic_report.py`.
