@@ -5,7 +5,6 @@ import collections
 import datetime
 import pathlib
 import shutil
-import re
 
 from RISparser import readris
 from tabulate import tabulate
@@ -25,7 +24,8 @@ def init_argparser():
     parser.add_argument('ris_file', type=str, help='the path to the ris file containing papers data')
     parser.add_argument('json_file', type=str, help='the path to the json file containing lda results')
     parser.add_argument('--dir', '-d', metavar='FILENAME', help='output directory where reports and files will be saved')
-    parser.add_argument('--year', '-y', type=str, help='year-range to be reported')
+    parser.add_argument('--minyear', '-m', type=int, help='minimum year to be reported')
+    parser.add_argument('--maxyear', '-M', type=int, help='maximum year to be reported')
 
     return parser
 
@@ -159,19 +159,24 @@ def report_journal_years(papers_list, journals_dict):
     :type papers_list: list
     :param journals_dict: list of dictionary with data of journals and their publications
     :type journals_dict: list
-    :return: dictionary with journal-year data
-    :rtype: dict
+    :return: dictionary with journal-year data and the min and max year in the dict
+    :rtype: tuple(dict, int, int)
     """
     journal_year = collections.defaultdict(dict)
-
+    min_year = float('inf')
+    max_year = -1
     for journal, value in journals_dict[0:10]:
         for paper in papers_list:
             if "secondary_title" in paper:
                 if paper["secondary_title"] == journal:
                     year = int(paper["year"])
                     journal_year[journal][year] = journal_year[journal].get(year, 0) + 1
+                    if year > max_year:
+                        max_year = year
+                    if year < min_year:
+                        min_year = year
 
-    return journal_year
+    return journal_year, min_year, max_year
 
 
 def plot_years(topics_dict, dirname):
@@ -214,7 +219,7 @@ def plot_years(topics_dict, dirname):
     plt.savefig(dirname / 'reportyear.png')
 
 
-def prepare_tables(topics_dict, journals_topic, journals_year, dirname, min_year=2007, max_year=2020):
+def prepare_tables(topics_dict, journals_topic, journals_year, dirname, min_year, max_year):
     """
     Creates tables for every data created in previous function, with the Tabulate
     module and saves them in a directory
@@ -337,50 +342,23 @@ def main():
     topics_dict = report_year(papers_list, topics_list)
     plot_years(topics_dict, dirname)
     journals_dict = prepare_journals(papers_list)
-    journals_year = report_journal_years(papers_list, journals_dict)
+    journals_year, min_year, max_year = report_journal_years(papers_list,
+                                                             journals_dict)
     journals_topics = report_journal_topics(journals_dict, papers_list)
-    if args.year is not None:
-        years = args.year
-        if re.match(r'\b\d{4}-\d{4}\b', years):
-            min_year = int(years[:4])
-            max_year = int(years[5:])
-            if min_year > max_year:
-                raise Exception('Please enter a valid year interval')
-            topic_year_table, journal_topic_table, journal_year_table = prepare_tables(topics_dict,
-                                                                                       journals_topics,
-                                                                                       journals_year,
-                                                                                       dirname,
-                                                                                       min_year,
-                                                                                       max_year)
-        elif re.match(r'\b\d{4}\b-', years):
-            min_year = int(years[:4])
-            topic_year_table, journal_topic_table, journal_year_table = prepare_tables(topics_dict,
-                                                                                       journals_topics,
-                                                                                       journals_year,
-                                                                                       dirname,
-                                                                                       min_year)
-        elif re.match(r'-\b\d{4}\b', years):
-            max_year = int(years[1:])
-            min_year = max_year
-            for journal in journals_year:
-                for year in journals_year[journal]:
-                    if min_year > int(year):
-                        min_year = int(year)
-            if min_year > max_year:
-                raise Exception('Please enter a valid year interval')
-            topic_year_table, journal_topic_table, journal_year_table = prepare_tables(topics_dict,
-                                                                                       journals_topics,
-                                                                                       journals_year,
-                                                                                       dirname,
-                                                                                       min_year,
-                                                                                       max_year)
-        else:
-            raise Exception('Please enter a valid year interval')
-    else:
-        topic_year_table, journal_topic_table, journal_year_table = prepare_tables(topics_dict,
-                                                                                   journals_topics,
-                                                                                   journals_year,
-                                                                                   dirname)
+    if args.minyear is not None:
+        min_year = args.minyear
+    if args.maxyear is not None:
+        max_year = args.maxyear
+
+    if min_year > max_year:
+        raise ValueError('The minimum year is greater than the maximum year')
+
+    topic_year_table, journal_topic_table, journal_year_table = prepare_tables(topics_dict,
+                                                                               journals_topics,
+                                                                               journals_year,
+                                                                               dirname,
+                                                                               min_year,
+                                                                               max_year)
 
     env = Environment(loader=FileSystemLoader(cwd),
                       autoescape=True)
