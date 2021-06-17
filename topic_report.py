@@ -328,7 +328,8 @@ def main():
     else:
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
         dirname = cwd / ('report' + timestamp)
-        os.mkdir(dirname)
+
+    dirname.mkdir(exist_ok=True)
 
     shutil.copy(script_dir / 'report_template.tex', dirname)
 
