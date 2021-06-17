@@ -285,7 +285,7 @@ def prepare_tables(topics_dict, journals_topic, journals_year, dirname, min_year
         journal_year_list.append(line)
 
     journal_year_table = tabulate(journal_year_list, headers="firstrow", floatfmt=".3f", tablefmt="github")
-    if (dirname / 'tables') not in os.listdir():
+    if 'tables' not in os.listdir(dirname):
         os.mkdir(dirname / 'tables')
 
     latex_year_topic = tabulate(topic_year_list, headers='firstrow', tablefmt='latex')
