@@ -181,7 +181,7 @@ def plot_years(topics_dict, dirname):
     :param topics_dict: dictionary with topic-year data
     :type topics_dict: dict
     :param dirname: name of the directory where graph will be saved
-    :type dirname: str
+    :type dirname: Path
     """
 
     fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
@@ -211,7 +211,7 @@ def plot_years(topics_dict, dirname):
     ax[1].legend()
 
     fig.tight_layout()
-    plt.savefig(dirname+'/reportyear.png')
+    plt.savefig(dirname / 'reportyear.png')
 
 
 def prepare_tables(topics_dict, journals_topic, journals_year, dirname, min_year=2007, max_year=2020):
@@ -226,7 +226,7 @@ def prepare_tables(topics_dict, journals_topic, journals_year, dirname, min_year
     :param journals_year: dictionary with journal-year data
     :type journals_year: dict
     :param dirname: name of the directory where the files will be saved
-    :type dirname: str
+    :type dirname: Path
     :param min_year: minimum year that will be used in the report
     :type min_year: int
     :param max_year: maximum year that will be used in the report
@@ -285,8 +285,8 @@ def prepare_tables(topics_dict, journals_topic, journals_year, dirname, min_year
         journal_year_list.append(line)
 
     journal_year_table = tabulate(journal_year_list, headers="firstrow", floatfmt=".3f", tablefmt="github")
-    if (dirname+'/tables') not in os.listdir():
-        os.mkdir(dirname+'/tables')
+    if (dirname / 'tables') not in os.listdir():
+        os.mkdir(dirname / 'tables')
 
     latex_year_topic = tabulate(topic_year_list, headers='firstrow', tablefmt='latex')
     latex_journal_topic = tabulate(journal_topic_list, headers='firstrow', tablefmt='latex')
@@ -295,27 +295,28 @@ def prepare_tables(topics_dict, journals_topic, journals_year, dirname, min_year
     latex_journal_topic = latex_journal_topic.replace('lrrrrr', 'p{3cm}rrrrr')
     latex_journal_year = latex_journal_year.replace('lrrrrr', 'p{3cm}rrrrr')
 
-    with open(dirname + "/tables/yeartopic.tex", "w") as f:
+    with open(dirname / 'tables' / 'yeartopic.tex', 'w') as f:
         f.write(latex_year_topic)
 
-    with open(dirname + "/tables/journaltopic.tex", "w") as f:
+    with open(dirname / 'tables' / 'journaltopic.tex', 'w') as f:
         f.write(latex_journal_topic)
 
-    with open(dirname + "/tables/journalyear.tex", "w") as f:
+    with open(dirname / 'tables' / 'journalyear.tex', 'w') as f:
         f.write(latex_journal_year)
 
     return topic_year_table, journal_topic_table, journal_year_table
 
 
 def main():
-    script_dir = str(pathlib.Path(__file__).parent)
+    script_dir = pathlib.Path(__file__).parent
+    cwd = pathlib.Path.cwd()
     listdir = os.listdir(script_dir)
 
     if 'report_template.md' not in listdir:
-        shutil.copy(script_dir+'/report_templates/report_template.md', script_dir)
+        shutil.copy(script_dir / 'report_templates' / 'report_template.md', cwd)
 
     if 'report_template.tex' not in listdir:
-        shutil.copy(script_dir+'/report_templates/report_template.tex', script_dir)
+        shutil.copy(script_dir / 'report_templates' / 'report_template.tex', cwd)
 
     parser = init_argparser()
     args = parser.parse_args()
@@ -323,13 +324,13 @@ def main():
     json_path = args.json_file
 
     if args.dir is not None:
-        dirname = args.dir
+        dirname = cwd / args.dir
     else:
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-        dirname = script_dir + '/report' + timestamp
+        dirname = cwd / ('report' + timestamp)
         os.mkdir(dirname)
 
-    shutil.copy(script_dir + '/report_template.tex', dirname)
+    shutil.copy(script_dir / 'report_template.tex', dirname)
 
     papers_list, topics_list = prepare_papers(ris_path, json_path)
     topics_dict = report_year(papers_list, topics_list)
@@ -384,13 +385,13 @@ def main():
                       autoescape=True)
 
     template = env.get_template('report_template.md')
-    year_report = os.path.abspath(dirname + '/reportyear.png')
+    year_report = os.path.abspath(dirname / 'reportyear.png')
     md_file = template.render(year_report=year_report,
                               year_table=topic_year_table,
                               journal_topic_table=journal_topic_table,
                               journal_year_table=journal_year_table)
 
-    with open(dirname+"/report.md", "w") as fh:
+    with open(dirname / "report.md", "w") as fh:
         fh.write(md_file)
 
 
