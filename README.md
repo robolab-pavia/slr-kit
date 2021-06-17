@@ -413,7 +413,8 @@ Positional:
 Optional:
 
 - `--dir DIR, -d DIR`: path to the directory where output will be saved.
-- `--year YEAR, -y YEAR`: year interval that will be used in the reports. Can have 3 formats: `xxxx-yyyy, -xxxx, xxxx-`
+- `--minyear YEAR, -m YEAR`: minimum year that will be used in the reports. If missing, the minimum year found in the data is used;
+- `--maxyear YEAR, -M YEAR`: maximum year that will be used in the reports. If missing, the maximum year found in the data is used.
 
 ### Example of usage
 
