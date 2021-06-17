@@ -15,3 +15,5 @@ active-semi-supervised-clustering
 psutil
 treetaggerwrapper
 git+https://github.com/robolab-pavia/fawoc.git
+tabulate
+Jinja2
