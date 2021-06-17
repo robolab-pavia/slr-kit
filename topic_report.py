@@ -310,7 +310,7 @@ def prepare_tables(topics_dict, journals_topic, journals_year, dirname, min_year
 def main():
     script_dir = pathlib.Path(__file__).parent
     cwd = pathlib.Path.cwd()
-    listdir = os.listdir(script_dir)
+    listdir = os.listdir(cwd)
 
     if 'report_template.md' not in listdir:
         shutil.copy(script_dir / 'report_templates' / 'report_template.md', cwd)
