@@ -24,8 +24,12 @@ def init_argparser():
     parser.add_argument('ris_file', type=str, help='the path to the ris file containing papers data')
     parser.add_argument('json_file', type=str, help='the path to the json file containing lda results')
     parser.add_argument('--dir', '-d', metavar='FILENAME', help='output directory where reports and files will be saved')
-    parser.add_argument('--minyear', '-m', type=int, help='minimum year to be reported')
-    parser.add_argument('--maxyear', '-M', type=int, help='maximum year to be reported')
+    parser.add_argument('--minyear', '-m', type=int, help='minimum year to be reported. '
+                                                          'If missing, the minimum year '
+                                                          'in the data is used.')
+    parser.add_argument('--maxyear', '-M', type=int, help='maximum year to be reported. '
+                                                          'If missing, the maximum year '
+                                                          'in the data is used.')
 
     return parser
 
