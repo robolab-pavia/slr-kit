@@ -385,7 +385,7 @@ def main():
                       autoescape=True)
 
     template = env.get_template('report_template.md')
-    year_report = os.path.abspath(dirname / 'reportyear.png')
+    year_report = 'reportyear.png'
     md_file = template.render(year_report=year_report,
                               year_table=topic_year_table,
                               journal_topic_table=journal_topic_table,
