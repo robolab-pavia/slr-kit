@@ -6,21 +6,6 @@ from RISparser import readris
 import arguments
 
 
-def init_argparser():
-    """Initialize the command line parser."""
-    parser = arguments.ArgParse()
-    parser.add_argument('input_file', action="store", type=str,
-                        help='input RIS bibliography file')
-    parser.add_argument('--output', '-o', metavar='FILENAME',
-                        help='output CSV file name')
-    parser.add_argument('--columns', '-c', metavar='col1,..,coln',
-                        default='title,abstract',
-                        help='list of comma-separated columns to export. If '
-                             'absent %(default)r is used. Use \'?\' for the '
-                             'list of available columns')
-    return parser
-
-
 def show_columns(df):
     print('Valid columns:')
     for c in df.columns:
@@ -58,10 +43,39 @@ def ris2csv(args):
                  index_label='id', header=True, sep='\t')
 
 
+IMPORTERS = {
+    'RIS': ris2csv
+}
+DEFAULT_IMPORTER = 'RIS'
+
+
+def init_argparser():
+    """Initialize the command line parser."""
+    parser = arguments.ArgParse()
+    parser.add_argument('input_file', action='store', type=str,
+                        help='input bibliography file')
+    parser.add_argument('--type', '-t', action='store', type=str,
+                        default=DEFAULT_IMPORTER, choices=list(IMPORTERS.keys()),
+                        help='Type of the bibliography file. Supported types: '
+                             '%(choices)s. If absent %(default)r is used.')
+    parser.add_argument('--output', '-o', metavar='FILENAME',
+                        help='output CSV file name')
+    parser.add_argument('--columns', '-c', metavar='col1,..,coln',
+                        default='title,abstract',
+                        help='list of comma-separated columns to export. If '
+                             'absent %(default)r is used. Use \'?\' for the '
+                             'list of available columns')
+    return parser
+
+
+def import_data(args):
+    IMPORTERS[args.type](args)
+
+
 def main():
     parser = init_argparser()
     args = parser.parse_args()
-    ris2csv(args)
+    import_data(args)
 
 
 if __name__ == '__main__':
