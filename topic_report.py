@@ -325,9 +325,7 @@ def main():
     if args.dir is not None:
         dirname = args.dir
     else:
-        timestamp = str(datetime.datetime.now())
-        timestamp = timestamp.replace(':', '-')
-        timestamp = timestamp.replace(' ', '-')
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
         dirname = script_dir + '/report' + timestamp
         os.mkdir(dirname)
 
