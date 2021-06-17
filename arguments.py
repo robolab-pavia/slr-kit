@@ -197,6 +197,7 @@ class ArgParse(argparse.ArgumentParser):
                 'non-standard': non_standard,
                 'required': ret.required,
                 'dest': ret.dest,
+                'choices': ret.choices,
                 'logfile': log,
                 'suggest-suffix': suggest,
                 'cli_only': cli_only,
