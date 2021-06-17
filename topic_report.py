@@ -381,7 +381,7 @@ def main():
                                                                                    journals_year,
                                                                                    dirname)
 
-    env = Environment(loader=FileSystemLoader(script_dir),
+    env = Environment(loader=FileSystemLoader(cwd),
                       autoescape=True)
 
     template = env.get_template('report_template.md')
