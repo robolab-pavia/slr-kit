@@ -295,14 +295,14 @@ def prepare_tables(topics_dict, journals_topic, journals_year, dirname, min_year
     latex_journal_topic = latex_journal_topic.replace('lrrrrr', 'p{3cm}rrrrr')
     latex_journal_year = latex_journal_year.replace('lrrrrr', 'p{3cm}rrrrr')
 
-    f1 = open(dirname + "/tables/yeartopic.tex", "x")
-    f1.write(latex_year_topic)
+    with open(dirname + "/tables/yeartopic.tex", "w") as f:
+        f.write(latex_year_topic)
 
-    f2 = open(dirname + "/tables/journaltopic.tex", "x")
-    f2.write(latex_journal_topic)
+    with open(dirname + "/tables/journaltopic.tex", "w") as f:
+        f.write(latex_journal_topic)
 
-    f3 = open(dirname + "/tables/journalyear.tex", "x")
-    f3.write(latex_journal_year)
+    with open(dirname + "/tables/journalyear.tex", "w") as f:
+        f.write(latex_journal_year)
 
     return topic_year_table, journal_topic_table, journal_year_table
 
