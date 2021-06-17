@@ -5,6 +5,7 @@ import collections
 import datetime
 import pathlib
 import shutil
+import re
 
 from RISparser import readris
 from tabulate import tabulate
@@ -23,6 +24,8 @@ def init_argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument('ris_file', type=str, help='the path to the ris file containing papers data')
     parser.add_argument('json_file', type=str, help='the path to the json file containing lda results')
+    parser.add_argument('--dir', '-d', metavar='FILENAME', help='output directory where reports and files will be saved')
+    parser.add_argument('--year', '-y', type=str, help='year-range to be reported')
 
     return parser
 
@@ -211,7 +214,7 @@ def plot_years(topics_dict, dirname):
     plt.savefig(dirname+'/reportyear.png')
 
 
-def prepare_tables(topics_dict, journals_topic, journals_year, dirname):
+def prepare_tables(topics_dict, journals_topic, journals_year, dirname, min_year=2007, max_year=2020):
     """
     Creates tables for every data created in previous function, with the Tabulate
     module and saves them in a directory
@@ -224,13 +227,16 @@ def prepare_tables(topics_dict, journals_topic, journals_year, dirname):
     :type journals_year: dict
     :param dirname: name of the directory where the files will be saved
     :type dirname: str
+    :param min_year: minimum year that will be used in the report
+    :type min_year: int
+    :param max_year: maximum year that will be used in the report
+    :type max_year: int
     :return: three tables for every dictionary
     :rtype: tuple[str, str, str]
     """
 
-    min_year = 2007
     first_line = ["Topic"]
-    first_line.extend(list(range(min_year, 2021)))
+    first_line.extend(list(range(min_year, max_year + 1)))
     topic_year_list = [first_line]
 
     for topic in topics_dict:
@@ -265,7 +271,7 @@ def prepare_tables(topics_dict, journals_topic, journals_year, dirname):
     journal_topic_table = tabulate(journal_topic_list, headers="firstrow", floatfmt=".3f", tablefmt="github")
 
     first_line = ["Journal"]
-    first_line.extend(list(range(min_year, 2021)))
+    first_line.extend(list(range(min_year, max_year + 1)))
     journal_year_list = [first_line]
     for journal in journals_year:
         sorted_dic = sorted(journals_year[journal].items())
@@ -316,12 +322,15 @@ def main():
     ris_path = args.ris_file
     json_path = args.json_file
 
-    timestamp = str(datetime.datetime.now())
-    timestamp = timestamp.replace(':', '-')
-    timestamp = timestamp.replace(' ', '-')
-    dirname = script_dir + '/report' + timestamp
+    if args.dir is not None:
+        dirname = args.dir
+    else:
+        timestamp = str(datetime.datetime.now())
+        timestamp = timestamp.replace(':', '-')
+        timestamp = timestamp.replace(' ', '-')
+        dirname = script_dir + '/report' + timestamp
+        os.mkdir(dirname)
 
-    os.mkdir(dirname)
     shutil.copy(script_dir + '/report_template.tex', dirname)
 
     papers_list, topics_list = prepare_papers(ris_path, json_path)
@@ -330,10 +339,48 @@ def main():
     journals_dict = prepare_journals(papers_list)
     journals_year = report_journal_years(papers_list, journals_dict)
     journals_topics = report_journal_topics(journals_dict, papers_list)
-    topic_year_table, journal_topic_table, journal_year_table = prepare_tables(topics_dict,
-                                                                               journals_topics,
-                                                                               journals_year,
-                                                                               dirname)
+    if args.year is not None:
+        years = args.year
+        if re.match(r'\b\d{4}-\d{4}\b', years):
+            min_year = int(years[:4])
+            max_year = int(years[5:])
+            if min_year > max_year:
+                raise Exception('Please enter a valid year interval')
+            topic_year_table, journal_topic_table, journal_year_table = prepare_tables(topics_dict,
+                                                                                       journals_topics,
+                                                                                       journals_year,
+                                                                                       dirname,
+                                                                                       min_year,
+                                                                                       max_year)
+        elif re.match(r'\b\d{4}\b-', years):
+            min_year = int(years[:4])
+            topic_year_table, journal_topic_table, journal_year_table = prepare_tables(topics_dict,
+                                                                                       journals_topics,
+                                                                                       journals_year,
+                                                                                       dirname,
+                                                                                       min_year)
+        elif re.match(r'-\b\d{4}\b', years):
+            max_year = int(years[1:])
+            min_year = max_year
+            for journal in journals_year:
+                for year in journals_year[journal]:
+                    if min_year > int(year):
+                        min_year = int(year)
+            if min_year > max_year:
+                raise Exception('Please enter a valid year interval')
+            topic_year_table, journal_topic_table, journal_year_table = prepare_tables(topics_dict,
+                                                                                       journals_topics,
+                                                                                       journals_year,
+                                                                                       dirname,
+                                                                                       min_year,
+                                                                                       max_year)
+        else:
+            raise Exception('Please enter a valid year interval')
+    else:
+        topic_year_table, journal_topic_table, journal_year_table = prepare_tables(topics_dict,
+                                                                                   journals_topics,
+                                                                                   journals_year,
+                                                                                   dirname)
 
     env = Environment(loader=FileSystemLoader(script_dir),
                       autoescape=True)
