@@ -158,6 +158,11 @@ def prepare_script_arguments(config, config_dir, confname, script_args):
         dest = v.get('dest', k.replace('-', '_'))
         param = config.get(k, v['value'])
         def_val = (param == v['value'])
+        if v['choices'] is not None:
+            if param not in v['choices']:
+                msg = 'Invalid value for parameter {!r} in {}.\nMust be one of {}'
+                sys.exit(msg.format(k, config_dir / confname, v['choices']))
+
         if v['required']:
             if def_val:
                 msg = 'Missing valid value for required parameter {!r} in {}'
