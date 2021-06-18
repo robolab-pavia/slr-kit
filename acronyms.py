@@ -1,6 +1,7 @@
+import csv
 import sys
 import logging
-import pandas
+import pandas as pd
 
 import arguments
 from schwartz_hearst import extract_abbreviation_definition_pairs
@@ -23,11 +24,11 @@ def init_argparser():
 def extract_acronyms(dataset):
     acro = {}
     for abstract in dataset['abstract']:
-        #print(abstract)
         pairs = extract_abbreviation_definition_pairs(doc_text=abstract)
         acro.update(pairs)
-    acrodf = pandas.DataFrame(list(acro.items()), columns=['Acronym', 'Extended'])
-    return acrodf
+
+    acrolist = [f'{acro[abb]} | ({abb})' for abb in sorted(acro.keys())]
+    return acrolist
 
 
 def main():
@@ -38,14 +39,20 @@ def main():
                                 level=logging.DEBUG)
 
     # na_filter=False avoids NaN if the abstract is missing
-    dataset = pandas.read_csv(args.datafile, delimiter='\t', na_filter=False,
-                              encoding='utf-8')
-    acrodf = extract_acronyms(dataset)
-    acrodf = acrodf.sort_values(by=['Acronym'])
-    #print(acrodf)
-    output_file = open(args.output, 'w',
-                       encoding='utf-8') if args.output is not None else sys.stdout
-    export_csv = acrodf.to_csv(output_file, index=None, header=True, sep='\t')
+    dataset = pd.read_csv(args.datafile, delimiter='\t', na_filter=False,
+                          encoding='utf-8')
+    acrolist = extract_acronyms(dataset)
+
+    if args.output is not None:
+        output_file = open(args.output, 'w', encoding='utf-8')
+    else:
+        output_file = sys.stdout
+
+    writer = csv.writer(output_file, delimiter='\t', quotechar='"',
+                        quoting=csv.QUOTE_MINIMAL)
+    writer.writerow(['id', 'term', 'label'])
+    for i, acro in enumerate(acrolist):
+        writer.writerow([i, acro, ''])
 
 
 if __name__ == "__main__":
