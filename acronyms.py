@@ -14,6 +14,9 @@ def init_argparser():
                         help="input CSV data file")
     parser.add_argument('--output', '-o', metavar='FILENAME',
                         help='output file name')
+    parser.add_argument('--logfile', default='slr-kit.log',
+                        help='log file name. If omitted %(default)r is used',
+                        logfile=True)
     return parser
 
 
@@ -31,7 +34,7 @@ def main():
     parser = init_argparser()
     args = parser.parse_args()
 
-    debug_logger = setup_logger('debug_logger', 'slr-kit.log',
+    debug_logger = setup_logger('debug_logger', args.logfile,
                                 level=logging.DEBUG)
 
     # na_filter=False avoids NaN if the abstract is missing
