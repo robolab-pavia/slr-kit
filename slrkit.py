@@ -287,6 +287,19 @@ def run_fawoc(args):
     fawoc_run(cmd_args)
 
 
+def run_import(args):
+    script_name = 'import_biblio'
+    confname = '.'.join([script_name, 'toml'])
+    config, config_dir, meta = check_project(args, confname)
+    from import_biblio import import_data, init_argparser as import_argparse
+    script_args = import_argparse().slrkit_arguments
+    cmd_args = prepare_script_arguments(config, config_dir, confname,
+                                        script_args)
+
+    os.chdir(args.cwd)
+    import_data(cmd_args)
+
+
 def init_argparser():
     """
     Initialize the command line parser.
