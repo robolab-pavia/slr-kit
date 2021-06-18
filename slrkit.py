@@ -75,7 +75,8 @@ def init_project(args):
         msg = 'Error: {} exist and is not a directory'
         sys.exit(msg.format(config_dir))
 
-    scripts = ['preprocess', 'gen_terms', 'lda', 'lda_grid_search', 'fawoc']
+    scripts = ['import_biblio', 'preprocess', 'gen_terms', 'lda',
+               'lda_grid_search', 'fawoc']
     for s in scripts:
         p = (config_dir / s).with_suffix('.toml')
         old_p = (directory / s).with_suffix('.toml')
