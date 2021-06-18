@@ -332,6 +332,13 @@ def init_argparser():
     parser_init.add_argument('--description', '-D', action='store', type=str,
                              default='', help='Description of the project')
     parser_init.set_defaults(func=init_project)
+    # import
+    parser_import = subparser.add_parser('import', help='Import a bibliographic'
+                                                        ' database converting '
+                                                        'to the csv format used'
+                                                        ' by slr-kit')
+
+    parser_import.set_defaults(func=run_import)
     # preproc
     parser_preproc = subparser.add_parser('preprocess',
                                           help='Run the preprocess stage in a '
