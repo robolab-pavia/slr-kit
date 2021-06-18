@@ -58,7 +58,8 @@ def init_argparser():
                         help='Type of the bibliography file. Supported types: '
                              '%(choices)s. If absent %(default)r is used.')
     parser.add_argument('--output', '-o', metavar='FILENAME',
-                        help='output CSV file name')
+                        help='output CSV file name',
+                        suggest_suffix='abstracts.csv')
     parser.add_argument('--columns', '-c', metavar='col1,..,coln',
                         default='title,abstract',
                         help='list of comma-separated columns to export. If '
