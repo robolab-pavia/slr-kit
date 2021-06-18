@@ -14,7 +14,8 @@ def init_argparser():
     parser.add_argument('datafile', action="store", type=str,
                         help="input CSV data file")
     parser.add_argument('--output', '-o', metavar='FILENAME',
-                        help='output file name')
+                        help='output file name',
+                        suggest_suffix='acronyms.csv')
     parser.add_argument('--column', '-c', default='abstract',
                         help='Name of the column of datafile to search the '
                              'acronyms. Default: %(default)s')
