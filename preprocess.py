@@ -224,11 +224,17 @@ def acronyms_generator(acronyms, prefix_suffix=STOPWORD_PLACEHOLDER):
     :rtype: Generator[tuple[str, tuple[str]], Any, None]
     """
     for _, row in acronyms.iterrows():
-        sub = f'{prefix_suffix}{row["Acronym"]}{prefix_suffix}'
-        yield sub, row['Extended']
-        alt = ('-'.join(row['Extended']), )
+        if row['label'] not in ['relevant', 'keyword']:
+            continue
+
+        sp = row['term'].split('|')
+        acronym = sp[1].strip(' ()').lower()
+        extended = tuple(sp[0].strip().lower().split())
+        sub = f'{prefix_suffix}{acronym}{prefix_suffix}'
+        yield sub, extended
+        alt = ('-'.join(extended), )
         yield sub, alt
-        yield sub, (row['Acronym'], )
+        yield sub, (acronym, )
 
 
 def language_specific_regex(text, lang='en'):
@@ -467,16 +473,11 @@ def preprocess(args):
         debug_logger.debug('Stop-words loaded and updated')
 
     if args.acronyms is not None:
-        conv = {
-            'Acronym': lambda s: s.lower(),
-            'Extended': lambda s: tuple(s.lower().split(' ')),
-        }
-        acronyms = pd.read_csv(args.acronyms, delimiter='\t', encoding='utf-8',
-                               converters=conv)
-        assert_column(args.acronyms, acronyms, ['Acronym', 'Extended'])
+        acronyms = pd.read_csv(args.acronyms, delimiter='\t', encoding='utf-8')
+        assert_column(args.acronyms, acronyms, ['term', 'label'])
         debug_logger.debug('Acronyms loaded and updated')
     else:
-        acronyms = pd.DataFrame(columns=['Acronym', 'Extended'])
+        acronyms = pd.DataFrame(columns=['term', 'label'])
 
     rel_terms = []
     if args.relevant_terms_file is not None:
