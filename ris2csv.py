@@ -39,8 +39,7 @@ def ris2csv(args):
     else:
         output_file = sys.stdout
 
-    risdf.to_csv(output_file, columns=cols, index=[i for i in risdf.index],
-                 index_label='id', header=True, sep='\t')
+    risdf.to_csv(output_file, columns=cols, index_label='id', sep='\t')
 
 
 IMPORTERS = {
