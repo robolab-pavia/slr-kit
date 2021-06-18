@@ -34,10 +34,7 @@ def extract_acronyms(dataset, column):
     return acrolist
 
 
-def main():
-    parser = init_argparser()
-    args = parser.parse_args()
-
+def acronyms(args):
     debug_logger = setup_logger('debug_logger', args.logfile,
                                 level=logging.DEBUG)
 
@@ -56,6 +53,12 @@ def main():
     writer.writerow(['id', 'term', 'label'])
     for i, acro in enumerate(acrolist):
         writer.writerow([i, acro, ''])
+
+
+def main():
+    parser = init_argparser()
+    args = parser.parse_args()
+    acronyms(args)
 
 
 if __name__ == "__main__":
