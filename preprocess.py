@@ -480,11 +480,11 @@ def preprocess(args):
 
     rel_terms = []
     if args.relevant_terms_file is not None:
-        for rfile, placeholder in args.relevant_terms_file:
-            if placeholder is not None and ' ' in placeholder:
+        for rfile, plh in args.relevant_terms_file:
+            if plh is not None and ' ' in plh:
                 sys.exit('A relevant term placeholder can not contain spaces')
 
-            rel_terms.append((load_relevant_terms(rfile), placeholder))
+            rel_terms.append((load_relevant_terms(rfile), plh))
 
         debug_logger.debug('Relevant words loaded and updated')
 
