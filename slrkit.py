@@ -352,6 +352,11 @@ def init_argparser():
                                                         ' by slr-kit')
 
     parser_import.set_defaults(func=run_import)
+    # acronyms
+    parser_acronyms = subparser.add_parser('acronyms', help='Extract acronyms '
+                                                            'from texts.')
+
+    parser_acronyms.set_defaults(func=run_acronyms)
     # preproc
     parser_preproc = subparser.add_parser('preprocess',
                                           help='Run the preprocess stage in a '
