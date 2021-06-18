@@ -1,14 +1,15 @@
-import argparse
 import sys
 import logging
 import pandas
+
+import arguments
 from schwartz_hearst import extract_abbreviation_definition_pairs
 from utils import setup_logger
 
 
 def init_argparser():
     """Initialize the command line parser."""
-    parser = argparse.ArgumentParser()
+    parser = arguments.ArgParse()
     parser.add_argument('datafile', action="store", type=str,
                         help="input CSV data file")
     parser.add_argument('--output', '-o', metavar='FILENAME',
