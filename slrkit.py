@@ -71,9 +71,10 @@ def init_project(args):
 
     try:
         config_dir.mkdir(exist_ok=True)
-    except FileExistsError:
+        (config_dir / 'log').mkdir(exist_ok=True)
+    except FileExistsError as e:
         msg = 'Error: {} exist and is not a directory'
-        sys.exit(msg.format(config_dir))
+        sys.exit(msg.format(e.filename))
 
     scripts = ['import_biblio', 'acronyms', 'preprocess', 'gen_terms', 'lda',
                'lda_grid_search', 'fawoc']
@@ -153,7 +154,7 @@ def prepare_script_arguments(config, config_dir, confname, script_args):
         if v.get('non-standard', False) or v.get('cli-only', False):
             continue
         if v.get('logfile', False):
-            setattr(args, k, str((config_dir / 'slr-kit.log').resolve()))
+            setattr(args, k, str((config_dir / 'log' / 'slr-kit.log').resolve()))
             continue
 
         dest = v.get('dest', k.replace('-', '_'))
@@ -281,7 +282,7 @@ def run_fawoc(args):
 
     # set profiler
     setattr(cmd_args, 'profiler_name',
-            (config_dir / 'fawoc_profiler.log').resolve())
+            (config_dir / 'log' / 'fawoc_profiler.log').resolve())
 
     os.chdir(args.cwd)
     fawoc_run(cmd_args)
