@@ -210,13 +210,18 @@ def acronyms_generator(acronyms, prefix_suffix=STOPWORD_PLACEHOLDER):
     """
     Generator that yields acronyms and the relative placeholder for replace_ngram
 
+    The acronyms Dataframe must have the format defined by the acronyms.py script.
+    The Dataframe must have two columns 'term' and 'label'.
+    'term' must contain the acronym in the form '<extended acronym> | (<abbreviation>)'
+    'label' is the classification made with fawoc. Only the rows with label equal
+    to 'relevant' or 'keyword' will be considered.
     The placeholder for each acronym is <prefix_suffix><abbreviation><prefix_suffix>
     The function yields for each acronym: the extended acronym, the extended
     acronym with all the word separated by '-' and the abbreviation of the acronym
     Each acronym is yielded as a tuple of strings.
 
     :param acronyms: the acronyms to replace in each document. Must have two
-        columns 'Acronym' and 'Extended'
+        columns 'term' and 'label'. See above for the format.
     :type acronyms: pd.DataFrame
     :param prefix_suffix: prefix and suffix used to create the placeholder
     :type prefix_suffix: str
@@ -334,7 +339,8 @@ def preprocess_item(item, relevant_terms, stopwords, acronyms, language='en',
     :param stopwords: the stop-words to filter
     :type stopwords: set[str]
     :param acronyms: the acronyms to replace in each document. Must have two
-        columns 'Acronym' and 'Extended'
+        columns 'term' and 'label'. See the acronyms_generato documentation for
+        info about the format.
     :type acronyms: pd.DataFrame
     :param language: code of the language to be used to lemmatize text
     :type language: str
@@ -386,7 +392,8 @@ def process_corpus(dataset, relevant_terms, stopwords, acronyms, language='en',
     :param stopwords: the stop-words to filter in each document
     :type stopwords: set[str]
     :param acronyms: the acronyms to replace in each document. Must have two
-        columns 'Acronym' and 'Extended'
+        columns 'term' and 'label'. See the acronyms_generato documentation for
+        info about the format.
     :type acronyms: pd.Dataframe
     :param language: code of the language to be used to lemmatize text
     :type language: str
