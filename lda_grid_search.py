@@ -1,5 +1,10 @@
-import argparse
 import sys
+# disable warnings if they are not explicitly wanted
+if not sys.warnoptions:
+    import warnings
+    warnings.simplefilter('ignore')
+
+import argparse
 from itertools import product
 from multiprocessing import Pool
 from pathlib import Path
@@ -12,12 +17,11 @@ import pandas as pd
 from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel, LdaModel
 
-from lda import (PHYSICAL_CPUS, STOPWORD_PLACEHOLDER, prepare_documents,
-                 output_topics)
+from arguments import AppendMultipleFilesAction, ArgParse
+from lda import (PHYSICAL_CPUS, prepare_documents, output_topics)
+from utils import assert_column, STOPWORD_PLACEHOLDER
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
-from utils import AppendMultipleFilesAction, assert_column
-
 _corpora: Optional[Dict[Tuple[str], Tuple[List[Tuple[int, int]],
                                           Dictionary, List[List[str]]]]] = None
 _seed: Optional[int] = None
@@ -37,16 +41,16 @@ def init_argparser():
              'parameters and it tries to find the best model. The optimal ' \
              'number of topic is searched in the interval specified by the ' \
              'user on the command line.'
-    parser = argparse.ArgumentParser(description='Performs the LDA on a dataset',
-                                     epilog=epilog)
+    parser = ArgParse(description='Performs the LDA on a dataset', epilog=epilog)
     parser.add_argument('preproc_file', action='store', type=Path,
                         help='path to the the preprocess file with the text to '
                              'elaborate.')
     parser.add_argument('terms_file', action='store', type=Path,
                         help='path to the file with the classified terms.')
     parser.add_argument('outdir', action='store', type=Path, nargs='?',
-                        default=Path.cwd(),
-                        help='path to the directory where to save the results.')
+                        default=Path.cwd(), help='path to the directory where '
+                                                 'to save the results.',
+                        non_standard=True)
     parser.add_argument('--text-column', '-t', action='store', type=str,
                         default='abstract_lem', dest='target_column',
                         help='Column in preproc_file to process. '
@@ -66,16 +70,16 @@ def init_argparser():
     parser.add_argument('--model', action='store_true',
                         help='if set, the best lda model is saved to directory '
                              '<outdir>/lda_model')
-    parser.add_argument('--min-topics', '-m', type=int, default=5,
-                        action=_ValidateInt,
+    parser.add_argument('--min-topics', '-m', type=int,
+                        default=5, action=_ValidateInt,
                         help='Minimum number of topics to retrieve '
                              '(default: %(default)s)')
-    parser.add_argument('--max-topics', '-M', type=int, default=20,
-                        action=_ValidateInt,
+    parser.add_argument('--max-topics', '-M', type=int,
+                        default=20, action=_ValidateInt,
                         help='Maximum number of topics to retrieve '
                              '(default: %(default)s)')
-    parser.add_argument('--step-topics', '-s', type=int, default=1,
-                        action=_ValidateInt,
+    parser.add_argument('--step-topics', '-s', type=int,
+                        default=1, action=_ValidateInt,
                         help='Step in range(min,max,step) for topics retrieving'
                              ' (default: %(default)s)')
     parser.add_argument('--seed', type=int, action=_ValidateInt,
@@ -86,16 +90,19 @@ def init_argparser():
                         help='if set, it saves the plot of the coherence as '
                              '<outdir>/lda_plot.pdf')
     parser.add_argument('--result', '-r', metavar='FILENAME',
-                        type=argparse.FileType('w'), default='-',
-                        help='Where to save the training results in CSV format.'
-                             ' If omitted or -, stdout is used.')
+                        type=argparse.FileType('w'),
+                        default='-', help='Where to save the training results '
+                                          'in CSV format.If omitted or -, '
+                                          'stdout is  used.',
+                        non_standard=True)
     parser.add_argument('--output', '-o', action='store_true',
                         help='if set, it stores the topic description in '
                              '<outdir>/lda_terms-topics_<date>_<time>.json, '
                              'and the document topic assignment in '
                              '<outdir>/lda_docs-topics_<date>_<time>.json')
-    parser.add_argument('--placeholder', '-p', default=STOPWORD_PLACEHOLDER,
-                        help='Placeholder for stop-word. Also used as a '
+    parser.add_argument('--placeholder', '-p',
+                        default=STOPWORD_PLACEHOLDER,
+                        help='Placeholder for barrier word. Also used as a '
                              'prefix for the relevant words. '
                              'Default: %(default)s')
     parser.add_argument('--delimiter', action='store', type=str,
@@ -222,8 +229,7 @@ def load_additional_terms(input_file):
     return rel_words_list
 
 
-def main():
-    args = init_argparser().parse_args()
+def lda_grid_search(args):
     terms_file = args.terms_file
     preproc_file = args.preproc_file
     output_dir = args.outdir
@@ -231,7 +237,7 @@ def main():
     placeholder = args.placeholder
     relevant_prefix = placeholder
 
-    if args.min_topics >= args.max_topics:
+    if args.min_topics > args.max_topics:
         sys.exit('max_topics must be greater than min_topics')
 
     additional_keyword = set()
@@ -327,6 +333,11 @@ def main():
         if args.plot_save:
             fig_file = output_dir / 'lda_plot.pdf'
             plt.savefig(str(fig_file), dpi=1000)
+
+
+def main():
+    args = init_argparser().parse_args()
+    lda_grid_search(args)
 
 
 if __name__ == '__main__':

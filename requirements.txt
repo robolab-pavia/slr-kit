@@ -8,7 +8,6 @@ RISparser
 scikit-learn
 regex
 scipy
-prompt_toolkit
 joblib
 seaborn
 active-semi-supervised-clustering
@@ -17,3 +16,4 @@ treetaggerwrapper
 git+https://github.com/robolab-pavia/fawoc.git
 tabulate
 Jinja2
+tomlkit

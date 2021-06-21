@@ -5,10 +5,14 @@ LDA Model
 Introduces Gensim's LDA model and demonstrates its use on the NIPS corpus.
 
 """
+import sys
+# disable warnings if they are not explicitly wanted
+if not sys.warnoptions:
+    import warnings
+    warnings.simplefilter('ignore')
 
 import argparse
 import json
-import sys
 from datetime import datetime
 from itertools import repeat, chain
 from multiprocessing import Pool
@@ -20,8 +24,8 @@ from gensim.models import LdaModel
 from gensim.models.coherencemodel import CoherenceModel
 from psutil import cpu_count
 
-from utils import (substring_index, AppendMultipleFilesAction,
-                   STOPWORD_PLACEHOLDER, RELEVANT_PREFIX, assert_column)
+from arguments import AppendMultipleFilesAction, ArgParse
+from utils import (substring_index, STOPWORD_PLACEHOLDER, RELEVANT_PREFIX, assert_column)
 
 PHYSICAL_CPUS = cpu_count(logical=False)
 
@@ -37,16 +41,16 @@ def init_argparser():
              "<outdir>/lda_terms-topics_<date>_<time>.json and the topics" \
              "assigned to each document in" \
              "<outdir>/lda_docs-topics_<date>_<time>.json"
-    parser = argparse.ArgumentParser(description='Performs the LDA on a dataset',
-                                     epilog=epilog)
+    parser = ArgParse(description='Performs the LDA on a dataset', epilog=epilog)
     parser.add_argument('preproc_file', action='store', type=Path,
                         help='path to the the preprocess file with the text to '
                              'elaborate.')
     parser.add_argument('terms_file', action='store', type=Path,
                         help='path to the file with the classified terms.')
     parser.add_argument('outdir', action='store', type=Path, nargs='?',
-                        default=Path.cwd(),
-                        help='path to the directory where to save the results.')
+                        default=Path.cwd(), help='path to the directory where '
+                                                 'to save the results.',
+                        non_standard=True)
     parser.add_argument('--text-column', '-t', action='store', type=str,
                         default='abstract_lem', dest='target_column',
                         help='Column in preproc_file to process. '
@@ -61,23 +65,25 @@ def init_argparser():
                         help='Additional keywords files')
     parser.add_argument('--acronyms', '-a',
                         help='TSV files with the approved acronyms')
-    parser.add_argument('--topics', action='store', type=int, default=20,
-                        help='Number of topics. If omitted %(default)s is used')
-    parser.add_argument('--alpha', action='store', type=str, default='auto',
-                        help='alpha parameter of LDA. If omitted %(default)s is'
-                             ' used')
-    parser.add_argument('--beta', action='store', type=str, default='auto',
-                        help='beta parameter of LDA. If omitted %(default)s is '
-                             'used')
-    parser.add_argument('--no_below', action='store', type=int, default=20,
-                        help='Keep tokens which are contained in at least'
-                             'this number of documents. If omitted %(default)s '
-                             'is used')
-    parser.add_argument('--no_above', action='store', type=float, default=0.5,
-                        help='Keep tokens which are contained in no more than '
-                             'this fraction of documents (fraction of total '
-                             'corpus size, not an absolute number). If omitted '
-                             '%(default)s is used')
+    parser.add_argument('--topics', action='store', type=int,
+                        default=20, help='Number of topics. If omitted '
+                                         '%(default)s is used')
+    parser.add_argument('--alpha', action='store', type=str,
+                        default='auto', help='alpha parameter of LDA. If '
+                                             'omitted %(default)s is used')
+    parser.add_argument('--beta', action='store', type=str,
+                        default='auto', help='beta parameter of LDA. If omitted'
+                                             ' %(default)s is used')
+    parser.add_argument('--no_below', action='store', type=int,
+                        default=20, help='Keep tokens which are contained in at'
+                                         ' least this number of documents. If '
+                                         'omitted %(default)s is used')
+    parser.add_argument('--no_above', action='store', type=float,
+                        default=0.5, help='Keep tokens which are contained in '
+                                          'no more than this fraction of '
+                                          'documents (fraction of total corpus '
+                                          'size, not an absolute number). If '
+                                          'omitted %(default)s is used')
     parser.add_argument('--seed', type=int, help='Seed to be used in training')
     parser.add_argument('--no-ngrams', action='store_true',
                         help='if set do not use the ngrams')
@@ -93,8 +99,9 @@ def init_argparser():
                              'named "model" is searched. the loaded model is '
                              'used with the dataset file to generate the topics'
                              ' and the topic document association')
-    parser.add_argument('--placeholder', '-p', default=STOPWORD_PLACEHOLDER,
-                        help='Placeholder for stop-word. Also used as a '
+    parser.add_argument('--placeholder', '-p',
+                        default=STOPWORD_PLACEHOLDER,
+                        help='Placeholder for barrier word. Also used as a '
                              'prefix for the relevant words. '
                              'Default: %(default)s')
     parser.add_argument('--delimiter', action='store', type=str,
@@ -442,9 +449,7 @@ def output_topics(model, dictionary, docs, titles, outdir, file_prefix):
         json.dump(docs_topics, file, indent='\t')
 
 
-def main():
-    args = init_argparser().parse_args()
-
+def lda(args):
     terms_file = args.terms_file
     preproc_file = args.preproc_file
     output_dir = args.outdir
@@ -505,6 +510,11 @@ def main():
         lda_path.mkdir(exist_ok=True)
         model.save(str(lda_path / 'model'))
         dictionary.save(str(lda_path / 'model_dictionary'))
+
+
+def main():
+    args = init_argparser().parse_args()
+    lda(args)
 
 
 if __name__ == '__main__':

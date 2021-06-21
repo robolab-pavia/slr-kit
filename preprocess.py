@@ -1,20 +1,20 @@
 import abc
-import argparse
 import logging
 import re
 import sys
 from itertools import repeat
 from multiprocessing import Pool
-from typing import Generator, Tuple, Sequence
 from timeit import default_timer as timer
+from typing import Generator, Tuple, Sequence
+
 import pandas as pd
 from nltk.stem.wordnet import WordNetLemmatizer
 from psutil import cpu_count
 
+from arguments import (AppendMultipleFilesAction, AppendMultiplePairsAction,
+                       ArgParse)
 from utils import (setup_logger, assert_column,
-                   log_end, log_start,
-                   AppendMultipleFilesAction, AppendMultiplePairsAction,
-                   STOPWORD_PLACEHOLDER, RELEVANT_PREFIX)
+                   log_end, log_start, STOPWORD_PLACEHOLDER, RELEVANT_PREFIX)
 
 PHYSICAL_CPUS = cpu_count(logical=False)
 
@@ -92,13 +92,16 @@ def get_lemmatizer(lang='en'):
 
 def init_argparser():
     """Initialize the command line parser."""
-    parser = argparse.ArgumentParser()
+    parser = ArgParse()
     parser.add_argument('datafile', action='store', type=str,
                         help="input CSV data file")
-    parser.add_argument('--output', '-o', metavar='FILENAME', default='-',
+    parser.add_argument('--output', '-o', metavar='FILENAME',
+                        default='-',
                         help='output file name. If omitted or %(default)r '
-                             'stdout is used')
-    parser.add_argument('--placeholder', '-p', default=STOPWORD_PLACEHOLDER,
+                             'stdout is used',
+                        suggest_suffix='preproc.csv')
+    parser.add_argument('--placeholder', '-p',
+                        default=STOPWORD_PLACEHOLDER,
                         help='Placeholder for stopwords. Also used as a '
                              'prefix for the relevant words. '
                              'Default: %(default)r')
@@ -106,18 +109,18 @@ def init_argparser():
                         action=AppendMultipleFilesAction, nargs='+',
                         metavar='FILENAME', dest='stopwords_file',
                         help='stop words file name')
-    parser.add_argument('--relevant-term', '-r', nargs=2,
+    parser.add_argument('--relevant-term', '-r', nargs='+',
                         metavar=('FILENAME', 'PLACEHOLDER'),
                         dest='relevant_terms_file',
                         action=AppendMultiplePairsAction, unique_first=True,
                         help='relevant terms file name and the placeholder to '
                              'use with those terms. The placeholder must not '
-                             'contains any space. If the placeholder is a "-"'
-                             ' or the empty string, each relevant term from '
-                             'this file, is replaced with the stopword '
-                             'placeholder, followed by the term itself with '
-                             'each space changed with the "-" character and '
-                             'then another stopword placeholder.')
+                             'contains any space. The placeholder is optional. '
+                             'If it is omitted, each relevant term from this '
+                             'file, is replaced with the stopword placeholder, '
+                             'followed by the term itself with each space '
+                             'changed with the "_" character and then another '
+                             'stopword placeholder.', non_standard=True)
     parser.add_argument('--acronyms', '-a',
                         help='TSV files with the approved acronyms')
     parser.add_argument('--target-column', '-t', action='store', type=str,
@@ -136,14 +139,15 @@ def init_argparser():
                         default='\t', dest='output_delimiter',
                         help='Delimiter used in output file. '
                              'Default %(default)r')
-    parser.add_argument('--rows', '-R', type=int,
-                        dest='input_rows', default=None,
+    parser.add_argument('--rows', '-R', type=int, dest='input_rows',
                         help="Select maximum number of samples")
     parser.add_argument('--language', '-l', default='en',
                         help='language of text. Must be a ISO 639-1 two-letter '
                              'code. Default: %(default)r')
-    parser.add_argument('--regex',
-                        help='Regex .csv for specific substitutions')
+    parser.add_argument('--logfile', default='slr-kit.log',
+                        help='log file name. If omitted %(default)r is used',
+                        logfile=True)
+    parser.add_argument('--regex', help='Regex .csv for specific substitutions')
     return parser
 
 
@@ -206,13 +210,18 @@ def acronyms_generator(acronyms, prefix_suffix=STOPWORD_PLACEHOLDER):
     """
     Generator that yields acronyms and the relative placeholder for replace_ngram
 
+    The acronyms Dataframe must have the format defined by the acronyms.py script.
+    The Dataframe must have two columns 'term' and 'label'.
+    'term' must contain the acronym in the form '<extended acronym> | (<abbreviation>)'
+    'label' is the classification made with fawoc. Only the rows with label equal
+    to 'relevant' or 'keyword' will be considered.
     The placeholder for each acronym is <prefix_suffix><abbreviation><prefix_suffix>
     The function yields for each acronym: the extended acronym, the extended
     acronym with all the word separated by '-' and the abbreviation of the acronym
     Each acronym is yielded as a tuple of strings.
 
     :param acronyms: the acronyms to replace in each document. Must have two
-        columns 'Acronym' and 'Extended'
+        columns 'term' and 'label'. See above for the format.
     :type acronyms: pd.DataFrame
     :param prefix_suffix: prefix and suffix used to create the placeholder
     :type prefix_suffix: str
@@ -220,11 +229,17 @@ def acronyms_generator(acronyms, prefix_suffix=STOPWORD_PLACEHOLDER):
     :rtype: Generator[tuple[str, tuple[str]], Any, None]
     """
     for _, row in acronyms.iterrows():
-        sub = f'{prefix_suffix}{row["Acronym"]}{prefix_suffix}'
-        yield sub, row['Extended']
-        alt = ('-'.join(row['Extended']), )
+        if row['label'] not in ['relevant', 'keyword']:
+            continue
+
+        sp = row['term'].split('|')
+        acronym = sp[1].strip(' ()').lower()
+        extended = tuple(sp[0].strip().lower().split())
+        sub = f'{prefix_suffix}{acronym}{prefix_suffix}'
+        yield sub, extended
+        alt = ('-'.join(extended), )
         yield sub, alt
-        yield sub, (row['Acronym'], )
+        yield sub, (acronym, )
 
 
 def language_specific_regex(text, lang='en'):
@@ -236,35 +251,45 @@ def language_specific_regex(text, lang='en'):
         # punctuation
         out_text = re.sub('[,.;:!?()"\']', ' --- ', text)
         # Remove special characters (not the hyphen) and digits
+        # also preserve the '__' used by some placeholders
         return re.sub(r'(\d|[^-\w])+|(?<=[^_])_(?=[^_])', ' ', out_text)
     if lang == 'it':
         # punctuation - preserve "'"
         out_text = re.sub('[,.;:!?()"]', ' --- ', text)
         # Remove special characters (not the hyphen) and digits. but preserve
         # accented letters. Also preserve "'" if surrounded by non blank chars
-        return re.sub(r'(\d|[^-\wà_èéìòù\']|(?<=\s)\'(?=\S)|(?<=\S)\'(?!\S))+|(?<=[^_])_(?=[^_])',
+        # and the '__' used by some placeholders
+        return re.sub(r'(\d|[^-\wàèéìòù_\']'
+                      r'|(?<=\s)\'(?=\S)|(?<=\S)\'(?!\S))+'
+                      r'|(?<=[^_])_(?=[^_])',
                       ' ', out_text)
 
 
 def regex(text, stopword_placeholder=STOPWORD_PLACEHOLDER, lang='en',
-          regexDF=None):
+          regex_df=None):
     # If a regex DataFrame for the specific project is passed,
-    # this function will replace the patterns with the corresponding repl parameter
-    if regexDF is not None:
+    # this function will replace the patterns with the corresponding repl
+    # parameter
+    if regex_df is not None:
         # Some of the regex are not actually regex. Like <br>
-        notRegex = regexDF[regexDF["regexBoolean"]==False]
-        for _, row in notRegex.iterrows():
-            text = text.replace(row["pattern"], "__{}__".format(row["repl"]))
+        not_regex = regex_df[~regex_df['regexBoolean']]
+        for _, row in not_regex.iterrows():
+            text = text.replace(row['pattern'], '__{}__'.format(row['repl']))
 
-        regexDF = regexDF[~regexDF['pattern'].isin(notRegex['pattern'])]
-        regex_with_spaces = regexDF[regexDF["pattern"].str.contains("\s", regex=False)]
+        regex_df = regex_df[~regex_df['pattern'].isin(not_regex['pattern'])]
+        regex_with_spaces = regex_df[regex_df['pattern'].str.contains(r'\s',
+                                                                      regex=False)]
 
         for _, row in regex_with_spaces.iterrows():
-            text = re.sub(row["pattern"], "__{}__".format(row["repl"]), text, flags=re.IGNORECASE)
+            text = re.sub(row['pattern'], '__{}__'.format(row['repl']), text,
+                          flags=re.IGNORECASE)
 
-        for _, row in regexDF[~regexDF["pattern"].isin(regex_with_spaces["pattern"])].iterrows():
-            text = ' '.join([re.sub(row["pattern"], "__{}__".format(row["repl"]), gram, flags=re.IGNORECASE) for gram in text.split()])    
-
+        rows = regex_df[~regex_df['pattern'].isin(regex_with_spaces['pattern'])]
+        for _, row in rows.iterrows():
+            text = ' '.join([re.sub(row['pattern'],
+                                    '__{}__'.format(row['repl']), gram,
+                                    flags=re.IGNORECASE)
+                             for gram in text.split()])
     # Change punctuation and remove special characters (not the hyphen) and
     # digits. The definition of special character and punctuation, changes with
     # the language
@@ -290,8 +315,7 @@ def relevant_generator(relevant, relevant_prefix):
 
 def preprocess_item(item, relevant_terms, stopwords, acronyms, language='en',
                     placeholder=STOPWORD_PLACEHOLDER,
-                    relevant_prefix=RELEVANT_PREFIX,
-                    regexDF=None):
+                    relevant_prefix=RELEVANT_PREFIX, regex_df=None):
     """
     Preprocess the text of a document.
 
@@ -317,7 +341,8 @@ def preprocess_item(item, relevant_terms, stopwords, acronyms, language='en',
     :param stopwords: the stop-words to filter
     :type stopwords: set[str]
     :param acronyms: the acronyms to replace in each document. Must have two
-        columns 'Acronym' and 'Extended'
+        columns 'term' and 'label'. See the acronyms_generato documentation for
+        info about the format.
     :type acronyms: pd.DataFrame
     :param language: code of the language to be used to lemmatize text
     :type language: str
@@ -325,6 +350,8 @@ def preprocess_item(item, relevant_terms, stopwords, acronyms, language='en',
     :type placeholder: str
     :param relevant_prefix: prefix string used when replacing the relevant terms
     :type relevant_prefix: str
+    :param regex_df: dataframe with the regex to apply
+    :type regex_df: pd.DataFrame
     :return: the processed text
     :rtype: list[str]
     """
@@ -332,7 +359,7 @@ def preprocess_item(item, relevant_terms, stopwords, acronyms, language='en',
     # Convert to lowercase
     text = item.lower()
     # apply some regex to clean the text
-    text = regex(text, placeholder, language, regexDF=regexDF)
+    text = regex(text, placeholder, language, regex_df=regex_df)
     text = text.split(' ')
 
     # replace acronyms
@@ -354,8 +381,7 @@ def preprocess_item(item, relevant_terms, stopwords, acronyms, language='en',
 
 def process_corpus(dataset, relevant_terms, stopwords, acronyms, language='en',
                    placeholder=STOPWORD_PLACEHOLDER,
-                   relevant_prefix=RELEVANT_PREFIX,
-                   regexDF=None):
+                   relevant_prefix=RELEVANT_PREFIX, regex_df=None):
     """
     Process a corpus of documents.
 
@@ -368,7 +394,8 @@ def process_corpus(dataset, relevant_terms, stopwords, acronyms, language='en',
     :param stopwords: the stop-words to filter in each document
     :type stopwords: set[str]
     :param acronyms: the acronyms to replace in each document. Must have two
-        columns 'Acronym' and 'Extended'
+        columns 'term' and 'label'. See the acronyms_generato documentation for
+        info about the format.
     :type acronyms: pd.Dataframe
     :param language: code of the language to be used to lemmatize text
     :type language: str
@@ -376,6 +403,8 @@ def process_corpus(dataset, relevant_terms, stopwords, acronyms, language='en',
     :type placeholder: str
     :param relevant_prefix: prefix used to replace the relevant terms
     :type relevant_prefix: str
+    :param regex_df: dataframe with the regex to apply
+    :type regex_df: pd.DataFrame or None
     :return: the corpus processed
     :rtype: list[str]
     """
@@ -387,7 +416,7 @@ def process_corpus(dataset, relevant_terms, stopwords, acronyms, language='en',
                                                    repeat(language),
                                                    repeat(placeholder),
                                                    repeat(relevant_prefix),
-                                                   repeat(regexDF)))
+                                                   repeat(regex_df)))
     return corpus
 
 
@@ -413,10 +442,7 @@ def load_relevant_terms(input_file):
     return rel_words_list
 
 
-def main():
-    parser = init_argparser()
-    args = parser.parse_args()
-
+def preprocess(args):
     if args.language not in AVAILABLE_LEMMATIZERS:
         print(f'Language {args.language!r} is not available', file=sys.stderr)
         sys.exit(1)
@@ -426,7 +452,7 @@ def main():
         get_lemmatizer(args.language)
 
     target_column = args.target_column
-    debug_logger = setup_logger('debug_logger', 'slr-kit.log',
+    debug_logger = setup_logger('debug_logger', args.logfile,
                                 level=logging.DEBUG)
     name = 'preprocess'
     log_start(args, debug_logger, name)
@@ -440,10 +466,10 @@ def main():
 
     # csvFileName da CLI
     if args.regex is not None:
-        regexDF = pd.read_csv(args.regex, sep=',', quotechar='"')
-        regexDF['repl'].fillna('', inplace=True)
+        regex_df = pd.read_csv(args.regex, sep=',', quotechar='"')
+        regex_df['repl'].fillna('', inplace=True)
     else:
-        regexDF = None
+        regex_df = None
 
     placeholder = args.placeholder
     relevant_prefix = placeholder
@@ -456,33 +482,27 @@ def main():
         debug_logger.debug('Stop-words loaded and updated')
 
     if args.acronyms is not None:
-        conv = {
-            'Acronym': lambda s: s.lower(),
-            'Extended': lambda s: tuple(s.lower().split(' ')),
-        }
-        acronyms = pd.read_csv(args.acronyms, delimiter='\t', encoding='utf-8',
-                               converters=conv)
-        assert_column(args.acronyms, acronyms, ['Acronym', 'Extended'])
+        acronyms = pd.read_csv(args.acronyms, delimiter='\t', encoding='utf-8')
+        assert_column(args.acronyms, acronyms, ['term', 'label'])
         debug_logger.debug('Acronyms loaded and updated')
     else:
-        acronyms = pd.DataFrame(columns=['Acronym', 'Extended'])
+        acronyms = pd.DataFrame(columns=['term', 'label'])
 
     rel_terms = []
     if args.relevant_terms_file is not None:
-        for rfile, placeholder in args.relevant_terms_file:
-            if ' ' in placeholder:
+        for rfile, plh in args.relevant_terms_file:
+            if plh is not None and ' ' in plh:
                 sys.exit('A relevant term placeholder can not contain spaces')
-            if placeholder == '-' or placeholder == '':
-                placeholder = None
 
-            rel_terms.append((load_relevant_terms(rfile), placeholder))
+            rel_terms.append((load_relevant_terms(rfile), plh))
 
         debug_logger.debug('Relevant words loaded and updated')
 
     start = timer()
-    corpus = process_corpus(dataset[target_column], rel_terms, stopwords, acronyms,
-                            language=args.language, placeholder=placeholder,
-                            relevant_prefix=relevant_prefix, regexDF=regexDF)
+    corpus = process_corpus(dataset[target_column], rel_terms, stopwords,
+                            acronyms, language=args.language,
+                            placeholder=placeholder,
+                            relevant_prefix=relevant_prefix, regex_df=regex_df)
     stop = timer()
     elapsed_time = stop - start
     debug_logger.debug('Corpus processed')
@@ -499,6 +519,12 @@ def main():
     print('Elapsed time:', elapsed_time, file=sys.stderr)
     debug_logger.info(f'elapsed time: {elapsed_time}')
     log_end(debug_logger, name)
+
+
+def main():
+    parser = init_argparser()
+    args = parser.parse_args()
+    preprocess(args)
 
 
 if __name__ == '__main__':

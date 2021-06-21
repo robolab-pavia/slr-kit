@@ -1,38 +1,44 @@
+import csv
+import logging
 import pathlib
+import sys
 
 import pandas
 
-import sys
-import csv
-import logging
-import argparse
+from arguments import ArgParse
 from utils import setup_logger, STOPWORD_PLACEHOLDER
 
 
 def init_argparser():
     """Initialize the command line parser."""
-    parser = argparse.ArgumentParser()
+    parser = ArgParse()
     parser.add_argument('datafile', action='store', type=str,
                         help='Input TSV data file')
     parser.add_argument('output', action='store', type=str,
-                        help='Output file name')
+                        help='Output file name', suggest_suffix='terms.csv')
     parser.add_argument('--stdout', '-s', action='store_true',
                         help='Also print on stdout the output file')
     parser.add_argument('--n-grams', '-n', metavar='N', dest='n_grams',
                         default=4, help='Maximum size of n-grams number')
     parser.add_argument('--min-frequency', '-m', metavar='N',
-                        dest='min_frequency', default=5,
-                        help='Minimum frequency of the n-grams')
-    parser.add_argument('--placeholder', '-p', default=STOPWORD_PLACEHOLDER,
-                        help='Placeholder for stop-words. Also used as a '
+                        dest='min_frequency',
+                        default=5, help='Minimum frequency of the n-grams')
+    parser.add_argument('--placeholder', '-p',
+                        default=STOPWORD_PLACEHOLDER,
+                        help='Placeholder for barrier word. Also used as a '
                              'prefix for the relevant words. '
                              'Default: %(default)r')
-    parser.add_argument('--column', '-c', default='abstract_lem',
+    parser.add_argument('--column', '-c',
+                        default='abstract_lem',
                         help='Column in datafile to process. '
                              'If omitted %(default)r is used.')
     parser.add_argument('--delimiter', action='store', type=str,
-                        default='\t', help='Delimiter used in datafile. '
-                                           'Default %(default)r')
+                        default='\t',
+                        help='Delimiter used in datafile. '
+                             'Default %(default)r')
+    parser.add_argument('--logfile', default='slr-kit.log',
+                        help='log file name. If omitted %(default)r is used',
+                        logfile=True)
     return parser
 
 
@@ -108,16 +114,14 @@ def convert_int_parameter(args, arg_name, default=None):
     return value
 
 
-def main():
-    parser = init_argparser()
-    args = parser.parse_args()
+def gen_terms(args):
     target_column = args.column
 
     # set the value of n_grams, possibly from the command line
     n_grams = convert_int_parameter(args, 'n_grams', default=4)
     min_frequency = convert_int_parameter(args, 'min_frequency', default=5)
 
-    debug_logger = setup_logger('debug_logger', 'slr-kit.log',
+    debug_logger = setup_logger('debug_logger', args.logfile,
                                 level=logging.DEBUG)
     # TODO: write log string with values of the parameters used in the execution
 
@@ -176,9 +180,16 @@ def main():
         writer = csv.writer(sys.stdout, delimiter='\t', quotechar='"',
                             quoting=csv.QUOTE_MINIMAL)
         writer.writerow(['id', 'term', 'label'])
+        index = -1
         for terms in list_of_grams:
-            for index, key in enumerate(terms):
+            for index, key in enumerate(terms, start=index + 1):
                 writer.writerow([index, key, ''])
+
+
+def main():
+    parser = init_argparser()
+    args = parser.parse_args()
+    gen_terms(args)
 
 
 if __name__ == '__main__':
