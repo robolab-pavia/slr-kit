@@ -12,6 +12,8 @@ from jinja2 import Environment, FileSystemLoader
 from matplotlib import pyplot as plt
 from tabulate import tabulate
 
+import arguments
+
 
 def init_argparser():
     """
@@ -20,7 +22,7 @@ def init_argparser():
     :return: the command line parser
     :rtype: argparse.ArgumentParser
     """
-    parser = argparse.ArgumentParser()
+    parser = arguments.ArgParse()
     parser.add_argument('ris_file', type=str, help='the path to the ris file '
                                                    'containing papers data')
     parser.add_argument('json_file', type=str, help='the path to the json file '
@@ -331,7 +333,7 @@ def prepare_tables(topics_dict, journals_topic, journals_year, dirname,
     return topic_year_table, journal_topic_table, journal_year_table
 
 
-def main():
+def report(args):
     script_dir = pathlib.Path(__file__).parent
     cwd = pathlib.Path.cwd()
     listdir = os.listdir(cwd)
@@ -342,8 +344,6 @@ def main():
     if 'report_template.tex' not in listdir:
         shutil.copy(templates / 'report_template.tex', cwd)
 
-    parser = init_argparser()
-    args = parser.parse_args()
     ris_path = args.ris_file
     json_path = args.json_file
 
@@ -384,6 +384,12 @@ def main():
 
     with open(dirname / 'report.md', 'w') as fh:
         fh.write(md_file)
+
+
+def main():
+    parser = init_argparser()
+    args = parser.parse_args()
+    report(args)
 
 
 if __name__ == '__main__':
