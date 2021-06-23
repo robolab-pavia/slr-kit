@@ -1,16 +1,16 @@
 import argparse
-import json
-import os
 import collections
 import datetime
+import json
+import os
 import pathlib
 import shutil
+from itertools import islice
 
 from RISparser import readris
-from tabulate import tabulate
-from matplotlib import pyplot as plt
 from jinja2 import Environment, FileSystemLoader
-from itertools import islice
+from matplotlib import pyplot as plt
+from tabulate import tabulate
 
 
 def init_argparser():
@@ -21,23 +21,29 @@ def init_argparser():
     :rtype: argparse.ArgumentParser
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('ris_file', type=str, help='the path to the ris file containing papers data')
-    parser.add_argument('json_file', type=str, help='the path to the json file containing lda results')
-    parser.add_argument('--dir', '-d', metavar='FILENAME', help='output directory where reports and files will be saved')
-    parser.add_argument('--minyear', '-m', type=int, help='minimum year to be reported. '
-                                                          'If missing, the minimum year '
-                                                          'in the data is used.')
-    parser.add_argument('--maxyear', '-M', type=int, help='maximum year to be reported. '
-                                                          'If missing, the maximum year '
-                                                          'in the data is used.')
+    parser.add_argument('ris_file', type=str, help='the path to the ris file '
+                                                   'containing papers data')
+    parser.add_argument('json_file', type=str, help='the path to the json file '
+                                                    'containing lda results')
+    parser.add_argument('--dir', '-d', metavar='FILENAME',
+                        help='output directory where reports and files will be '
+                             'saved')
+    parser.add_argument('--minyear', '-m', type=int,
+                        help='minimum year to be reported. '
+                             'If missing, the minimum year '
+                             'in the data is used.')
+    parser.add_argument('--maxyear', '-M', type=int,
+                        help='maximum year to be reported. '
+                             'If missing, the maximum year '
+                             'in the data is used.')
 
     return parser
 
 
 def prepare_papers(ris_path, json_path):
     """
-    Extracts all data for each paper in the ris file and the json file to create a
-    list of dictionaries containing all grouped data.
+    Extracts all data for each paper in the ris file and the json file to create
+    a list of dictionaries containing all grouped data.
 
     :param ris_path: path to the ris file containing papers data
     :type ris_path: str
@@ -60,14 +66,14 @@ def prepare_papers(ris_path, json_path):
 
     for paper in papers_list:
         for paper_data in papers_data:
-            if paper["title"] == paper_data["title"]:
-                topics = paper_data["topics"]
-                paper["topics"] = topics
+            if paper['title'] == paper_data['title']:
+                topics = paper_data['topics']
+                paper['topics'] = topics
                 break
 
     topics_list = []
     for paper in papers_list:
-        for key in paper["topics"]:
+        for key in paper['topics']:
             if int(key) not in topics_list:
                 topics_list.append(int(key))
 
@@ -93,10 +99,11 @@ def report_year(papers_list, topics_list):
 
     for topic_id in topics_list:
         for paper in papers_list:
-            topics = paper["topics"]
+            topics = paper['topics']
             if str(topic_id) in topics:
-                year = int(paper["year"])
-                topics_dict[topic_id][year] = topics_dict[topic_id].get(year, 0) + float(topics[str(topic_id)])
+                year = int(paper['year'])
+                topics_dict[topic_id][year] = (topics_dict[topic_id].get(year, 0)
+                                               + float(topics[str(topic_id)]))
 
     return topics_dict
 
@@ -114,17 +121,18 @@ def prepare_journals(papers_list):
     journals = []
     journals_dict = dict()
     for paper in papers_list:
-        if "secondary_title" in paper:
-            if paper["secondary_title"] not in journals:
-                journals.append(paper["secondary_title"])
+        if 'secondary_title' in paper:
+            if paper['secondary_title'] not in journals:
+                journals.append(paper['secondary_title'])
 
     for journal in journals:
         for paper in papers_list:
-            if "secondary_title" in paper:
-                if paper["secondary_title"] == journal:
+            if 'secondary_title' in paper:
+                if paper['secondary_title'] == journal:
                     journals_dict[journal] = journals_dict.get(journal, 0) + 1
 
-    journals_dict = sorted(journals_dict.items(), key=lambda x: x[1], reverse=True)
+    journals_dict = sorted(journals_dict.items(), key=lambda x: x[1],
+                           reverse=True)
 
     return journals_dict
 
@@ -143,13 +151,13 @@ def report_journal_topics(journals_dict, papers_list):
     """
 
     journal_topic = collections.defaultdict(dict)
-    for journal, value in journals_dict[0:10]:
+    for journal, _ in journals_dict[0:10]:
         for paper in papers_list:
-            if "secondary_title" in paper:
-                if paper["secondary_title"] == journal:
-                    topics = paper["topics"]
-                    for topic in topics:
-                        journal_topic[journal][topic] = journal_topic[journal].get(topic, 0) + 1
+            if 'secondary_title' in paper:
+                if paper['secondary_title'] == journal:
+                    topics = paper['topics']
+                    for t in topics:
+                        journal_topic[journal][t] = journal_topic[journal].get(t, 0) + 1
 
     return journal_topic
 
@@ -171,9 +179,9 @@ def report_journal_years(papers_list, journals_dict):
     max_year = -1
     for journal, value in journals_dict[0:10]:
         for paper in papers_list:
-            if "secondary_title" in paper:
-                if paper["secondary_title"] == journal:
-                    year = int(paper["year"])
+            if 'secondary_title' in paper:
+                if paper['secondary_title'] == journal:
+                    year = int(paper['year'])
                     journal_year[journal][year] = journal_year[journal].get(year, 0) + 1
                     if year > max_year:
                         max_year = year
@@ -199,14 +207,14 @@ def plot_years(topics_dict, dirname):
         sorted_dic = sorted(topics_dict[topic].items())
         x, y = zip(*sorted_dic)
 
-        ax[0].plot(x, y, label="topic " + str(topic))
+        ax[0].plot(x, y, label='topic ' + str(topic))
         ax[0].grid(True)
 
     for topic in islice(topics_dict, 10, None):
         sorted_dic = sorted(topics_dict[topic].items())
         x, y = zip(*sorted_dic)
 
-        ax[1].plot(x, y, label="topic " + str(topic))
+        ax[1].plot(x, y, label='topic ' + str(topic))
         ax[1].grid(True)
 
     ax[0].set_title('topics yearly graph (1st half)')
@@ -223,7 +231,8 @@ def plot_years(topics_dict, dirname):
     plt.savefig(dirname / 'reportyear.png')
 
 
-def prepare_tables(topics_dict, journals_topic, journals_year, dirname, min_year, max_year):
+def prepare_tables(topics_dict, journals_topic, journals_year, dirname,
+                   min_year, max_year):
     """
     Creates tables for every data created in previous function, with the Tabulate
     module and saves them in a directory
@@ -244,7 +253,7 @@ def prepare_tables(topics_dict, journals_topic, journals_year, dirname, min_year
     :rtype: tuple[str, str, str]
     """
 
-    first_line = ["Topic"]
+    first_line = ['Topic']
     first_line.extend(list(range(min_year, max_year + 1)))
     topic_year_list = [first_line]
 
@@ -254,14 +263,15 @@ def prepare_tables(topics_dict, journals_topic, journals_year, dirname, min_year
         x, y = zip(*sorted_dic)
         for year in first_line[1:]:
             if year in x:
-                line.append("{:.2f}".format(y[x.index(year)]))
+                line.append('{:.2f}'.format(y[x.index(year)]))
             else:
                 line.append(0)
         topic_year_list.append(line)
 
-    topic_year_table = tabulate(topic_year_list, headers="firstrow", tablefmt="github")
+    topic_year_table = tabulate(topic_year_list, headers='firstrow',
+                                tablefmt='github')
 
-    first_line = ["Journal"]
+    first_line = ['Journal']
     topics_list = list(range(0, len(topics_dict)))
     first_line.extend(topics_list)
     journal_topic_list = [first_line]
@@ -277,9 +287,10 @@ def prepare_tables(topics_dict, journals_topic, journals_year, dirname, min_year
                 line.append(0)
         journal_topic_list.append(line)
 
-    journal_topic_table = tabulate(journal_topic_list, headers="firstrow", floatfmt=".3f", tablefmt="github")
+    journal_topic_table = tabulate(journal_topic_list, headers='firstrow',
+                                   floatfmt='.3f', tablefmt='github')
 
-    first_line = ["Journal"]
+    first_line = ['Journal']
     first_line.extend(list(range(min_year, max_year + 1)))
     journal_year_list = [first_line]
     for journal in journals_year:
@@ -293,24 +304,28 @@ def prepare_tables(topics_dict, journals_topic, journals_year, dirname, min_year
                 line.append(0)
         journal_year_list.append(line)
 
-    journal_year_table = tabulate(journal_year_list, headers="firstrow", floatfmt=".3f", tablefmt="github")
-    if 'tables' not in os.listdir(dirname):
-        os.mkdir(dirname / 'tables')
+    journal_year_table = tabulate(journal_year_list, headers='firstrow',
+                                  floatfmt='.3f', tablefmt='github')
+    tables: pathlib.Path = dirname / 'tables'
+    tables.mkdir(exist_ok=True)
 
-    latex_year_topic = tabulate(topic_year_list, headers='firstrow', tablefmt='latex')
-    latex_journal_topic = tabulate(journal_topic_list, headers='firstrow', tablefmt='latex')
-    latex_journal_year = tabulate(journal_year_list, headers='firstrow', tablefmt='latex')
+    latex_year_topic = tabulate(topic_year_list, headers='firstrow',
+                                tablefmt='latex')
+    latex_journal_topic = tabulate(journal_topic_list, headers='firstrow',
+                                   tablefmt='latex')
+    latex_journal_year = tabulate(journal_year_list, headers='firstrow',
+                                  tablefmt='latex')
 
     latex_journal_topic = latex_journal_topic.replace('lrrrrr', 'p{3cm}rrrrr')
     latex_journal_year = latex_journal_year.replace('lrrrrr', 'p{3cm}rrrrr')
 
-    with open(dirname / 'tables' / 'yeartopic.tex', 'w') as f:
+    with open(tables / 'yeartopic.tex', 'w') as f:
         f.write(latex_year_topic)
 
-    with open(dirname / 'tables' / 'journaltopic.tex', 'w') as f:
+    with open(tables / 'journaltopic.tex', 'w') as f:
         f.write(latex_journal_topic)
 
-    with open(dirname / 'tables' / 'journalyear.tex', 'w') as f:
+    with open(tables / 'journalyear.tex', 'w') as f:
         f.write(latex_journal_year)
 
     return topic_year_table, journal_topic_table, journal_year_table
@@ -320,12 +335,12 @@ def main():
     script_dir = pathlib.Path(__file__).parent
     cwd = pathlib.Path.cwd()
     listdir = os.listdir(cwd)
-
+    templates = script_dir / 'report_templates'
     if 'report_template.md' not in listdir:
-        shutil.copy(script_dir / 'report_templates' / 'report_template.md', cwd)
+        shutil.copy(templates / 'report_template.md', cwd)
 
     if 'report_template.tex' not in listdir:
-        shutil.copy(script_dir / 'report_templates' / 'report_template.tex', cwd)
+        shutil.copy(templates / 'report_template.tex', cwd)
 
     parser = init_argparser()
     args = parser.parse_args()
@@ -339,8 +354,6 @@ def main():
         dirname = cwd / ('report' + timestamp)
 
     dirname.mkdir(exist_ok=True)
-
-    shutil.copy(script_dir / 'report_template.tex', dirname)
 
     papers_list, topics_list = prepare_papers(ris_path, json_path)
     topics_dict = report_year(papers_list, topics_list)
@@ -357,15 +370,10 @@ def main():
     if min_year > max_year:
         raise ValueError('The minimum year is greater than the maximum year')
 
-    topic_year_table, journal_topic_table, journal_year_table = prepare_tables(topics_dict,
-                                                                               journals_topics,
-                                                                               journals_year,
-                                                                               dirname,
-                                                                               min_year,
-                                                                               max_year)
-
-    env = Environment(loader=FileSystemLoader(cwd),
-                      autoescape=True)
+    ret = prepare_tables(topics_dict, journals_topics, journals_year, dirname,
+                         min_year, max_year)
+    topic_year_table, journal_topic_table, journal_year_table = ret
+    env = Environment(loader=FileSystemLoader(cwd), autoescape=True)
 
     template = env.get_template('report_template.md')
     year_report = 'reportyear.png'
@@ -374,9 +382,9 @@ def main():
                               journal_topic_table=journal_topic_table,
                               journal_year_table=journal_year_table)
 
-    with open(dirname / "report.md", "w") as fh:
+    with open(dirname / 'report.md', 'w') as fh:
         fh.write(md_file)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
