@@ -10,7 +10,10 @@ import tomlkit
 
 def _check_is_dir(path):
     p = pathlib.Path(path)
-    if p.is_dir():
+    if not p.exists():
+        msg = '{!r} do not exist'
+        raise argparse.ArgumentTypeError(msg.format(path))
+    elif p.is_dir():
         return p
     else:
         msg = '{!r} is not a directory'
