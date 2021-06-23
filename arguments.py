@@ -134,6 +134,11 @@ class ArgParse(argparse.ArgumentParser):
     """
 
     def __new__(cls, *args, **kwargs):
+        # this method is required to add a custom attribute to an instance of
+        # this class. I decided to use new instead of init because new is always
+        # called before init, and not overriding the default init of
+        # ArgumentParser ensures that this code will be always compatible with
+        # ArgumentParser
         obj = super().__new__(cls)
         obj.slrkit_arguments = dict()
         return obj
