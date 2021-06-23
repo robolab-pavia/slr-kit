@@ -198,6 +198,7 @@ class ArgParse(argparse.ArgumentParser):
 
             self.slrkit_arguments[name] = {
                 'value': default,
+                'type': ret.type,
                 'help': ret.help % vars(ret),
                 'non-standard': non_standard,
                 'required': ret.required,
