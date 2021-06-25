@@ -249,13 +249,19 @@ def language_specific_regex(text, lang='en'):
     # '---' it's ok because hyphens are preserved in every language.
     if lang == 'en':
         # punctuation
-        out_text = re.sub('[,.;:!?()"\']', ' --- ', text)
+        # remove commas
+        out_text = re.sub(',', ' ', text)
+        # other punctuation is considered as a barrier
+        out_text = re.sub('[.;:!?()"\']', ' --- ', out_text)
         # Remove special characters (not the hyphen) and digits
         # also preserve the '__' used by some placeholders
         return re.sub(r'(\d|[^-\w])+|(?<=[^_])_(?=[^_])', ' ', out_text)
     if lang == 'it':
-        # punctuation - preserve "'"
-        out_text = re.sub('[,.;:!?()"]', ' --- ', text)
+        # punctuation
+        # remove commas
+        out_text = re.sub(',', ' ', text)
+        # preserve "'" but other punctuation is considered as a barrier
+        out_text = re.sub('[,.;:!?()"]', ' --- ', out_text)
         # Remove special characters (not the hyphen) and digits. but preserve
         # accented letters. Also preserve "'" if surrounded by non blank chars
         # and the '__' used by some placeholders
