@@ -319,6 +319,18 @@ def run_acronyms(args):
     acronyms(cmd_args)
 
 
+def run_report(args):
+    confname = 'report.toml'
+    config, config_dir, meta = check_project(args, confname)
+    from topic_report import report, init_argparser as report_argparse
+    script_args = report_argparse().slrkit_arguments
+    cmd_args = prepare_script_arguments(config, config_dir, confname,
+                                        script_args)
+    os.chdir(args.cwd)
+    setattr(cmd_args, 'json_file', args.json_file)
+    report(cmd_args)
+
+
 def init_argparser():
     """
     Initialize the command line parser.
@@ -392,6 +404,14 @@ def init_argparser():
     parser_fawoc.add_argument('--width', '-w', action='store', type=int,
                               help='Width of fawoc windows.')
     parser_fawoc.set_defaults(func=run_fawoc)
+    # report
+    parser_report = subparser.add_parser('report', help='Run the report '
+                                                        'creation script in a '
+                                                        'slr-kit project')
+    parser_report.add_argument('json_file', help='path to the json file '
+                                                 'containing the lda '
+                                                 'topic-paper results')
+    parser_report.set_defaults(func=run_report)
     return parser
 
 
