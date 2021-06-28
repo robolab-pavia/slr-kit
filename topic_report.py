@@ -23,10 +23,10 @@ def init_argparser():
     :rtype: argparse.ArgumentParser
     """
     parser = arguments.ArgParse()
-    parser.add_argument('ris_file', type=str, help='the path to the ris file '
-                                                   'containing papers data')
-    parser.add_argument('json_file', type=str, help='the path to the json file '
-                                                    'containing lda results')
+    parser.add_argument('ris_file', type=str, suggest_suffix='.ris',
+                        help='the path to the ris file containing papers data')
+    parser.add_argument('json_file', type=str, cli_only=True,
+                        help='the path to the json file containing lda results')
     parser.add_argument('--dir', '-d', metavar='FILENAME',
                         help='output directory where reports and files will be '
                              'saved')
