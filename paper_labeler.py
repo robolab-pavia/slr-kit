@@ -22,6 +22,14 @@ def init_argparser():
 
 
 def ris_reader(ris_path):
+    """
+    Creates a list of journals and papers titles from the ris file
+
+    :param ris_path: path to the ris file
+    :type ris_path: Path
+    :return: List of titles and relative journal
+    :rtype: list
+    """
     paper_journal_list = []
 
     with open(ris_path, 'r', encoding='utf-8') as bibliography_file:
@@ -35,7 +43,16 @@ def ris_reader(ris_path):
 
 
 def csv_reader(preproc_path, journal_path):
+    """
+    Creates 2 lists from the preproc file and the journal file
 
+    :param preproc_path: Path to preproc file
+    :type preproc_path: Path
+    :param journal_path: Path to journal file
+    :type journal_path: Path
+    :return: list of preproc file and journal file
+    :rtype: tuple(list, list)
+    """
     with open(preproc_path, encoding="utf8", newline='') as f:
         reader = csv.reader(f, delimiter='\t')
         preproc_list = list(reader)
@@ -49,6 +66,18 @@ def csv_reader(preproc_path, journal_path):
 
 
 def paper_labeler(preproc_list, journal_list, paper_journal_list):
+    """
+    Labels every Paper from preproc list with the relative journal classification
+
+    :param preproc_list: List with every paper data
+    :type preproc_list: list
+    :param journal_list: List with journal data and classification
+    :type journal_list: list
+    :param paper_journal_list: list with title-journal for every paper
+    :type paper_journal_list: list
+    :return: Preproc list with an appended column called status
+    :rtype: list
+    """
     if 'status' in preproc_list[0]:
         index = preproc_list[0].index('status')
         for row in preproc_list:
@@ -93,6 +122,7 @@ def main():
         wr = csv.writer(myfile, delimiter='\t', quoting=csv.QUOTE_ALL, )
         for line in out_list:
             wr.writerow(line)
+
 
 if __name__ == '__main__':
     main()
