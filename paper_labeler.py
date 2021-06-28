@@ -83,7 +83,7 @@ def paper_labeler(preproc_list, journal_list, paper_journal_list):
         for row in preproc_list:
             del row[index]
 
-    preproc_list[0].append('status')
+    preproc_list[0].insert(1, 'status')
 
     for paper in preproc_list[1:]:
         title = paper[1]
@@ -98,7 +98,7 @@ def paper_labeler(preproc_list, journal_list, paper_journal_list):
                     status = 'good'
                 else:
                     status = 'rejected'
-        paper.append(status)
+        paper.insert(1, status)
 
     return preproc_list
 
