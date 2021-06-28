@@ -79,17 +79,21 @@ def init_project(args):
         msg = 'Error: {} exist and is not a directory'
         sys.exit(msg.format(e.filename))
 
-    scripts = ['import_biblio', 'acronyms', 'preprocess', 'gen_terms', 'lda',
-               'lda_grid_search', 'fawoc']
-    for s in scripts:
+    scripts = {
+        'import_biblio': 'import',
+        'acronyms': 'acronyms',
+        'preprocess': 'preprocess',
+        'gen_terms': 'gen_terms',
+        'lda': 'lda',
+        'lda_grid_search': 'lda_grid_search',
+        'fawoc.fawoc': 'fawoc',
+    }
+    for modulename, s in scripts.items():
         p = (config_dir / s).with_suffix('.toml')
         old_p = (directory / s).with_suffix('.toml')
         if not old_p.exists():
             if not p.exists():
-                if s == 'fawoc':
-                    module = importlib.import_module('fawoc.fawoc')
-                else:
-                    module = importlib.import_module(s)
+                module = importlib.import_module(modulename)
                 args = module.init_argparser().slrkit_arguments
                 conf = tomlkit.document()
                 for arg_name, arg in args.items():
@@ -185,8 +189,7 @@ def prepare_script_arguments(config, config_dir, confname, script_args):
 
 
 def run_preproc(args):
-    script_name = 'preprocess'
-    confname = '.'.join([script_name, 'toml'])
+    confname = 'preprocess.toml'
     config, config_dir, meta = check_project(args, confname)
     from preprocess import preprocess, init_argparser as preproc_argparse
     script_args = preproc_argparse().slrkit_arguments
@@ -217,8 +220,7 @@ def run_preproc(args):
 
 
 def run_genterms(args):
-    script_name = 'gen_terms'
-    confname = '.'.join([script_name, 'toml'])
+    confname = 'gen_terms.toml'
     config, config_dir, meta = check_project(args, confname)
     from gen_terms import gen_terms, init_argparser as gt_argparse
     script_args = gt_argparse().slrkit_arguments
@@ -229,8 +231,7 @@ def run_genterms(args):
 
 
 def run_lda(args):
-    script_name = 'lda'
-    confname = '.'.join([script_name, 'toml'])
+    confname = 'lda.toml'
     config, config_dir, meta = check_project(args, confname)
     from lda import lda, init_argparser as lda_argparse
     script_args = lda_argparse().slrkit_arguments
@@ -249,8 +250,7 @@ def run_lda(args):
 
 
 def run_lda_grid_search(args):
-    script_name = 'lda_grid_search'
-    confname = '.'.join([script_name, 'toml'])
+    confname = 'lda_grid_search.toml'
     config, config_dir, meta = check_project(args, confname)
     from lda_grid_search import lda_grid_search, init_argparser as lda_gs_argparse
     script_args = lda_gs_argparse().slrkit_arguments
@@ -273,8 +273,7 @@ def run_lda_grid_search(args):
 
 
 def run_fawoc(args):
-    script_name = 'fawoc'
-    confname = '.'.join([script_name, 'toml'])
+    confname = 'fawoc.toml'
     config, config_dir, meta = check_project(args, confname)
     from fawoc.fawoc import fawoc_run, init_argparser as fawoc_argparse
     script_args = fawoc_argparse().slrkit_arguments
@@ -295,8 +294,7 @@ def run_fawoc(args):
 
 
 def run_import(args):
-    script_name = 'import_biblio'
-    confname = '.'.join([script_name, 'toml'])
+    confname = 'import.toml'
     config, config_dir, meta = check_project(args, confname)
     from import_biblio import import_data, init_argparser as import_argparse
     script_args = import_argparse().slrkit_arguments
@@ -308,8 +306,7 @@ def run_import(args):
 
 
 def run_acronyms(args):
-    script_name = 'acronyms'
-    confname = '.'.join([script_name, 'toml'])
+    confname = 'acronyms.toml'
     config, config_dir, meta = check_project(args, confname)
     from acronyms import acronyms, init_argparser as acro_argparse
     script_args = acro_argparse().slrkit_arguments
