@@ -38,8 +38,6 @@ def ris_reader(ris_path):
                 continue
             journal_list.append(entry['alternate_title1'])
 
-    journal_list = list(set(journal_list))
-
     return journal_list
 
 
@@ -52,10 +50,13 @@ def journal2csv(journal_list, csv_path):
     :param csv_path: Path to csv output file
     :type csv_path: Path
     """
-    counter = len(journal_list)
-    journal_fawoc_list = [['id', 'term', 'label']]
+    journal_no_dup = list(set(journal_list))
+
+    counter = len(journal_no_dup)
+    journal_fawoc_list = [['id', 'term', 'label', 'count']]
     for i in range(counter):
-        line = [str(i), journal_list[i], '']
+        paper_count = journal_list.count(journal_no_dup[i])
+        line = [str(i), journal_no_dup[i], '', paper_count]
         journal_fawoc_list.append(line)
 
     with open(csv_path, 'w', newline='') as myfile:
