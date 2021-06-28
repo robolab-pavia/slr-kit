@@ -4,6 +4,7 @@ import csv
 
 from RISparser import readris
 
+
 def init_argparser():
     """
     Initialize the command line parser.
@@ -20,7 +21,14 @@ def init_argparser():
 
 
 def ris_reader(ris_path):
+    """
+    Creates a list with every Journal from the ris file
 
+    :param ris_path: Path to the ris file
+    :type ris_path: Path
+    :return: List of journals
+    :rtype: list
+    """
     journal_list = []
 
     with open(ris_path, 'r', encoding='utf-8') as bibliography_file:
@@ -36,7 +44,14 @@ def ris_reader(ris_path):
 
 
 def journal2csv(journal_list, csv_path):
+    """
+    Creates a csv file from the list of journals in a format that is classifiable by Fawoc
 
+    :param journal_list: List of journals
+    :type journal_list: list
+    :param csv_path: Path to csv output file
+    :type csv_path: Path
+    """
     counter = len(journal_list)
     journal_fawoc_list = [['id', 'term', 'label']]
     for i in range(counter):
