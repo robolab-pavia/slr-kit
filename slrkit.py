@@ -87,6 +87,7 @@ def init_project(args):
         'lda': 'lda',
         'lda_grid_search': 'lda_grid_search',
         'fawoc.fawoc': 'fawoc',
+        'topic_report': 'report'
     }
     for modulename, s in scripts.items():
         p = (config_dir / s).with_suffix('.toml')
