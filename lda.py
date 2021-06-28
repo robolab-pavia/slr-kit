@@ -178,12 +178,12 @@ def generate_filtered_docs_ngrams(terms_file, preproc_file,
     terms = load_ngrams(terms_file, labels)
     keywords = []
     if additional is not None:
-        keywords.append(additional)
+        keywords.extend(additional)
 
     if acronyms is not None:
-        keywords.append(acronyms['Acronym'])
+        keywords.extend(acronyms)
 
-    for kw in chain.from_iterable(keywords):
+    for kw in keywords:
         n = kw.count(' ') + 1
         try:
             terms[n].add(kw)
@@ -211,7 +211,7 @@ def generate_filtered_docs(terms_file, preproc_file, target_col='abstract_lem',
         additional = set()
 
     if acronyms is not None:
-        additional |= {acro for acro in acronyms['Acronym']}
+        additional |= {acro for acro in acronyms}
 
     terms = load_terms(terms_file, labels) | additional
     documents, titles = load_documents(preproc_file, target_col, title_col,
@@ -271,9 +271,8 @@ def prepare_documents(preproc_file, terms_file, ngrams, labels,
     :type labels: tuple[str]
     :param additional_keyword: additional keyword loaded from file
     :type additional_keyword: set or None
-    :param acronyms: approved acronyms to be considered as keyword. Must have
-        the columns 'Acronym' and 'Extended'
-    :type acronyms: pd.DataFrame
+    :param acronyms: list of approved acronyms to be considered as keyword
+    :type acronyms: list or None
     :param placeholder: placeholder for stop-words
     :type placeholder: str
     :param relevant_prefix: prefix used to mark relevant terms
@@ -449,6 +448,20 @@ def output_topics(model, dictionary, docs, titles, outdir, file_prefix):
         json.dump(docs_topics, file, indent='\t')
 
 
+def load_acronyms(args):
+    acro_df = pd.read_csv(args.acronyms, delimiter='\t', encoding='utf-8')
+    assert_column(args.acronyms, acro_df, ['term', 'label'])
+    acronyms = []
+    for _, row in acro_df.iterrows():
+        if row['label'] not in ['relevant', 'keyword']:
+            continue
+
+        sp = row['term'].split('|')
+        acronyms.append(sp[1].strip(' ()').lower())
+    del acro_df
+    return acronyms
+
+
 def lda(args):
     terms_file = args.terms_file
     preproc_file = args.preproc_file
@@ -469,10 +482,7 @@ def lda(args):
             additional_keyword |= load_additional_terms(sfile)
 
     if args.acronyms is not None:
-        conv = {'Acronym': lambda s: s.lower()}
-        acronyms = pd.read_csv(args.acronyms, delimiter='\t', encoding='utf-8',
-                               converters=conv, usecols=list(conv))
-        assert_column(args.acronyms, acronyms, ['Acronym'])
+        acronyms = load_acronyms(args)
     else:
         acronyms = None
 
