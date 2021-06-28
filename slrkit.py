@@ -167,8 +167,9 @@ def prepare_script_arguments(config, config_dir, confname, script_args):
 
         dest = v.get('dest', k.replace('-', '_'))
         param = config.get(k, v['value'])
-        def_val = (param == v['value'])
-        if v['type'] is not None:
+        def_val = (param == v['value'] or (param == '' and v['value'] is None))
+        null = param is None or param == ''
+        if v['type'] is not None and not null:
             param = v['type'](param)
 
         if v['choices'] is not None:
