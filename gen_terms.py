@@ -15,7 +15,7 @@ def init_argparser():
     parser.add_argument('datafile', action='store', type=str,
                         help='Input TSV data file')
     parser.add_argument('output', action='store', type=str,
-                        help='Output file name', suggest_suffix='terms.csv')
+                        help='Output file name', suggest_suffix='_terms.csv')
     parser.add_argument('--stdout', '-s', action='store_true',
                         help='Also print on stdout the output file')
     parser.add_argument('--n-grams', '-n', metavar='N', dest='n_grams',

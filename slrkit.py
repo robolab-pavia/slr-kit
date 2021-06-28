@@ -97,8 +97,8 @@ def init_project(args):
                         conf.add(tomlkit.comment(arg['help'].replace('\n', ' ')))
                         conf.add(tomlkit.comment(f'required: {arg["required"]}'))
                         if arg['suggest-suffix'] is not None:
-                            val = '_'.join([meta['Project']['Name'],
-                                            arg['suggest-suffix']])
+                            val = ''.join([meta['Project']['Name'],
+                                           arg['suggest-suffix']])
                             conf.add(arg_name, val)
                         elif arg['value'] is not None:
                             try:

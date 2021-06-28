@@ -59,7 +59,7 @@ def init_argparser():
                              '%(choices)s. If absent %(default)r is used.')
     parser.add_argument('--output', '-o', metavar='FILENAME',
                         help='output CSV file name',
-                        suggest_suffix='abstracts.csv')
+                        suggest_suffix='_abstracts.csv')
     parser.add_argument('--columns', '-c', metavar='col1,..,coln',
                         default='title,abstract',
                         help='list of comma-separated columns to export. If '

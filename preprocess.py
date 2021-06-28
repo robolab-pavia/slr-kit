@@ -99,7 +99,7 @@ def init_argparser():
                         default='-',
                         help='output file name. If omitted or %(default)r '
                              'stdout is used',
-                        suggest_suffix='preproc.csv')
+                        suggest_suffix='_preproc.csv')
     parser.add_argument('--placeholder', '-p',
                         default=STOPWORD_PLACEHOLDER,
                         help='Placeholder for stopwords. Also used as a '
