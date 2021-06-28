@@ -18,7 +18,7 @@ from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel, LdaModel
 
 from arguments import AppendMultipleFilesAction, ArgParse
-from lda import (PHYSICAL_CPUS, prepare_documents, output_topics)
+from lda import (PHYSICAL_CPUS, prepare_documents, output_topics, load_acronyms)
 from utils import assert_column, STOPWORD_PLACEHOLDER
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
@@ -247,10 +247,7 @@ def lda_grid_search(args):
             additional_keyword |= load_additional_terms(sfile)
 
     if args.acronyms is not None:
-        conv = {'Acronym': lambda s: s.lower()}
-        acronyms = pd.read_csv(args.acronyms, delimiter='\t', encoding='utf-8',
-                               converters=conv, usecols=list(conv))
-        assert_column(args.acronyms, acronyms, ['Acronym'])
+        acronyms = load_acronyms(args)
     else:
         acronyms = None
 
