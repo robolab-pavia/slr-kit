@@ -264,7 +264,7 @@ def lda_grid_search(args):
     no_above_list = [0.5, 0.6, 0.75, 1.0]
     for labels in [('keyword', 'relevant'), ('keyword', )]:
         docs, titles = prepare_documents(preproc_file, terms_file,
-                                         not args.ngrams, labels,
+                                         not args.no_ngrams, labels,
                                          args.target_column, args.title,
                                          delimiter=args.delimiter,
                                          additional_keyword=additional_keyword,
