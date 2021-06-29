@@ -26,7 +26,7 @@ def toml_load(filename):
     return config
 
 
-def init_project(args):
+def create_meta(args):
     meta = {
         'Project': {
             'Author': '',
@@ -42,35 +42,50 @@ def init_project(args):
             'URL': ''
         }
     }
-    old_config_dir = None
-    if args.config_dir is not None:
-        config_dir: pathlib.Path = args.cwd / args.config_dir
-    else:
-        config_dir: pathlib.Path = args.cwd / 'slrkit.conf'
+    config_dir: pathlib.Path = args.cwd / 'slrkit.conf'
     metafile = args.cwd / 'META.toml'
     if metafile.exists():
         obj = toml_load(metafile)
 
-        old_config_dir = args.cwd / obj['Project']['Config']
+        config_dir = args.cwd / obj['Project']['Config']
         for k in meta:
             for h in meta[k]:
                 val = obj[k].get(h, '')
                 if val != '':
                     meta[k][h] = val
-
     meta['Project']['Name'] = args.name
     if args.author:
         meta['Project']['Author'] = args.author
     if args.description:
         meta['Project']['Description'] = args.description
+    meta['Project']['Config'] = str(config_dir.name)
+    return config_dir, meta, metafile
 
-    directory = config_dir
-    move = False
-    if old_config_dir != config_dir:
-        meta['Project']['Config'] = str(config_dir.name)
-        if old_config_dir is not None:
-            directory = old_config_dir
-            move = True
+
+def prepare_configfile(modulename, metafile):
+    module = importlib.import_module(modulename)
+    args = module.init_argparser().slrkit_arguments
+    conf = tomlkit.document()
+    for arg_name, arg in args.items():
+        if not arg['logfile'] and not arg['cli_only']:
+            conf.add(tomlkit.comment(arg['help'].replace('\n', ' ')))
+            conf.add(tomlkit.comment(f'required: {arg["required"]}'))
+            if arg['suggest-suffix'] is not None:
+                val = ''.join([metafile['Project']['Name'],
+                               arg['suggest-suffix']])
+                conf.add(arg_name, val)
+            elif arg['value'] is not None:
+                try:
+                    conf.add(arg_name, arg['value'])
+                except ValueError:
+                    conf.add(arg_name, str(arg['value']))
+            else:
+                conf.add(arg_name, '')
+    return conf
+
+
+def init_project(args):
+    config_dir, meta, metafile = create_meta(args)
 
     try:
         config_dir.mkdir(exist_ok=True)
@@ -80,6 +95,7 @@ def init_project(args):
         sys.exit(msg.format(e.filename))
 
     scripts = {
+        # module_name: config_file
         'import_biblio': 'import',
         'acronyms': 'acronyms',
         'preprocess': 'preprocess',
@@ -91,38 +107,16 @@ def init_project(args):
     }
     for modulename, s in scripts.items():
         p = (config_dir / s).with_suffix('.toml')
-        old_p = (directory / s).with_suffix('.toml')
-        if not old_p.exists():
-            if not p.exists():
-                module = importlib.import_module(modulename)
-                args = module.init_argparser().slrkit_arguments
-                conf = tomlkit.document()
-                for arg_name, arg in args.items():
-                    if not arg['logfile'] and not arg['cli_only']:
-                        conf.add(tomlkit.comment(arg['help'].replace('\n', ' ')))
-                        conf.add(tomlkit.comment(f'required: {arg["required"]}'))
-                        if arg['suggest-suffix'] is not None:
-                            val = ''.join([meta['Project']['Name'],
-                                           arg['suggest-suffix']])
-                            conf.add(arg_name, val)
-                        elif arg['value'] is not None:
-                            try:
-                                conf.add(arg_name, arg['value'])
-                            except ValueError:
-                                conf.add(arg_name, str(arg['value']))
-                        else:
-                            conf.add(arg_name, '')
+        conf = prepare_configfile(modulename, meta)
+        if p.exists():
+            obj = toml_load(p)
+            for k in conf.keys():
+                conf[k] = obj.get(k, conf[k])
 
-                with open(p, 'w') as file:
-                    file.write(tomlkit.dumps(conf))
-        elif move:
-            try:
-                # create a backup copy of the destination file if exists
-                shutil.copy2(p, p.with_suffix(p.suffix + '.bak'))
-            except FileNotFoundError:
-                # the destination file does not exist, never mind
-                pass
-            shutil.copy2(str(old_p), str(p))
+            shutil.copy2(p, p.with_suffix(p.suffix + '.bak'))
+
+        with open(p, 'w') as file:
+            file.write(tomlkit.dumps(conf))
 
     metadoc = tomlkit.document()
     for mk, mv in meta.items():
@@ -349,14 +343,6 @@ def init_argparser():
                                                     'project')
     parser_init.add_argument('name', action='store', type=str,
                              help='Name of the project.')
-    parser_init.add_argument('--config_dir', '-c', action='store', type=str,
-                             help='Name of the configuration directory of the '
-                                  'project. This directory will be created and '
-                                  'populated with the template configuration '
-                                  'files. If this directory already exists, '
-                                  'only the missing template file are created. '
-                                  'If this option is omitted, the directory '
-                                  'will be named "slrkit.conf".')
     parser_init.add_argument('--author', '-A', action='store', type=str,
                              default='', help='Name of the author of the '
                                               'project')
