@@ -1,3 +1,4 @@
+import logging
 import pathlib
 import sys
 # disable warnings if they are not explicitly wanted
@@ -5,6 +6,7 @@ import uuid
 
 if not sys.warnoptions:
     import warnings
+
     warnings.simplefilter('ignore')
 
 import argparse
@@ -22,12 +24,13 @@ from gensim.models import CoherenceModel, LdaModel
 
 from arguments import AppendMultipleFilesAction, ArgParse
 from lda import (PHYSICAL_CPUS, prepare_documents, output_topics, load_acronyms)
-from utils import assert_column, STOPWORD_PLACEHOLDER
+from utils import assert_column, STOPWORD_PLACEHOLDER, setup_logger
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
 _corpora: Optional[Dict[Tuple[str], Tuple[List[Tuple[int, int]],
                                           Dictionary, List[List[str]]]]] = None
 _seed: Optional[int] = None
+_logger = None
 
 
 class _ValidateInt(argparse.Action):
@@ -128,15 +131,17 @@ def prepare_corpus(docs, no_above, no_below):
 
 
 def init_train(corpora, seed):
-    global _corpora, _seed
+    global _corpora, _seed, _logger
     _corpora = corpora
     _seed = seed
+    _logger = setup_logger('debug_logger', 'slr-kit.log',  # args.logfile,
+                           level=logging.DEBUG)
 
 
 # c_idx is the corpus index, n_topics is the number of topics,
 # a is alpha and _b is beta
 def train(c_idx, n_topics, _a, _b):
-    global _corpora, _seed
+    global _corpora, _seed, _logger
     start = timer()
     corpus, dictionary, texts = _corpora[c_idx]
     model = LdaModel(corpus, num_topics=n_topics,
@@ -150,6 +155,8 @@ def train(c_idx, n_topics, _a, _b):
     c_v = cv_model.get_coherence()
     stop = timer()
     uid = str(uuid.uuid4())
+    _logger.debug('{} {} {} {} {} {} {}'.format(c_idx, n_topics, _a, _b, c_v,
+                                                stop - start, uid))
     output_dir = pathlib.Path.cwd() / uid
     output_dir.mkdir(exist_ok=True)
     model.save(str(output_dir / 'model'))
@@ -187,6 +194,7 @@ def compute_optimal_model(corpora, topics_range, alpha, beta, seed=None):
         'coherence': [],
         'times': [],
         'seed': [],
+        'uuid': [],
     }
     # iterate through all the combinations
 
@@ -266,7 +274,7 @@ def lda_grid_search(args):
     beta.append('auto')
     corpora = {}
     no_above_list = [0.5, 0.6, 0.75, 1.0]
-    for labels in [('keyword', 'relevant'), ('keyword', )]:
+    for labels in [('keyword', 'relevant'), ('keyword',)]:
         docs, titles = prepare_documents(preproc_file, terms_file,
                                          not args.no_ngrams, labels,
                                          args.target_column, args.title,
