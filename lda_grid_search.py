@@ -30,7 +30,8 @@ from utils import assert_column, STOPWORD_PLACEHOLDER, setup_logger
 _corpora: Optional[Dict[Tuple[str], Tuple[List[Tuple[int, int]],
                                           Dictionary, List[List[str]]]]] = None
 _seed: Optional[int] = None
-_logger = None
+_logger: Optional[logging.Logger] = None
+_outdir: Optional[pathlib.Path] = None
 
 
 class _ValidateInt(argparse.Action):
@@ -130,18 +131,19 @@ def prepare_corpus(docs, no_above, no_below):
         return corpus, dictionary
 
 
-def init_train(corpora, seed):
-    global _corpora, _seed, _logger
+def init_train(corpora, seed, outdir):
+    global _corpora, _seed, _logger, _outdir
     _corpora = corpora
     _seed = seed
     _logger = setup_logger('debug_logger', 'slr-kit.log',  # args.logfile,
                            level=logging.DEBUG)
+    _outdir = outdir
 
 
 # c_idx is the corpus index, n_topics is the number of topics,
 # a is alpha and _b is beta
 def train(c_idx, n_topics, _a, _b):
-    global _corpora, _seed, _logger
+    global _corpora, _seed, _logger, _outdir
     start = timer()
     corpus, dictionary, texts = _corpora[c_idx]
     model = LdaModel(corpus, num_topics=n_topics,
@@ -157,14 +159,15 @@ def train(c_idx, n_topics, _a, _b):
     uid = str(uuid.uuid4())
     _logger.debug('{} {} {} {} {} {} {}'.format(c_idx, n_topics, _a, _b, c_v,
                                                 stop - start, uid))
-    output_dir = pathlib.Path.cwd() / uid
+    output_dir = _outdir / uid
     output_dir.mkdir(exist_ok=True)
     model.save(str(output_dir / 'model'))
     dictionary.save(str(output_dir / 'model_dictionary'))
     return c_idx, n_topics, _a, _b, c_v, stop - start, uid
 
 
-def compute_optimal_model(corpora, topics_range, alpha, beta, seed=None):
+def compute_optimal_model(corpora, topics_range, alpha, beta, outdir,
+                          seed=None):
     """
     Train several models iterating over the specified number of topics and performs
     LDA hyper-parameters alpha and beta tuning
@@ -199,7 +202,7 @@ def compute_optimal_model(corpora, topics_range, alpha, beta, seed=None):
     # iterate through all the combinations
 
     with Pool(processes=PHYSICAL_CPUS, initializer=init_train,
-              initargs=(corpora, seed)) as pool:
+              initargs=(corpora, seed, outdir)) as pool:
         results = pool.starmap(train, product(corpora.keys(), topics_range,
                                               alpha, beta))
         # get the coherence score for the given parameters
@@ -299,7 +302,7 @@ def lda_grid_search(args):
                                                          docs)
 
     results = compute_optimal_model(corpora, topics_range, alpha, beta,
-                                    args.seed)
+                                    output_dir, seed=args.seed)
 
     results.to_csv(args.result, sep='\t', index=False)
     best = results.loc[results['coherence'].idxmax()]
