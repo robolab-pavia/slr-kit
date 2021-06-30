@@ -502,8 +502,14 @@ def lda(args):
         no_below = args.no_below
         no_above = args.no_above
         topics = args.topics
-        alpha = args.alpha
-        beta = args.beta
+        try:
+            alpha = float(args.alpha)
+        except ValueError:
+            alpha = args.alpha
+        try:
+            beta = float(args.beta)
+        except ValueError:
+            beta = args.beta
         seed = args.seed
         model, dictionary = train_lda_model(docs, topics, alpha, beta,
                                             no_above, no_below, seed)
