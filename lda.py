@@ -14,7 +14,7 @@ if not sys.warnoptions:
 import argparse
 import json
 from datetime import datetime
-from itertools import repeat, chain
+from itertools import repeat
 from multiprocessing import Pool
 from pathlib import Path
 
@@ -24,8 +24,9 @@ from gensim.models import LdaModel
 from gensim.models.coherencemodel import CoherenceModel
 from psutil import cpu_count
 
-from arguments import AppendMultipleFilesAction, ArgParse
-from utils import (substring_index, STOPWORD_PLACEHOLDER, RELEVANT_PREFIX, assert_column)
+from slrkit_utils.argument_parser import AppendMultipleFilesAction, ArgParse
+from utils import (substring_index, STOPWORD_PLACEHOLDER, RELEVANT_PREFIX,
+                   assert_column)
 
 PHYSICAL_CPUS = cpu_count(logical=False)
 

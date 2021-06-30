@@ -3,14 +3,14 @@ import sys
 import logging
 import pandas as pd
 
-import arguments
+from slrkit_utils.argument_parser import ArgParse
 from schwartz_hearst import extract_abbreviation_definition_pairs
 from utils import setup_logger
 
 
 def init_argparser():
     """Initialize the command line parser."""
-    parser = arguments.ArgParse()
+    parser = ArgParse()
     parser.add_argument('datafile', action="store", type=str,
                         help="input CSV data file")
     parser.add_argument('--output', '-o', metavar='FILENAME',

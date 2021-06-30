@@ -5,7 +5,7 @@ import sys
 
 import pandas
 
-from arguments import ArgParse
+from slrkit_utils.argument_parser import ArgParse
 from utils import setup_logger, STOPWORD_PLACEHOLDER
 
 

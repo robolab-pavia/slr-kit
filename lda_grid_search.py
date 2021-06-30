@@ -17,9 +17,9 @@ import pandas as pd
 from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel, LdaModel
 
-from arguments import AppendMultipleFilesAction, ArgParse
+from slrkit_utils.argument_parser import AppendMultipleFilesAction, ArgParse
 from lda import (PHYSICAL_CPUS, prepare_documents, output_topics, load_acronyms)
-from utils import assert_column, STOPWORD_PLACEHOLDER
+from utils import STOPWORD_PLACEHOLDER
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
 _corpora: Optional[Dict[Tuple[str], Tuple[List[Tuple[int, int]],

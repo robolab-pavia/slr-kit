@@ -12,7 +12,7 @@ from jinja2 import Environment, FileSystemLoader
 from matplotlib import pyplot as plt
 from tabulate import tabulate
 
-import arguments
+from slrkit_utils.argument_parser import ArgParse
 
 
 def init_argparser():
@@ -22,7 +22,7 @@ def init_argparser():
     :return: the command line parser
     :rtype: argparse.ArgumentParser
     """
-    parser = arguments.ArgParse()
+    parser = ArgParse()
     parser.add_argument('ris_file', type=str, suggest_suffix='.ris',
                         help='the path to the ris file containing papers data')
     parser.add_argument('json_file', type=str, cli_only=True,

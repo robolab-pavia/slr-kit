@@ -3,7 +3,7 @@ import sys
 import pandas as pd
 from RISparser import readris
 
-import arguments
+from slrkit_utils.argument_parser import ArgParse
 
 
 def show_columns(df):
@@ -50,7 +50,7 @@ DEFAULT_IMPORTER = 'RIS'
 
 def init_argparser():
     """Initialize the command line parser."""
-    parser = arguments.ArgParse()
+    parser = ArgParse()
     parser.add_argument('input_file', action='store', type=str,
                         help='input bibliography file')
     parser.add_argument('--type', '-t', action='store', type=str,

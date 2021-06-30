@@ -17,3 +17,4 @@ git+https://github.com/robolab-pavia/fawoc.git
 tabulate
 Jinja2
 tomlkit
+git+https://github.com/robolab-pavia/slr-kit-utils.git

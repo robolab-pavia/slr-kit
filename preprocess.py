@@ -11,8 +11,9 @@ import pandas as pd
 from nltk.stem.wordnet import WordNetLemmatizer
 from psutil import cpu_count
 
-from arguments import (AppendMultipleFilesAction, AppendMultiplePairsAction,
-                       ArgParse)
+from slrkit_utils.argument_parser import (AppendMultipleFilesAction,
+                                          AppendMultiplePairsAction,
+                                          ArgParse)
 from utils import (setup_logger, assert_column,
                    log_end, log_start, STOPWORD_PLACEHOLDER, RELEVANT_PREFIX)
 
