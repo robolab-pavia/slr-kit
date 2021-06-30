@@ -110,6 +110,9 @@ def init_argparser():
     parser.add_argument('--delimiter', action='store', type=str,
                         default='\t', help='Delimiter used in preproc_file. '
                                            'Default %(default)r')
+    parser.add_argument('--logfile', default='slr-kit.log',
+                        help='log file name. If omitted %(default)r is used',
+                        logfile=True)
     return parser
 
 
@@ -131,12 +134,11 @@ def prepare_corpus(docs, no_above, no_below):
         return corpus, dictionary
 
 
-def init_train(corpora, seed, outdir):
+def init_train(corpora, seed, outdir, logfile):
     global _corpora, _seed, _logger, _outdir
     _corpora = corpora
     _seed = seed
-    _logger = setup_logger('debug_logger', 'slr-kit.log',  # args.logfile,
-                           level=logging.DEBUG)
+    _logger = setup_logger('debug_logger', logfile, level=logging.DEBUG)
     _outdir = outdir
 
 
@@ -166,7 +168,7 @@ def train(c_idx, n_topics, _a, _b):
     return c_idx, n_topics, _a, _b, c_v, stop - start, uid
 
 
-def compute_optimal_model(corpora, topics_range, alpha, beta, outdir,
+def compute_optimal_model(corpora, topics_range, alpha, beta, outdir, logfile,
                           seed=None):
     """
     Train several models iterating over the specified number of topics and performs
@@ -202,7 +204,7 @@ def compute_optimal_model(corpora, topics_range, alpha, beta, outdir,
     # iterate through all the combinations
 
     with Pool(processes=PHYSICAL_CPUS, initializer=init_train,
-              initargs=(corpora, seed, outdir)) as pool:
+              initargs=(corpora, seed, outdir, logfile)) as pool:
         results = pool.starmap(train, product(corpora.keys(), topics_range,
                                               alpha, beta))
         # get the coherence score for the given parameters
@@ -248,6 +250,7 @@ def lda_grid_search(args):
     terms_file = args.terms_file
     preproc_file = args.preproc_file
     output_dir = args.outdir
+    logfile = args.logfile
 
     placeholder = args.placeholder
     relevant_prefix = placeholder
@@ -302,7 +305,7 @@ def lda_grid_search(args):
                                                          docs)
 
     results = compute_optimal_model(corpora, topics_range, alpha, beta,
-                                    output_dir, seed=args.seed)
+                                    output_dir, logfile, seed=args.seed)
 
     results.to_csv(args.result, sep='\t', index=False)
     best = results.loc[results['coherence'].idxmax()]
