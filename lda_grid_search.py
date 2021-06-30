@@ -1,5 +1,8 @@
+import pathlib
 import sys
 # disable warnings if they are not explicitly wanted
+import uuid
+
 if not sys.warnoptions:
     import warnings
     warnings.simplefilter('ignore')
@@ -95,11 +98,6 @@ def init_argparser():
                                           'in CSV format.If omitted or -, '
                                           'stdout is  used.',
                         non_standard=True)
-    parser.add_argument('--output', '-o', action='store_true',
-                        help='if set, it stores the topic description in '
-                             '<outdir>/lda_terms-topics_<date>_<time>.json, '
-                             'and the document topic assignment in '
-                             '<outdir>/lda_docs-topics_<date>_<time>.json')
     parser.add_argument('--placeholder', '-p',
                         default=STOPWORD_PLACEHOLDER,
                         help='Placeholder for barrier word. Also used as a '
@@ -151,7 +149,12 @@ def train(c_idx, n_topics, _a, _b):
                               processes=1)
     c_v = cv_model.get_coherence()
     stop = timer()
-    return c_idx, n_topics, _a, _b, c_v, stop - start
+    uid = str(uuid.uuid4())
+    output_dir = pathlib.Path.cwd() / uid
+    output_dir.mkdir(exist_ok=True)
+    model.save(str(output_dir / 'model'))
+    dictionary.save(str(output_dir / 'model_dictionary'))
+    return c_idx, n_topics, _a, _b, c_v, stop - start, uid
 
 
 def compute_optimal_model(corpora, topics_range, alpha, beta, seed=None):
@@ -194,7 +197,7 @@ def compute_optimal_model(corpora, topics_range, alpha, beta, seed=None):
         # get the coherence score for the given parameters
         # LDA multi-core implementation with maximum number of workers
         for res in results:
-            c, n, a, b, cv, t = res
+            c, n, a, b, cv, t, uid = res
             # Save the model results
             model_results['corpus'].append(c[0])
             model_results['no_below'].append(c[1])
@@ -205,6 +208,7 @@ def compute_optimal_model(corpora, topics_range, alpha, beta, seed=None):
             model_results['coherence'].append(cv)
             model_results['times'].append(t)
             model_results['seed'].append(seed)
+            model_results['uuid'].append(uid)
 
     return pd.DataFrame(model_results)
 
@@ -289,13 +293,13 @@ def lda_grid_search(args):
     results = compute_optimal_model(corpora, topics_range, alpha, beta,
                                     args.seed)
 
-    results.to_csv(args.result, index=False)
+    results.to_csv(args.result, sep='\t', index=False)
     best = results.loc[results['coherence'].idxmax()]
 
     print('Best model:')
     print(best)
 
-    if args.output or args.model:
+    if args.model:
         corpus, dictionary, docs = corpora[(best['corpus'],
                                             best['no_below'],
                                             best['no_above'])]
@@ -305,14 +309,10 @@ def lda_grid_search(args):
                          minimum_probability=0.0,
                          alpha=best['alpha'], eta=best['beta'])
 
-        if args.output:
-            output_topics(model, dictionary, docs, titles, output_dir, 'lda')
-
-        if args.model:
-            lda_path = output_dir / 'lda_model'
-            lda_path.mkdir(exist_ok=True)
-            model.save(str(lda_path / 'model'))
-            dictionary.save(str(lda_path / 'model_dictionary'))
+        lda_path = output_dir / 'lda_model'
+        lda_path.mkdir(exist_ok=True)
+        model.save(str(lda_path / 'model'))
+        dictionary.save(str(lda_path / 'model_dictionary'))
 
     if args.plot_show or args.plot_save:
         max_cv = results.groupby('topics')['coherence'].idxmax()
