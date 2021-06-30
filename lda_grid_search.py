@@ -252,6 +252,8 @@ def lda_grid_search(args):
     output_dir = args.outdir
     logfile = args.logfile
 
+    logger = setup_logger('debug_logger', logfile, level=logging.DEBUG)
+    logger.info('==== lda_grid_search started ====')
     placeholder = args.placeholder
     relevant_prefix = placeholder
 
@@ -304,6 +306,10 @@ def lda_grid_search(args):
                                                          dictionary,
                                                          docs)
 
+    logger.info('N° of training process {}'.format(len(corpora)
+                                                   * len(alpha)
+                                                   * len(beta)
+                                                   * len(topics_range)))
     results = compute_optimal_model(corpora, topics_range, alpha, beta,
                                     output_dir, logfile, seed=args.seed)
 
@@ -344,6 +350,8 @@ def lda_grid_search(args):
         if args.plot_save:
             fig_file = output_dir / 'lda_plot.pdf'
             plt.savefig(str(fig_file), dpi=1000)
+
+    logger.info('==== lda_grid_search ended ====')
 
 
 def main():
