@@ -103,6 +103,14 @@ def report_year(papers_list, topics_list):
     return topics_dict
 
 
+def get_journal(paper):
+    if "secondary_title" in paper:
+        return paper["secondary_title"]
+    if "custom3" in paper:
+        return paper['custom3']
+    raise KeyError(paper)
+
+
 def prepare_journals(papers_list):
     """
     Check how many papers were published by each journal.
@@ -114,17 +122,17 @@ def prepare_journals(papers_list):
     """
 
     journals = []
-    journals_dict = dict()
+    journals_dict = {}
     for paper in papers_list:
-        if "secondary_title" in paper:
-            if paper["secondary_title"] not in journals:
-                journals.append(paper["secondary_title"])
+        journal_name = get_journal(paper)
+        if journal_name not in journals:
+            journals.append(journal_name)
 
     for journal in journals:
         for paper in papers_list:
-            if "secondary_title" in paper:
-                if paper["secondary_title"] == journal:
-                    journals_dict[journal] = journals_dict.get(journal, 0) + 1
+            journal_name = get_journal(paper)
+            if journal_name == journal:
+                journals_dict[journal] = journals_dict.get(journal, 0) + 1
 
     journals_dict = sorted(journals_dict.items(), key=lambda x: x[1], reverse=True)
 
@@ -147,11 +155,11 @@ def report_journal_topics(journals_dict, papers_list):
     journal_topic = collections.defaultdict(dict)
     for journal, value in journals_dict[0:10]:
         for paper in papers_list:
-            if "secondary_title" in paper:
-                if paper["secondary_title"] == journal:
-                    topics = paper["topics"]
-                    for topic in topics:
-                        journal_topic[journal][topic] = journal_topic[journal].get(topic, 0) + 1
+            journal_title = get_journal(paper)
+            if journal_title == journal:
+                topics = paper["topics"]
+                for topic in topics:
+                    journal_topic[journal][topic] = journal_topic[journal].get(topic, 0) + topics[topic]
 
     return journal_topic
 
@@ -173,14 +181,14 @@ def report_journal_years(papers_list, journals_dict):
     max_year = -1
     for journal, value in journals_dict[0:10]:
         for paper in papers_list:
-            if "secondary_title" in paper:
-                if paper["secondary_title"] == journal:
-                    year = int(paper["year"])
-                    journal_year[journal][year] = journal_year[journal].get(year, 0) + 1
-                    if year > max_year:
-                        max_year = year
-                    if year < min_year:
-                        min_year = year
+            journal_title = get_journal(paper)
+            if journal_title == journal:
+                year = int(paper["year"])
+                journal_year[journal][year] = journal_year[journal].get(year, 0) + 1
+                if year > max_year:
+                    max_year = year
+                if year < min_year:
+                    min_year = year
 
     return journal_year, min_year, max_year
 
@@ -355,7 +363,7 @@ def main():
         max_year = args.maxyear
 
     if min_year > max_year:
-        raise ValueError('The minimum year is greater than the maximum year')
+        raise ValueError('The minimum year {} is greater than the maximum year {}'.format(min_year, max_year))
 
     topic_year_table, journal_topic_table, journal_year_table = prepare_tables(topics_dict,
                                                                                journals_topics,
