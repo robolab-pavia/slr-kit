@@ -14,6 +14,17 @@ from tabulate import tabulate
 
 from slrkit_utils.argument_parser import ArgParse
 
+YEARTOPIC_TEX = 'yeartopic.tex'
+JOURNALTOPIC_TEX = 'journaltopic.tex'
+JOURNALYEAR_TEX = 'journalyear.tex'
+MD_TEMPLATE = 'report_template.md'
+MD_REPORT = 'report.md'
+TEX_TEMPLATE = 'report_template.tex'
+TEX_REPORT = 'report.tex'
+YEARFIGURE = 'reportyear.png'
+TEMPLATES_DIRNAME = 'report_templates'
+TABLES_DIRNAME = 'tables'
+
 
 def init_argparser():
     """
@@ -170,7 +181,8 @@ def report_journal_topics(journals_dict, papers_list):
             if journal_title == journal:
                 topics = paper['topics']
                 for topic in topics:
-                    journal_topic[journal][topic] = journal_topic[journal].get(topic, 0) + topics[topic]
+                    journal_topic[journal][topic] = (journal_topic[journal].get(topic, 0)
+                                                    + topics[topic])
 
     return journal_topic
 
@@ -241,7 +253,7 @@ def plot_years(topics_dict, dirname):
     ax[1].legend()
 
     fig.tight_layout()
-    plt.savefig(dirname / 'reportyear.png')
+    plt.savefig(dirname / YEARFIGURE)
 
 
 def create_topic_year_list(topics_dict, max_year, min_year):
@@ -299,15 +311,14 @@ def create_journal_year_list(journals_year, max_year, min_year):
 def save_markdown_report(topic_year_list, journal_topic_list, journal_year_list,
                          md_filename, template_path):
     env = Environment(loader=FileSystemLoader(template_path), autoescape=True)
-    template = env.get_template('report_template.md')
-    year_report = 'reportyear.png'
+    template = env.get_template(MD_TEMPLATE)
     topic_year_table = tabulate(topic_year_list, headers='firstrow',
                                 tablefmt='github')
     journal_topic_table = tabulate(journal_topic_list, headers='firstrow',
                                    floatfmt='.3f', tablefmt='github')
     journal_year_table = tabulate(journal_year_list, headers='firstrow',
                                   floatfmt='.3f', tablefmt='github')
-    md_file = template.render(year_report=year_report,
+    md_file = template.render(year_report=YEARFIGURE,
                               year_table=topic_year_table,
                               journal_topic_table=journal_topic_table,
                               journal_year_table=journal_year_table)
@@ -346,35 +357,32 @@ def prepare_tables(topics_dict, journals_topic, journals_year, dirname,
     :param max_year: maximum year that will be used in the report
     :type max_year: int
     """
-    tables: pathlib.Path = dirname / 'tables'
+    tables: pathlib.Path = dirname / TABLES_DIRNAME
     tables.mkdir(exist_ok=True)
 
     topic_year_list = create_topic_year_list(topics_dict, max_year, min_year)
-
-    save_latex_table(topic_year_list, tables / 'yeartopic.tex', False)
+    save_latex_table(topic_year_list, tables / YEARTOPIC_TEX, False)
 
     journal_topic_list = create_journal_topic_list(journals_topic, topics_dict)
-
-    save_latex_table(journal_topic_list, tables / 'journaltopic.tex', True)
+    save_latex_table(journal_topic_list, tables / JOURNALTOPIC_TEX, True)
 
     journal_year_list = create_journal_year_list(journals_year, max_year,
                                                  min_year)
-    save_latex_table(journal_year_list, tables / 'journalyear.tex', True)
+    save_latex_table(journal_year_list, tables / JOURNALYEAR_TEX, True)
 
     save_markdown_report(topic_year_list, journal_topic_list, journal_year_list,
-                         dirname / 'report.md', md_template_path)
+                         dirname / MD_REPORT, md_template_path)
 
 
 def report(args):
     script_dir = pathlib.Path(__file__).parent
     cwd = pathlib.Path.cwd()
     listdir = os.listdir(cwd)
-    templates = script_dir / 'report_templates'
-    if 'report_template.md' not in listdir:
-        shutil.copy(templates / 'report_template.md', cwd)
-
-    if 'report_template.tex' not in listdir:
-        shutil.copy(templates / 'report_template.tex', cwd)
+    templates = script_dir / TEMPLATES_DIRNAME
+    if MD_TEMPLATE not in listdir:
+        shutil.copy(templates / MD_TEMPLATE, cwd)
+    if TEX_TEMPLATE not in listdir:
+        shutil.copy(templates / TEX_TEMPLATE, cwd)
 
     ris_path = args.ris_file
     json_path = args.json_file
@@ -400,12 +408,13 @@ def report(args):
         max_year = args.maxyear
 
     if min_year > max_year:
-        raise ValueError('The minimum year {} is greater than the maximum year {}'.format(min_year, max_year))
+        msg = 'The minimum year {} is greater than the maximum year {}'
+        raise ValueError(msg.format(min_year, max_year))
 
     prepare_tables(topics_dict, journals_topics, journals_year, dirname, cwd,
                    min_year, max_year)
 
-    shutil.copy(cwd / 'report_template.tex', dirname / 'report.tex')
+    shutil.copy(cwd / TEX_TEMPLATE, dirname / TEX_REPORT)
 
 
 def main():
