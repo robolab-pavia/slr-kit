@@ -244,32 +244,10 @@ def plot_years(topics_dict, dirname):
     plt.savefig(dirname / 'reportyear.png')
 
 
-def prepare_tables(topics_dict, journals_topic, journals_year, dirname,
-                   min_year, max_year):
-    """
-    Creates tables for every data created in previous function, with the Tabulate
-    module and saves them in a directory
-
-    :param topics_dict: dictionary with topic-year data
-    :type topics_dict: dict
-    :param journals_topic: dictionary with journal-topic data
-    :type journals_topic: dict
-    :param journals_year: dictionary with journal-year data
-    :type journals_year: dict
-    :param dirname: name of the directory where the files will be saved
-    :type dirname: Path
-    :param min_year: minimum year that will be used in the report
-    :type min_year: int
-    :param max_year: maximum year that will be used in the report
-    :type max_year: int
-    :return: three tables for every dictionary
-    :rtype: tuple[str, str, str]
-    """
-
+def create_topic_year_list(topics_dict, max_year, min_year):
     first_line = ['Topic']
     first_line.extend(list(range(min_year, max_year + 1)))
     topic_year_list = [first_line]
-
     for topic in topics_dict:
         sorted_dic = sorted(topics_dict[topic].items())
         line = [topic]
@@ -280,15 +258,14 @@ def prepare_tables(topics_dict, journals_topic, journals_year, dirname,
             else:
                 line.append(0)
         topic_year_list.append(line)
+    return topic_year_list
 
-    topic_year_table = tabulate(topic_year_list, headers='firstrow',
-                                tablefmt='github')
 
+def create_journal_topic_list(journals_topic, topics_dict):
     first_line = ['Journal']
     topics_list = list(range(0, len(topics_dict)))
     first_line.extend(topics_list)
     journal_topic_list = [first_line]
-
     for journal in journals_topic:
         line = [journal]
         sorted_dic = sorted(journals_topic[journal].items())
@@ -299,10 +276,10 @@ def prepare_tables(topics_dict, journals_topic, journals_year, dirname,
             else:
                 line.append(0)
         journal_topic_list.append(line)
+    return journal_topic_list
 
-    journal_topic_table = tabulate(journal_topic_list, headers='firstrow',
-                                   floatfmt='.3f', tablefmt='github')
 
+def create_journal_year_list(journals_year, max_year, min_year):
     first_line = ['Journal']
     first_line.extend(list(range(min_year, max_year + 1)))
     journal_year_list = [first_line]
@@ -316,32 +293,76 @@ def prepare_tables(topics_dict, journals_topic, journals_year, dirname,
             else:
                 line.append(0)
         journal_year_list.append(line)
+    return journal_year_list
 
+
+def save_markdown_report(topic_year_list, journal_topic_list, journal_year_list,
+                         md_filename, template_path):
+    env = Environment(loader=FileSystemLoader(template_path), autoescape=True)
+    template = env.get_template('report_template.md')
+    year_report = 'reportyear.png'
+    topic_year_table = tabulate(topic_year_list, headers='firstrow',
+                                tablefmt='github')
+    journal_topic_table = tabulate(journal_topic_list, headers='firstrow',
+                                   floatfmt='.3f', tablefmt='github')
     journal_year_table = tabulate(journal_year_list, headers='firstrow',
                                   floatfmt='.3f', tablefmt='github')
+    md_file = template.render(year_report=year_report,
+                              year_table=topic_year_table,
+                              journal_topic_table=journal_topic_table,
+                              journal_year_table=journal_year_table)
+
+    with open(md_filename, 'w') as fh:
+        fh.write(md_file)
+
+
+def save_latex_table(data_list, filename, fix_align):
+    latex_table = tabulate(data_list, headers='firstrow', tablefmt='latex')
+    if fix_align:
+        latex_table = latex_table.replace('lrrrrr', 'p{3cm}rrrrr')
+    with open(filename, 'w') as f:
+        f.write(latex_table)
+
+
+def prepare_tables(topics_dict, journals_topic, journals_year, dirname,
+                   md_template_path, min_year, max_year):
+    """
+    Creates tables for every data created in previous function, with the Tabulate
+    module and saves them
+
+    :param topics_dict: dictionary with topic-year data
+    :type topics_dict: dict
+    :param journals_topic: dictionary with journal-topic data
+    :type journals_topic: dict
+    :param journals_year: dictionary with journal-year data
+    :type journals_year: dict
+    :param dirname: name of the directory where the files will be saved
+    :type dirname: pathlib.Path
+    :param md_template_path: path to the directory containing the markdown
+        template
+    :type md_template_path: pathlib.Path
+    :param min_year: minimum year that will be used in the report
+    :type min_year: int
+    :param max_year: maximum year that will be used in the report
+    :type max_year: int
+    """
     tables: pathlib.Path = dirname / 'tables'
     tables.mkdir(exist_ok=True)
 
-    latex_year_topic = tabulate(topic_year_list, headers='firstrow',
-                                tablefmt='latex')
-    latex_journal_topic = tabulate(journal_topic_list, headers='firstrow',
-                                   tablefmt='latex')
-    latex_journal_year = tabulate(journal_year_list, headers='firstrow',
-                                  tablefmt='latex')
+    topic_year_list = create_topic_year_list(topics_dict, max_year, min_year)
 
-    latex_journal_topic = latex_journal_topic.replace('lrrrrr', 'p{3cm}rrrrr')
-    latex_journal_year = latex_journal_year.replace('lrrrrr', 'p{3cm}rrrrr')
+    save_latex_table(topic_year_list, tables / 'yeartopic.tex', False)
 
-    with open(tables / 'yeartopic.tex', 'w') as f:
-        f.write(latex_year_topic)
+    journal_topic_list = create_journal_topic_list(journals_topic, topics_dict)
 
-    with open(tables / 'journaltopic.tex', 'w') as f:
-        f.write(latex_journal_topic)
+    save_latex_table(journal_topic_list, tables / 'journaltopic.tex', True)
 
-    with open(tables / 'journalyear.tex', 'w') as f:
-        f.write(latex_journal_year)
+    journal_year_list = create_journal_year_list(journals_year, max_year,
+                                                 min_year)
+    save_latex_table(journal_year_list, tables / 'journalyear.tex', True)
 
-    return topic_year_table, journal_topic_table, journal_year_table
+    save_markdown_report(topic_year_list, journal_topic_list, journal_year_list,
+                         dirname / 'report.md', md_template_path)
 
 
 def report(args):
@@ -381,20 +402,8 @@ def report(args):
     if min_year > max_year:
         raise ValueError('The minimum year {} is greater than the maximum year {}'.format(min_year, max_year))
 
-    ret = prepare_tables(topics_dict, journals_topics, journals_year, dirname,
-                         min_year, max_year)
-    topic_year_table, journal_topic_table, journal_year_table = ret
-    env = Environment(loader=FileSystemLoader(cwd), autoescape=True)
-
-    template = env.get_template('report_template.md')
-    year_report = 'reportyear.png'
-    md_file = template.render(year_report=year_report,
-                              year_table=topic_year_table,
-                              journal_topic_table=journal_topic_table,
-                              journal_year_table=journal_year_table)
-
-    with open(dirname / 'report.md', 'w') as fh:
-        fh.write(md_file)
+    prepare_tables(topics_dict, journals_topics, journals_year, dirname, cwd,
+                   min_year, max_year)
 
     shutil.copy(cwd / 'report_template.tex', dirname / 'report.tex')
 
