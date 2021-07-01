@@ -26,6 +26,21 @@ TEMPLATES_DIRNAME = 'report_templates'
 TABLES_DIRNAME = 'tables'
 
 
+def get_journal(paper):
+    """
+    Returns the name of the journal from a dict loaded from RIS.
+    Raises an exception if no suitable keys are found.
+
+    :return: The name of the journal.
+    :rtype: str
+    """
+    if 'secondary_title' in paper:
+        return paper['secondary_title']
+    if 'custom3' in paper:
+        return paper['custom3']
+    raise KeyError(paper)
+
+
 def init_argparser():
     """
     Initialize the command line parser.
@@ -122,14 +137,6 @@ def report_year(papers_list, topics_list):
                                                + float(topics[str(topic_id)]))
 
     return topics_dict
-
-
-def get_journal(paper):
-    if 'secondary_title' in paper:
-        return paper['secondary_title']
-    if 'custom3' in paper:
-        return paper['custom3']
-    raise KeyError(paper)
 
 
 def prepare_journals(papers_list):
