@@ -35,9 +35,9 @@ def ris_reader(ris_path):
     with open(ris_path, 'r', encoding='utf-8') as bibliography_file:
         entries = readris(bibliography_file)
         for entry in entries:
-            if 'alternate_title1' not in entry or 'title' not in entry:
+            if 'secondary_title' not in entry or 'title' not in entry:
                 continue
-            paper_journal_list.append([entry['title'], entry['alternate_title1']])
+            paper_journal_list.append([entry['title'], entry['secondary_title']])
 
     return paper_journal_list
 
