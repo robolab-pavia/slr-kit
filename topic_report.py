@@ -284,7 +284,7 @@ def create_journal_topic_list(journals_topic, topics_dict):
         x, y = zip(*sorted_dic)
         for topic in first_line[1:]:
             if str(topic) in x:
-                line.append(y[x.index(str(topic))])
+                line.append('{:.2f}'.format(y[x.index(str(topic))]))
             else:
                 line.append(0)
         journal_topic_list.append(line)
