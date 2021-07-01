@@ -174,10 +174,14 @@ def check_project(args, filename):
 def prepare_script_arguments(config, config_dir, confname, script_args):
     args = argparse.Namespace()
     for k, v in script_args.items():
-        if v.get('non-standard', False) or v.get('cli_only', False):
+        if v.get('non-standard', False):
+            continue
+        if v.get('cli_only', False):
+            setattr(args, v['dest'], v['value'])
             continue
         if v.get('logfile', False):
-            setattr(args, k, str((config_dir / 'log' / 'slr-kit.log').resolve()))
+            setattr(args, v['dest'],
+                    str((config_dir / 'log' / 'slr-kit.log').resolve()))
             continue
 
         dest = v.get('dest', k.replace('-', '_'))
