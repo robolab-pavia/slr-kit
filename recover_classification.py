@@ -28,13 +28,17 @@ def main():
     args = parser.parse_args()
     
     oc = pd.read_csv(args.old, sep='\t',
-                     usecols=['term', 'label']).dropna(subset=['label'])
-    nc = pd.read_csv(args.new, sep='\t').dropna(subset=['term'])
+                     usecols=['term', 'label'])
+
+    print(oc)
+    nc = pd.read_csv(args.new, sep='\t')
     
     nc = nc.merge(oc, on='term', how='left')
     nc = nc.assign(label = nc['label_x'].combine_first(nc['label_y']))
     nc = nc.drop(['label_x', 'label_y'], axis=1)
-    nc.to_csv(args.output, index=False, sep='\t')
+    print(nc)
+    print(oc[~oc["term"].isin(nc["term"])])
+    #nc.to_csv(args.output, index=False, sep='\t')
 
 if __name__ == '__main__':
     main()
