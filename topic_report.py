@@ -22,7 +22,7 @@ def init_argparser():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('ris_file', type=str, help='the path to the ris file containing papers data')
-    parser.add_argument('json_file', type=str, help='the path to the json file containing lda results')
+    parser.add_argument('json_file', type=str, help='the path to the lda results file containing the association between documents and topics.')
     parser.add_argument('--dir', '-d', metavar='FILENAME', help='output directory where reports and files will be saved')
     parser.add_argument('--minyear', '-m', type=int, help='minimum year to be reported. '
                                                           'If missing, the minimum year '
