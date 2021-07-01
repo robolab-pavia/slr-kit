@@ -375,6 +375,8 @@ def main():
     with open(dirname / "report.md", "w") as fh:
         fh.write(md_file)
 
+    shutil.copy(cwd / 'report_template.tex', dirname / 'report.tex')
+
 
 if __name__ == "__main__":
     main()
