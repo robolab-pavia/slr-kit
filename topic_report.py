@@ -46,34 +46,36 @@ def prepare_papers(ris_path, json_path):
     :return: the list of dictionaries and the list of topics
     :rtype: tuple[list, list]
     """
-    papers_list = []
 
     with open(json_path) as file:
-        papers_data = json.load(file)
+        papers_with_topics = json.load(file)
 
+    papers_from_ris = []
     with open(ris_path, 'r', encoding='utf-8') as bibliography_file:
         entries = readris(bibliography_file)
         for entry in entries:
             if 'title' not in entry:
                 continue
-            papers_list.append(entry)
+            papers_from_ris.append(entry)
 
-    for paper in papers_list:
-        for paper_data in papers_data:
+    good_papers = []
+    for paper in papers_from_ris:
+        for paper_data in papers_with_topics:
             if paper["title"] == paper_data["title"]:
                 topics = paper_data["topics"]
                 paper["topics"] = topics
+                good_papers.append(paper)
                 break
 
     topics_list = []
-    for paper in papers_list:
+    for paper in good_papers:
         for key in paper["topics"]:
             if int(key) not in topics_list:
                 topics_list.append(int(key))
 
     topics_list.sort()
 
-    return papers_list, topics_list
+    return good_papers, topics_list
 
 
 def report_year(papers_list, topics_list):
