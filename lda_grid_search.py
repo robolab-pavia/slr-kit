@@ -1,4 +1,7 @@
+import logging
+import pathlib
 import sys
+import uuid
 # disable warnings if they are not explicitly wanted
 if not sys.warnoptions:
     import warnings
@@ -19,12 +22,14 @@ from gensim.models import CoherenceModel, LdaModel
 
 from slrkit_utils.argument_parser import AppendMultipleFilesAction, ArgParse
 from lda import (PHYSICAL_CPUS, prepare_documents, output_topics, load_acronyms)
-from utils import STOPWORD_PLACEHOLDER
+from utils import STOPWORD_PLACEHOLDER, setup_logger
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
 _corpora: Optional[Dict[Tuple[str], Tuple[List[Tuple[int, int]],
                                           Dictionary, List[List[str]]]]] = None
 _seed: Optional[int] = None
+_logger: Optional[logging.Logger] = None
+_outdir: Optional[pathlib.Path] = None
 
 
 class _ValidateInt(argparse.Action):
@@ -95,11 +100,6 @@ def init_argparser():
                                           'in CSV format.If omitted or -, '
                                           'stdout is  used.',
                         non_standard=True)
-    parser.add_argument('--output', '-o', action='store_true',
-                        help='if set, it stores the topic description in '
-                             '<outdir>/lda_terms-topics_<date>_<time>.json, '
-                             'and the document topic assignment in '
-                             '<outdir>/lda_docs-topics_<date>_<time>.json')
     parser.add_argument('--placeholder', '-p',
                         default=STOPWORD_PLACEHOLDER,
                         help='Placeholder for barrier word. Also used as a '
@@ -108,6 +108,9 @@ def init_argparser():
     parser.add_argument('--delimiter', action='store', type=str,
                         default='\t', help='Delimiter used in preproc_file. '
                                            'Default %(default)r')
+    parser.add_argument('--logfile', default='slr-kit.log',
+                        help='log file name. If omitted %(default)r is used',
+                        logfile=True)
     return parser
 
 
@@ -129,16 +132,18 @@ def prepare_corpus(docs, no_above, no_below):
         return corpus, dictionary
 
 
-def init_train(corpora, seed):
-    global _corpora, _seed
+def init_train(corpora, seed, outdir, logfile):
+    global _corpora, _seed, _logger, _outdir
     _corpora = corpora
     _seed = seed
+    _logger = setup_logger('debug_logger', logfile, level=logging.DEBUG)
+    _outdir = outdir
 
 
 # c_idx is the corpus index, n_topics is the number of topics,
 # a is alpha and _b is beta
 def train(c_idx, n_topics, _a, _b):
-    global _corpora, _seed
+    global _corpora, _seed, _logger, _outdir
     start = timer()
     corpus, dictionary, texts = _corpora[c_idx]
     model = LdaModel(corpus, num_topics=n_topics,
@@ -151,10 +156,18 @@ def train(c_idx, n_topics, _a, _b):
                               processes=1)
     c_v = cv_model.get_coherence()
     stop = timer()
-    return c_idx, n_topics, _a, _b, c_v, stop - start
+    uid = str(uuid.uuid4())
+    _logger.debug('{} {} {} {} {} {} {}'.format(c_idx, n_topics, _a, _b, c_v,
+                                                stop - start, uid))
+    output_dir = _outdir / uid
+    output_dir.mkdir(exist_ok=True)
+    model.save(str(output_dir / 'model'))
+    dictionary.save(str(output_dir / 'model_dictionary'))
+    return c_idx, n_topics, _a, _b, c_v, stop - start, uid
 
 
-def compute_optimal_model(corpora, topics_range, alpha, beta, seed=None):
+def compute_optimal_model(corpora, topics_range, alpha, beta, outdir, logfile,
+                          seed=None):
     """
     Train several models iterating over the specified number of topics and performs
     LDA hyper-parameters alpha and beta tuning
@@ -184,17 +197,18 @@ def compute_optimal_model(corpora, topics_range, alpha, beta, seed=None):
         'coherence': [],
         'times': [],
         'seed': [],
+        'uuid': [],
     }
     # iterate through all the combinations
 
     with Pool(processes=PHYSICAL_CPUS, initializer=init_train,
-              initargs=(corpora, seed)) as pool:
+              initargs=(corpora, seed, outdir, logfile)) as pool:
         results = pool.starmap(train, product(corpora.keys(), topics_range,
                                               alpha, beta))
         # get the coherence score for the given parameters
         # LDA multi-core implementation with maximum number of workers
         for res in results:
-            c, n, a, b, cv, t = res
+            c, n, a, b, cv, t, uid = res
             # Save the model results
             model_results['corpus'].append(c[0])
             model_results['no_below'].append(c[1])
@@ -205,6 +219,7 @@ def compute_optimal_model(corpora, topics_range, alpha, beta, seed=None):
             model_results['coherence'].append(cv)
             model_results['times'].append(t)
             model_results['seed'].append(seed)
+            model_results['uuid'].append(uid)
 
     return pd.DataFrame(model_results)
 
@@ -233,7 +248,10 @@ def lda_grid_search(args):
     terms_file = args.terms_file
     preproc_file = args.preproc_file
     output_dir = args.outdir
+    logfile = args.logfile
 
+    logger = setup_logger('debug_logger', logfile, level=logging.DEBUG)
+    logger.info('==== lda_grid_search started ====')
     placeholder = args.placeholder
     relevant_prefix = placeholder
 
@@ -262,7 +280,7 @@ def lda_grid_search(args):
     beta.append('auto')
     corpora = {}
     no_above_list = [0.5, 0.6, 0.75, 1.0]
-    for labels in [('keyword', 'relevant'), ('keyword', )]:
+    for labels in [('keyword', 'relevant'), ('keyword',)]:
         docs, titles = prepare_documents(preproc_file, terms_file,
                                          not args.no_ngrams, labels,
                                          args.target_column, args.title,
@@ -286,16 +304,20 @@ def lda_grid_search(args):
                                                          dictionary,
                                                          docs)
 
+    logger.info('N° of training process {}'.format(len(corpora)
+                                                   * len(alpha)
+                                                   * len(beta)
+                                                   * len(topics_range)))
     results = compute_optimal_model(corpora, topics_range, alpha, beta,
-                                    args.seed)
+                                    output_dir, logfile, seed=args.seed)
 
-    results.to_csv(args.result, index=False)
+    results.to_csv(args.result, sep='\t', index=False)
     best = results.loc[results['coherence'].idxmax()]
 
     print('Best model:')
     print(best)
 
-    if args.output or args.model:
+    if args.model:
         corpus, dictionary, docs = corpora[(best['corpus'],
                                             best['no_below'],
                                             best['no_above'])]
@@ -305,14 +327,10 @@ def lda_grid_search(args):
                          minimum_probability=0.0,
                          alpha=best['alpha'], eta=best['beta'])
 
-        if args.output:
-            output_topics(model, dictionary, docs, titles, output_dir, 'lda')
-
-        if args.model:
-            lda_path = output_dir / 'lda_model'
-            lda_path.mkdir(exist_ok=True)
-            model.save(str(lda_path / 'model'))
-            dictionary.save(str(lda_path / 'model_dictionary'))
+        lda_path = output_dir / 'lda_model'
+        lda_path.mkdir(exist_ok=True)
+        model.save(str(lda_path / 'model'))
+        dictionary.save(str(lda_path / 'model_dictionary'))
 
     if args.plot_show or args.plot_save:
         max_cv = results.groupby('topics')['coherence'].idxmax()
@@ -330,6 +348,8 @@ def lda_grid_search(args):
         if args.plot_save:
             fig_file = output_dir / 'lda_plot.pdf'
             plt.savefig(str(fig_file), dpi=1000)
+
+    logger.info('==== lda_grid_search ended ====')
 
 
 def main():
