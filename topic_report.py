@@ -340,8 +340,6 @@ def main():
 
     dirname.mkdir(exist_ok=True)
 
-    shutil.copy(script_dir / 'report_template.tex', dirname)
-
     papers_list, topics_list = prepare_papers(ris_path, json_path)
     topics_dict = report_year(papers_list, topics_list)
     plot_years(topics_dict, dirname)
