@@ -130,7 +130,9 @@ class ArgParse(argparse.ArgumentParser):
     * suggest-suffix: this field suggest a custom suffix to be suggested to
       the user for the value of this option;
     * cli_only: specifies that this argument is intended to be use on the
-      command line only.
+      command line only;
+    * input: flags an argument as an input file;
+    * output: flags an argument as an output file.
     """
 
     def __new__(cls, *args, **kwargs):
@@ -159,6 +161,8 @@ class ArgParse(argparse.ArgumentParser):
         'version', then no information about this argument is stored as this
         option is internally handled by argparse.
         Some custom keyword arguments are handled by this method. They are:
+        * input: bool value, default False, flags an argument as an input file
+        * output: bool value, default False, flags an argument as an output file
         * non_standard: bool value, default False, specifies that this argument
           must be handled in special way;
         * logfile: bool value, default False, specifies that this argument is
@@ -167,10 +171,16 @@ class ArgParse(argparse.ArgumentParser):
           for the value of this argument;
         * cli_only: bool value, default False, specifies that this argument is
           intended to be use on the command line only.
+        Warning: an argument cannot be both an input and an output.
+        If input and output are both True, a ValueError is raised.
         the value of all of them is stored with the information about the
         argument.
         """
         non_standard = kwargs.pop('non_standard', False)
+        is_input = kwargs.pop('input', False)
+        is_output = kwargs.pop('output', False)
+        if is_input and is_output:
+            raise ValueError('an argument cannot be both input and output')
         log = kwargs.pop('logfile', False)
         suggest = kwargs.pop('suggest_suffix', None)
         cli_only = kwargs.pop('cli_only', None)
@@ -207,6 +217,8 @@ class ArgParse(argparse.ArgumentParser):
                 'logfile': log,
                 'suggest-suffix': suggest,
                 'cli_only': cli_only,
+                'input': is_input,
+                'output': is_output,
             }
 
         return ret

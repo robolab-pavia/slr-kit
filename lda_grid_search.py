@@ -49,9 +49,10 @@ def init_argparser():
     parser = ArgParse(description='Performs the LDA on a dataset', epilog=epilog)
     parser.add_argument('preproc_file', action='store', type=Path,
                         help='path to the the preprocess file with the text to '
-                             'elaborate.')
+                             'elaborate.', input=True)
     parser.add_argument('terms_file', action='store', type=Path,
-                        help='path to the file with the classified terms.')
+                        help='path to the file with the classified terms.',
+                        input=True)
     parser.add_argument('outdir', action='store', type=Path, nargs='?',
                         default=Path.cwd(), help='path to the directory where '
                                                  'to save the results.',

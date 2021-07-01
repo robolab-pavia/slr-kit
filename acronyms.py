@@ -12,10 +12,10 @@ def init_argparser():
     """Initialize the command line parser."""
     parser = ArgParse()
     parser.add_argument('datafile', action="store", type=str,
-                        help="input CSV data file")
+                        help='input CSV data file', input=True)
     parser.add_argument('--output', '-o', metavar='FILENAME',
                         help='output file name',
-                        suggest_suffix='_acronyms.csv')
+                        suggest_suffix='_acronyms.csv', output=True)
     parser.add_argument('--column', '-c', default='abstract',
                         help='Name of the column of datafile to search the '
                              'acronyms. Default: %(default)s')

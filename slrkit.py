@@ -7,6 +7,19 @@ import sys
 
 import tomlkit
 
+SCRIPTS = {
+    # config_file: module_name
+    'import': {'module': 'import_biblio', 'depends': []},
+    'acronyms': {'module': 'acronyms', 'depends': ['import']},
+    'preprocess': {'module': 'preprocess', 'depends': ['import']},
+    'gen_terms': {'module': 'gen_terms', 'depends': ['preprocess']},
+    'lda': {'module': 'lda', 'depends': ['preprocess', 'gen_terms']},
+    'lda_grid_search': {'module': 'lda_grid_search',
+                        'depends': ['preprocess', 'gen_terms']},
+    'fawoc': {'module': 'fawoc.fawoc', 'depends': ['gen_terms']},
+    'report': {'module': 'topic_report', 'depends': []},
+}
+
 
 def _check_is_dir(path):
     p = pathlib.Path(path)
@@ -81,7 +94,7 @@ def prepare_configfile(modulename, metafile):
                     conf.add(arg_name, str(arg['value']))
             else:
                 conf.add(arg_name, '')
-    return conf
+    return conf, args
 
 
 def init_project(args):
@@ -94,20 +107,28 @@ def init_project(args):
         msg = 'Error: {} exist and is not a directory'
         sys.exit(msg.format(e.filename))
 
-    scripts = {
-        # module_name: config_file
-        'import_biblio': 'import',
-        'acronyms': 'acronyms',
-        'preprocess': 'preprocess',
-        'gen_terms': 'gen_terms',
-        'lda': 'lda',
-        'lda_grid_search': 'lda_grid_search',
-        'fawoc.fawoc': 'fawoc',
-        'topic_report': 'report'
-    }
-    for modulename, s in scripts.items():
-        p = (config_dir / s).with_suffix('.toml')
-        conf = prepare_configfile(modulename, meta)
+    config_files = {}
+    for configname, script_data in SCRIPTS.items():
+        config_files[configname] = prepare_configfile(script_data['module'],
+                                                      meta)
+
+    for configname, (conf, args) in config_files.items():
+        depends = SCRIPTS[configname]['depends']
+        inputs = list(filter(lambda a: args[a]['input'], args))
+        if len(inputs) != 0:
+            for i, d in enumerate(depends):
+                inp = args[inputs[i]]
+                if inp['cli_only'] or inp['logfile']:
+                    continue
+                outputs = list(filter(lambda a: a['output'],
+                                      config_files[d][1].values()))
+                if len(outputs) != 1:
+                    continue
+
+                conf[inputs[i]] = ''.join([meta['Project']['Name'],
+                                           outputs[0]['suggest-suffix']])
+
+        p = (config_dir / configname).with_suffix('.toml')
         if p.exists():
             obj = toml_load(p)
             for k in conf.keys():

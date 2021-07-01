@@ -13,9 +13,10 @@ def init_argparser():
     """Initialize the command line parser."""
     parser = ArgParse()
     parser.add_argument('datafile', action='store', type=str,
-                        help='Input TSV data file')
+                        help='Input TSV data file', input=True)
     parser.add_argument('output', action='store', type=str,
-                        help='Output file name', suggest_suffix='_terms.csv')
+                        help='Output file name', suggest_suffix='_terms.csv',
+                        output=True)
     parser.add_argument('--stdout', '-s', action='store_true',
                         help='Also print on stdout the output file')
     parser.add_argument('--n-grams', '-n', metavar='N', dest='n_grams',

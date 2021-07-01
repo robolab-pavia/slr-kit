@@ -24,7 +24,8 @@ def init_argparser():
     """
     parser = ArgParse()
     parser.add_argument('ris_file', type=str, suggest_suffix='.ris',
-                        help='the path to the ris file containing papers data')
+                        help='the path to the ris file containing papers data',
+                        input=True)
     parser.add_argument('json_file', type=str, cli_only=True,
                         help='the path to the lda results file containing the '
                              'association between documents and topics.')

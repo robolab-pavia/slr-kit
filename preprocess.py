@@ -95,12 +95,12 @@ def init_argparser():
     """Initialize the command line parser."""
     parser = ArgParse()
     parser.add_argument('datafile', action='store', type=str,
-                        help="input CSV data file")
+                        help='input CSV data file', input=True)
     parser.add_argument('--output', '-o', metavar='FILENAME',
                         default='-',
                         help='output file name. If omitted or %(default)r '
                              'stdout is used',
-                        suggest_suffix='_preproc.csv')
+                        suggest_suffix='_preproc.csv', output=True)
     parser.add_argument('--placeholder', '-p',
                         default=STOPWORD_PLACEHOLDER,
                         help='Placeholder for stopwords. Also used as a '
