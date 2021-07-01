@@ -3,7 +3,7 @@ import sys
 import pandas as pd
 from RISparser import readris
 
-import arguments
+from slrkit_utils.argument_parser import ArgParse
 
 
 def show_columns(df):
@@ -50,16 +50,16 @@ DEFAULT_IMPORTER = 'RIS'
 
 def init_argparser():
     """Initialize the command line parser."""
-    parser = arguments.ArgParse()
+    parser = ArgParse()
     parser.add_argument('input_file', action='store', type=str,
-                        help='input bibliography file')
+                        help='input bibliography file', input=True)
     parser.add_argument('--type', '-t', action='store', type=str,
                         default=DEFAULT_IMPORTER, choices=list(IMPORTERS.keys()),
                         help='Type of the bibliography file. Supported types: '
                              '%(choices)s. If absent %(default)r is used.')
     parser.add_argument('--output', '-o', metavar='FILENAME',
                         help='output CSV file name',
-                        suggest_suffix='abstracts.csv')
+                        suggest_suffix='_abstracts.csv', output=True)
     parser.add_argument('--columns', '-c', metavar='col1,..,coln',
                         default='title,abstract',
                         help='list of comma-separated columns to export. If '

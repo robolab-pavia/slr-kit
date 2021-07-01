@@ -1,12 +1,10 @@
 import logging
 import pathlib
 import sys
-# disable warnings if they are not explicitly wanted
 import uuid
-
+# disable warnings if they are not explicitly wanted
 if not sys.warnoptions:
     import warnings
-
     warnings.simplefilter('ignore')
 
 import argparse
@@ -22,9 +20,9 @@ import pandas as pd
 from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel, LdaModel
 
-from arguments import AppendMultipleFilesAction, ArgParse
+from slrkit_utils.argument_parser import AppendMultipleFilesAction, ArgParse
 from lda import (PHYSICAL_CPUS, prepare_documents, output_topics, load_acronyms)
-from utils import assert_column, STOPWORD_PLACEHOLDER, setup_logger
+from utils import STOPWORD_PLACEHOLDER, setup_logger
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
 _corpora: Optional[Dict[Tuple[str], Tuple[List[Tuple[int, int]],
@@ -51,9 +49,10 @@ def init_argparser():
     parser = ArgParse(description='Performs the LDA on a dataset', epilog=epilog)
     parser.add_argument('preproc_file', action='store', type=Path,
                         help='path to the the preprocess file with the text to '
-                             'elaborate.')
+                             'elaborate.', input=True)
     parser.add_argument('terms_file', action='store', type=Path,
-                        help='path to the file with the classified terms.')
+                        help='path to the file with the classified terms.',
+                        input=True)
     parser.add_argument('outdir', action='store', type=Path, nargs='?',
                         default=Path.cwd(), help='path to the directory where '
                                                  'to save the results.',

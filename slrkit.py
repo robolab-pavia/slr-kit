@@ -7,10 +7,26 @@ import sys
 
 import tomlkit
 
+SCRIPTS = {
+    # config_file: module_name
+    'import': {'module': 'import_biblio', 'depends': []},
+    'acronyms': {'module': 'acronyms', 'depends': ['import']},
+    'preprocess': {'module': 'preprocess', 'depends': ['import']},
+    'gen_terms': {'module': 'gen_terms', 'depends': ['preprocess']},
+    'lda': {'module': 'lda', 'depends': ['preprocess', 'gen_terms']},
+    'lda_grid_search': {'module': 'lda_grid_search',
+                        'depends': ['preprocess', 'gen_terms']},
+    'fawoc': {'module': 'fawoc.fawoc', 'depends': ['gen_terms']},
+    'report': {'module': 'topic_report', 'depends': []},
+}
+
 
 def _check_is_dir(path):
     p = pathlib.Path(path)
-    if p.is_dir():
+    if not p.exists():
+        msg = '{!r} do not exist'
+        raise argparse.ArgumentTypeError(msg.format(path))
+    elif p.is_dir():
         return p
     else:
         msg = '{!r} is not a directory'
@@ -23,7 +39,7 @@ def toml_load(filename):
     return config
 
 
-def init_project(args):
+def create_meta(args):
     meta = {
         'Project': {
             'Author': '',
@@ -39,35 +55,50 @@ def init_project(args):
             'URL': ''
         }
     }
-    old_config_dir = None
-    if args.config_dir is not None:
-        config_dir: pathlib.Path = args.cwd / args.config_dir
-    else:
-        config_dir: pathlib.Path = args.cwd / 'slrkit.conf'
+    config_dir: pathlib.Path = args.cwd / 'slrkit.conf'
     metafile = args.cwd / 'META.toml'
     if metafile.exists():
         obj = toml_load(metafile)
 
-        old_config_dir = args.cwd / obj['Project']['Config']
+        config_dir = args.cwd / obj['Project']['Config']
         for k in meta:
             for h in meta[k]:
                 val = obj[k].get(h, '')
                 if val != '':
                     meta[k][h] = val
-
     meta['Project']['Name'] = args.name
     if args.author:
         meta['Project']['Author'] = args.author
     if args.description:
         meta['Project']['Description'] = args.description
+    meta['Project']['Config'] = str(config_dir.name)
+    return config_dir, meta, metafile
 
-    directory = config_dir
-    move = False
-    if old_config_dir != config_dir:
-        meta['Project']['Config'] = str(config_dir.name)
-        if old_config_dir is not None:
-            directory = old_config_dir
-            move = True
+
+def prepare_configfile(modulename, metafile):
+    module = importlib.import_module(modulename)
+    args = module.init_argparser().slrkit_arguments
+    conf = tomlkit.document()
+    for arg_name, arg in args.items():
+        if not arg['logfile'] and not arg['cli_only']:
+            conf.add(tomlkit.comment(arg['help'].replace('\n', ' ')))
+            conf.add(tomlkit.comment(f'required: {arg["required"]}'))
+            if arg['suggest-suffix'] is not None:
+                val = ''.join([metafile['Project']['Name'],
+                               arg['suggest-suffix']])
+                conf.add(arg_name, val)
+            elif arg['value'] is not None:
+                try:
+                    conf.add(arg_name, arg['value'])
+                except ValueError:
+                    conf.add(arg_name, str(arg['value']))
+            else:
+                conf.add(arg_name, '')
+    return conf, args
+
+
+def init_project(args):
+    config_dir, meta, metafile = create_meta(args)
 
     try:
         config_dir.mkdir(exist_ok=True)
@@ -76,45 +107,37 @@ def init_project(args):
         msg = 'Error: {} exist and is not a directory'
         sys.exit(msg.format(e.filename))
 
-    scripts = ['import_biblio', 'acronyms', 'preprocess', 'gen_terms', 'lda',
-               'lda_grid_search', 'fawoc']
-    for s in scripts:
-        p = (config_dir / s).with_suffix('.toml')
-        old_p = (directory / s).with_suffix('.toml')
-        if not old_p.exists():
-            if not p.exists():
-                if s == 'fawoc':
-                    module = importlib.import_module('fawoc.fawoc')
-                else:
-                    module = importlib.import_module(s)
-                args = module.init_argparser().slrkit_arguments
-                conf = tomlkit.document()
-                for arg_name, arg in args.items():
-                    if not arg['logfile'] and not arg['cli_only']:
-                        conf.add(tomlkit.comment(arg['help'].replace('\n', ' ')))
-                        conf.add(tomlkit.comment(f'required: {arg["required"]}'))
-                        if arg['suggest-suffix'] is not None:
-                            val = '_'.join([meta['Project']['Name'],
-                                            arg['suggest-suffix']])
-                            conf.add(arg_name, val)
-                        elif arg['value'] is not None:
-                            try:
-                                conf.add(arg_name, arg['value'])
-                            except ValueError:
-                                conf.add(arg_name, str(arg['value']))
-                        else:
-                            conf.add(arg_name, '')
+    config_files = {}
+    for configname, script_data in SCRIPTS.items():
+        config_files[configname] = prepare_configfile(script_data['module'],
+                                                      meta)
 
-                with open(p, 'w') as file:
-                    file.write(tomlkit.dumps(conf))
-        elif move:
-            try:
-                # create a backup copy of the destination file if exists
-                shutil.copy2(p, p.with_suffix(p.suffix + '.bak'))
-            except FileNotFoundError:
-                # the destination file does not exist, never mind
-                pass
-            shutil.copy2(str(old_p), str(p))
+    for configname, (conf, args) in config_files.items():
+        depends = SCRIPTS[configname]['depends']
+        inputs = list(filter(lambda a: args[a]['input'], args))
+        if len(inputs) != 0:
+            for i, d in enumerate(depends):
+                inp = args[inputs[i]]
+                if inp['cli_only'] or inp['logfile']:
+                    continue
+                outputs = list(filter(lambda a: a['output'],
+                                      config_files[d][1].values()))
+                if len(outputs) != 1:
+                    continue
+
+                conf[inputs[i]] = ''.join([meta['Project']['Name'],
+                                           outputs[0]['suggest-suffix']])
+
+        p = (config_dir / configname).with_suffix('.toml')
+        if p.exists():
+            obj = toml_load(p)
+            for k in conf.keys():
+                conf[k] = obj.get(k, conf[k])
+
+            shutil.copy2(p, p.with_suffix(p.suffix + '.bak'))
+
+        with open(p, 'w') as file:
+            file.write(tomlkit.dumps(conf))
 
     metadoc = tomlkit.document()
     for mk, mv in meta.items():
@@ -151,15 +174,23 @@ def check_project(args, filename):
 def prepare_script_arguments(config, config_dir, confname, script_args):
     args = argparse.Namespace()
     for k, v in script_args.items():
-        if v.get('non-standard', False) or v.get('cli-only', False):
+        if v.get('non-standard', False):
+            continue
+        if v.get('cli_only', False):
+            setattr(args, v['dest'], v['value'])
             continue
         if v.get('logfile', False):
-            setattr(args, k, str((config_dir / 'log' / 'slr-kit.log').resolve()))
+            setattr(args, v['dest'],
+                    str((config_dir / 'log' / 'slr-kit.log').resolve()))
             continue
 
         dest = v.get('dest', k.replace('-', '_'))
         param = config.get(k, v['value'])
-        def_val = (param == v['value'])
+        def_val = (param == v['value'] or (param == '' and v['value'] is None))
+        null = param is None or param == ''
+        if v['type'] is not None and not null:
+            param = v['type'](param)
+
         if v['choices'] is not None:
             if param not in v['choices']:
                 msg = 'Invalid value for parameter {!r} in {}.\nMust be one of {}'
@@ -179,8 +210,7 @@ def prepare_script_arguments(config, config_dir, confname, script_args):
 
 
 def run_preproc(args):
-    script_name = 'preprocess'
-    confname = '.'.join([script_name, 'toml'])
+    confname = 'preprocess.toml'
     config, config_dir, meta = check_project(args, confname)
     from preprocess import preprocess, init_argparser as preproc_argparse
     script_args = preproc_argparse().slrkit_arguments
@@ -211,8 +241,7 @@ def run_preproc(args):
 
 
 def run_genterms(args):
-    script_name = 'gen_terms'
-    confname = '.'.join([script_name, 'toml'])
+    confname = 'gen_terms.toml'
     config, config_dir, meta = check_project(args, confname)
     from gen_terms import gen_terms, init_argparser as gt_argparse
     script_args = gt_argparse().slrkit_arguments
@@ -223,8 +252,7 @@ def run_genterms(args):
 
 
 def run_lda(args):
-    script_name = 'lda'
-    confname = '.'.join([script_name, 'toml'])
+    confname = 'lda.toml'
     config, config_dir, meta = check_project(args, confname)
     from lda import lda, init_argparser as lda_argparse
     script_args = lda_argparse().slrkit_arguments
@@ -243,8 +271,7 @@ def run_lda(args):
 
 
 def run_lda_grid_search(args):
-    script_name = 'lda_grid_search'
-    confname = '.'.join([script_name, 'toml'])
+    confname = 'lda_grid_search.toml'
     config, config_dir, meta = check_project(args, confname)
     from lda_grid_search import lda_grid_search, init_argparser as lda_gs_argparse
     script_args = lda_gs_argparse().slrkit_arguments
@@ -267,8 +294,7 @@ def run_lda_grid_search(args):
 
 
 def run_fawoc(args):
-    script_name = 'fawoc'
-    confname = '.'.join([script_name, 'toml'])
+    confname = 'fawoc.toml'
     config, config_dir, meta = check_project(args, confname)
     from fawoc.fawoc import fawoc_run, init_argparser as fawoc_argparse
     script_args = fawoc_argparse().slrkit_arguments
@@ -289,8 +315,7 @@ def run_fawoc(args):
 
 
 def run_import(args):
-    script_name = 'import_biblio'
-    confname = '.'.join([script_name, 'toml'])
+    confname = 'import.toml'
     config, config_dir, meta = check_project(args, confname)
     from import_biblio import import_data, init_argparser as import_argparse
     script_args = import_argparse().slrkit_arguments
@@ -302,8 +327,7 @@ def run_import(args):
 
 
 def run_acronyms(args):
-    script_name = 'acronyms'
-    confname = '.'.join([script_name, 'toml'])
+    confname = 'acronyms.toml'
     config, config_dir, meta = check_project(args, confname)
     from acronyms import acronyms, init_argparser as acro_argparse
     script_args = acro_argparse().slrkit_arguments
@@ -312,6 +336,18 @@ def run_acronyms(args):
 
     os.chdir(args.cwd)
     acronyms(cmd_args)
+
+
+def run_report(args):
+    confname = 'report.toml'
+    config, config_dir, meta = check_project(args, confname)
+    from topic_report import report, init_argparser as report_argparse
+    script_args = report_argparse().slrkit_arguments
+    cmd_args = prepare_script_arguments(config, config_dir, confname,
+                                        script_args)
+    os.chdir(args.cwd)
+    setattr(cmd_args, 'json_file', args.json_file)
+    report(cmd_args)
 
 
 def init_argparser():
@@ -332,14 +368,6 @@ def init_argparser():
                                                     'project')
     parser_init.add_argument('name', action='store', type=str,
                              help='Name of the project.')
-    parser_init.add_argument('--config_dir', '-c', action='store', type=str,
-                             help='Name of the configuration directory of the '
-                                  'project. This directory will be created and '
-                                  'populated with the template configuration '
-                                  'files. If this directory already exists, '
-                                  'only the missing template file are created. '
-                                  'If this option is omitted, the directory '
-                                  'will be named "slrkit.conf".')
     parser_init.add_argument('--author', '-A', action='store', type=str,
                              default='', help='Name of the author of the '
                                               'project')
@@ -387,6 +415,14 @@ def init_argparser():
     parser_fawoc.add_argument('--width', '-w', action='store', type=int,
                               help='Width of fawoc windows.')
     parser_fawoc.set_defaults(func=run_fawoc)
+    # report
+    parser_report = subparser.add_parser('report', help='Run the report '
+                                                        'creation script in a '
+                                                        'slr-kit project')
+    parser_report.add_argument('json_file', help='path to the json file '
+                                                 'containing the lda '
+                                                 'topic-paper results')
+    parser_report.set_defaults(func=run_report)
     return parser
 
 

@@ -14,7 +14,7 @@ if not sys.warnoptions:
 import argparse
 import json
 from datetime import datetime
-from itertools import repeat, chain
+from itertools import repeat
 from multiprocessing import Pool
 from pathlib import Path
 
@@ -24,8 +24,9 @@ from gensim.models import LdaModel
 from gensim.models.coherencemodel import CoherenceModel
 from psutil import cpu_count
 
-from arguments import AppendMultipleFilesAction, ArgParse
-from utils import (substring_index, STOPWORD_PLACEHOLDER, RELEVANT_PREFIX, assert_column)
+from slrkit_utils.argument_parser import AppendMultipleFilesAction, ArgParse
+from utils import (substring_index, STOPWORD_PLACEHOLDER, RELEVANT_PREFIX,
+                   assert_column)
 
 PHYSICAL_CPUS = cpu_count(logical=False)
 
@@ -44,9 +45,10 @@ def init_argparser():
     parser = ArgParse(description='Performs the LDA on a dataset', epilog=epilog)
     parser.add_argument('preproc_file', action='store', type=Path,
                         help='path to the the preprocess file with the text to '
-                             'elaborate.')
+                             'elaborate.', input=True)
     parser.add_argument('terms_file', action='store', type=Path,
-                        help='path to the file with the classified terms.')
+                        help='path to the file with the classified terms.',
+                        input=True)
     parser.add_argument('outdir', action='store', type=Path, nargs='?',
                         default=Path.cwd(), help='path to the directory where '
                                                  'to save the results.',

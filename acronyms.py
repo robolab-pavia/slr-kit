@@ -3,19 +3,19 @@ import sys
 import logging
 import pandas as pd
 
-import arguments
+from slrkit_utils.argument_parser import ArgParse
 from schwartz_hearst import extract_abbreviation_definition_pairs
 from utils import setup_logger
 
 
 def init_argparser():
     """Initialize the command line parser."""
-    parser = arguments.ArgParse()
+    parser = ArgParse()
     parser.add_argument('datafile', action="store", type=str,
-                        help="input CSV data file")
+                        help='input CSV data file', input=True)
     parser.add_argument('--output', '-o', metavar='FILENAME',
                         help='output file name',
-                        suggest_suffix='acronyms.csv')
+                        suggest_suffix='_acronyms.csv', output=True)
     parser.add_argument('--column', '-c', default='abstract',
                         help='Name of the column of datafile to search the '
                              'acronyms. Default: %(default)s')

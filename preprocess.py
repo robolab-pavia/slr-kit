@@ -11,8 +11,9 @@ import pandas as pd
 from nltk.stem.wordnet import WordNetLemmatizer
 from psutil import cpu_count
 
-from arguments import (AppendMultipleFilesAction, AppendMultiplePairsAction,
-                       ArgParse)
+from slrkit_utils.argument_parser import (AppendMultipleFilesAction,
+                                          AppendMultiplePairsAction,
+                                          ArgParse)
 from utils import (setup_logger, assert_column,
                    log_end, log_start, STOPWORD_PLACEHOLDER, RELEVANT_PREFIX)
 
@@ -94,12 +95,12 @@ def init_argparser():
     """Initialize the command line parser."""
     parser = ArgParse()
     parser.add_argument('datafile', action='store', type=str,
-                        help="input CSV data file")
+                        help='input CSV data file', input=True)
     parser.add_argument('--output', '-o', metavar='FILENAME',
                         default='-',
                         help='output file name. If omitted or %(default)r '
                              'stdout is used',
-                        suggest_suffix='preproc.csv')
+                        suggest_suffix='_preproc.csv', output=True)
     parser.add_argument('--placeholder', '-p',
                         default=STOPWORD_PLACEHOLDER,
                         help='Placeholder for stopwords. Also used as a '
