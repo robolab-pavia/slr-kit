@@ -35,9 +35,17 @@ def ris_reader(ris_path):
     with open(ris_path, 'r', encoding='utf-8') as bibliography_file:
         entries = readris(bibliography_file)
         for entry in entries:
-            if 'secondary_title' not in entry or 'title' not in entry:
+            if 'title' not in entry:
                 continue
-            paper_journal_list.append([entry['title'], entry['secondary_title']])
+            try:
+                journal = entry['secondary_title']
+            except KeyError:
+                journal = entry.get('custom3')
+
+            if journal is None:
+                continue
+
+            paper_journal_list.append([entry['title'], journal])
 
     return paper_journal_list
 
