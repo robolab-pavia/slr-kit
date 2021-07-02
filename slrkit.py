@@ -16,7 +16,8 @@ SCRIPTS = {
     'lda': {'module': 'lda', 'depends': ['preprocess', 'gen_terms']},
     'lda_grid_search': {'module': 'lda_grid_search',
                         'depends': ['preprocess', 'gen_terms']},
-    'fawoc': {'module': 'fawoc.fawoc', 'depends': ['gen_terms']},
+    'fawoc_terms': {'module': 'fawoc.fawoc', 'depends': ['gen_terms']},
+    'fawoc_acronyms': {'module': 'fawoc.fawoc', 'depends': ['acronyms']},
     'report': {'module': 'topic_report', 'depends': []},
 }
 
@@ -294,7 +295,7 @@ def run_lda_grid_search(args):
 
 
 def run_fawoc(args):
-    confname = 'fawoc.toml'
+    confname = ''.join(['fawoc_', args.operation, '.toml'])
     config, config_dir, meta = check_project(args, confname)
     from fawoc.fawoc import fawoc_run, init_argparser as fawoc_argparse
     script_args = fawoc_argparse().slrkit_arguments
@@ -307,8 +308,12 @@ def run_fawoc(args):
         setattr(cmd_args, 'width', args.width)
 
     # set profiler
-    setattr(cmd_args, 'profiler_name',
-            (config_dir / 'log' / 'fawoc_profiler.log').resolve())
+    profiler = ''.join(['fawoc_', args.operation, '_profiler.log'])
+    setattr(cmd_args, 'profiler_name', (config_dir / 'log' / profiler).resolve())
+
+    # disable the info file loading (if necessary)
+    if args.operation in ['acronyms']:
+        setattr(cmd_args, 'no_info_file', True)
 
     os.chdir(args.cwd)
     fawoc_run(cmd_args)
@@ -409,6 +414,12 @@ def init_argparser():
     # fawoc
     parser_fawoc = subparser.add_parser('fawoc', help='Run fawoc in a slr-kit '
                                                       'project')
+    parser_fawoc.add_argument('operation', choices=['terms', 'acronyms'],
+                              default='terms', nargs='?',
+                              help='Specifies what things the user want to '
+                                   'classify with fawoc. This argument can be '
+                                   'one of %(choices)r. If not specified it '
+                                   'defaults to %(default)r.')
     parser_fawoc.add_argument('--input', '-i', metavar='LABEL',
                               help='Input only the terms classified with the '
                                    'specified label')
