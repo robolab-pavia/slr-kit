@@ -19,6 +19,7 @@ SCRIPTS = {
     'fawoc_terms': {'module': 'fawoc.fawoc', 'depends': ['gen_terms']},
     'fawoc_acronyms': {'module': 'fawoc.fawoc', 'depends': ['acronyms']},
     'report': {'module': 'topic_report', 'depends': []},
+    'journals': {'module': 'journal_lister', 'depends': []},
 }
 
 
