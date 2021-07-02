@@ -98,8 +98,8 @@ def prepare_configfile(modulename, metafile):
     return conf, args
 
 
-def init_project(args):
-    config_dir, meta, metafile = create_meta(args)
+def init_project(slrkit_args):
+    config_dir, meta, metafile = create_meta(slrkit_args)
 
     try:
         config_dir.mkdir(exist_ok=True)
@@ -135,7 +135,8 @@ def init_project(args):
             for k in conf.keys():
                 conf[k] = obj.get(k, conf[k])
 
-            shutil.copy2(p, p.with_suffix(p.suffix + '.bak'))
+            if not slrkit_args.no_backup:
+                shutil.copy2(p, p.with_suffix(p.suffix + '.bak'))
 
         with open(p, 'w') as file:
             file.write(tomlkit.dumps(conf))
@@ -378,6 +379,8 @@ def init_argparser():
                                               'project')
     parser_init.add_argument('--description', '-D', action='store', type=str,
                              default='', help='Description of the project')
+    parser_init.add_argument('--no-backup', action='store_true',
+                             help='Do not save the existing toml files')
     parser_init.set_defaults(func=init_project)
     # import
     parser_import = subparser.add_parser('import', help='Import a bibliographic'
