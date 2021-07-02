@@ -371,6 +371,17 @@ def run_journals(args):
     journal_lister(cmd_args)
 
 
+def run_filter(args):
+    confname = 'filter_paper.toml'
+    config, config_dir, meta = check_project(args, confname)
+    from filter_paper import filter_paper, init_argparser as filter_argparser
+    script_args = filter_argparser().slrkit_arguments
+    cmd_args = prepare_script_arguments(config, config_dir, confname,
+                                        script_args)
+    os.chdir(args.cwd)
+    filter_paper(cmd_args)
+
+
 def init_argparser():
     """
     Initialize the command line parser.
@@ -460,6 +471,12 @@ def init_argparser():
                                                 'suitable to be classified with'
                                                 'with fawoc.')
     parser_journals.set_defaults(func=run_journals)
+    # filter_paper
+    parser_filter = subparser.add_parser('filter_paper',
+                                         help='Filters the abstracts file '
+                                              'marking the papers pubblished in '
+                                              'the approved journals as "good".')
+    parser_filter.set_defaults(func=run_filter)
     return parser
 
 
