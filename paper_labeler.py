@@ -1,7 +1,7 @@
 import argparse
 import pathlib
-import csv
 
+import pandas as pd
 from RISparser import readris
 
 
@@ -28,11 +28,14 @@ def ris_reader(ris_path):
     Creates a list of journals and papers titles from the ris file
 
     :param ris_path: path to the ris file
-    :type ris_path: Path
+    :type ris_path: pathlib.Path
     :return: List of titles and relative journal
-    :rtype: list
+    :rtype: pd.DataFrame
     """
-    paper_journal_list = []
+    paper_journal_list = {
+        'title': [],
+        'journal': [],
+    }
 
     with open(ris_path, 'r', encoding='utf-8') as bibliography_file:
         entries = readris(bibliography_file)
@@ -47,68 +50,31 @@ def ris_reader(ris_path):
             if journal is None:
                 continue
 
-            paper_journal_list.append([entry['title'], journal])
+            paper_journal_list['title'].append(entry['title'])
+            paper_journal_list['journal'].append(journal)
 
-    return paper_journal_list
-
-
-def csv_reader(preproc_path, journal_path):
-    """
-    Creates 2 lists from the preproc file and the journal file
-
-    :param preproc_path: Path to preproc file
-    :type preproc_path: Path
-    :param journal_path: Path to journal file
-    :type journal_path: Path
-    :return: list of preproc file and journal file
-    :rtype: tuple(list, list)
-    """
-    with open(preproc_path, encoding='utf8', newline="") as f:
-        reader = csv.reader(f, delimiter='\t')
-        preproc_list = list(reader)
-
-    with open(journal_path, encoding='utf8', newline="") as f:
-        reader = csv.reader(f, delimiter='\t')
-        journal_list = list(reader)
-
-    preproc_list = list(filter(None, preproc_list))
-    return preproc_list, journal_list
+    return pd.DataFrame(paper_journal_list)
 
 
-def paper_labeler(abstracts, journal, paper_journal_list):
+def paper_labeler(abstracts, journal, paper_journal):
     """
     Labels every Paper from preproc list with the relative journal classification
 
-    :param abstracts: List with every paper data
-    :type abstracts: list
-    :param journal: List with journal data and classification
-    :type journal: list
-    :param paper_journal_list: list with title-journal for every paper
-    :type paper_journal_list: list
-    :return: Preproc list with an appended column called status
-    :rtype: list
+    :param abstracts: DataFrame with every paper data
+    :type abstracts: pd.DataFrame
+    :param journal: DataFrame with journal data and classification
+    :param paper_journal: DataFrame with title-journal correspondence for every paper
+    :type paper_journal: pd.DataFrame
+    :return: abstract DataFrame with an appended column called status
+    :rtype: pd.DataFrame
     """
-    if 'status' in abstracts[0]:
-        index = abstracts[0].index('status')
-        for row in abstracts:
-            del row[index]
-
-    abstracts[0].insert(1, 'status')
-
-    for paper in abstracts[1:]:
-        title = paper[1]
-        journal_name = ''
-        status = ''
-        for item in paper_journal_list:
-            if title == item[0]:
-                journal_name = item[1]
-        for journal in journal[1:]:
-            if journal_name == journal[1]:
-                if journal[2] == 'relevant':
-                    status = 'good'
-                else:
-                    status = 'rejected'
-        paper.insert(1, status)
+    good = journal[journal['label'].isin(['relevant', 'keyword'])]['term']
+    pgood = paper_journal['journal'].apply(lambda t: any(good.isin([t])))
+    title_good = paper_journal[pgood]['title']
+    cond = abstracts['title'].apply(lambda t: any(title_good.isin([t])))
+    abstracts['status'] = ''
+    abstracts.loc[cond, 'status'] = 'good'
+    abstracts.loc[~cond, 'status'] = 'rejected'
 
     return abstracts
 
@@ -121,14 +87,11 @@ def main():
     abstracts_path = args.abstract_file
     journal_path = args.journal_file
 
-    paper_journal_list = ris_reader(ris_path)
-    abstracts_list, journal_list = csv_reader(abstracts_path, journal_path)
-    out_list = paper_labeler(abstracts_list, journal_list, paper_journal_list)
-
-    with open(abstracts_path, 'w', encoding='utf8', newline='') as myfile:
-        wr = csv.writer(myfile, delimiter='\t', quoting=csv.QUOTE_ALL, )
-        for line in out_list:
-            wr.writerow(line)
+    paper_journal = ris_reader(ris_path)
+    preproc = pd.read_csv(abstracts_path, delimiter='\t', encoding='utf-8')
+    journals = pd.read_csv(journal_path, delimiter='\t', encoding='utf-8')
+    out = paper_labeler(preproc, journals, paper_journal)
+    out.to_csv(abstracts_path, sep='\t', index=False)
 
 
 if __name__ == '__main__':
