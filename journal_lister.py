@@ -14,8 +14,8 @@ def init_argparser():
     """
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('ris_path', type=str, help='path to the ris file')
-    parser.add_argument('csv_path', type=str, help='path to csv output file')
+    parser.add_argument('ris_file', type=str, help='path to the ris file')
+    parser.add_argument('outfile', type=str, help='path to csv output file')
 
     return parser
 
@@ -73,8 +73,8 @@ def main():
 
     parser = init_argparser()
     args = parser.parse_args()
-    ris_path = cwd / args.ris_path
-    csv_path = cwd / args.csv_path
+    ris_path = cwd / args.ris_file
+    csv_path = cwd / args.outfile
 
     journal_list = ris_reader(ris_path)
 
