@@ -104,15 +104,12 @@ def paper_labeler(preproc_list, journal_list, paper_journal_list):
 
 
 def main():
-
-    cwd = pathlib.Path.cwd()
-
     parser = init_argparser()
     args = parser.parse_args()
 
-    ris_path = cwd / args.ris_path
-    preproc_path = cwd / args.preproc_path
-    journal_path = cwd / args.journal_path
+    ris_path = args.ris_path
+    preproc_path = args.preproc_path
+    journal_path = args.journal_path
 
     paper_journal_list = ris_reader(ris_path)
     preproc_list, journal_list = csv_reader(preproc_path, journal_path)
