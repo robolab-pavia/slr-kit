@@ -68,13 +68,10 @@ def journal2csv(journal_list, csv_path):
 
 
 def main():
-
-    cwd = pathlib.Path.cwd()
-
     parser = init_argparser()
     args = parser.parse_args()
-    ris_path = cwd / args.ris_file
-    csv_path = cwd / args.outfile
+    ris_path = pathlib.Path(args.ris_file)
+    csv_path = pathlib.Path(args.outfile)
 
     journal_list = ris_reader(ris_path)
 
