@@ -375,12 +375,14 @@ def init_argparser():
     :return: the command line parser
     :rtype: argparse.ArgumentParser
     """
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description='slrkit project handling tool')
     parser.add_argument('-C', type=_check_is_dir, dest='cwd',
                         default=pathlib.Path.cwd(), metavar='path',
                         help='Change directory to %(metavar)r before running '
                              'the specified command.')
-    subparser = parser.add_subparsers(required=True)
+    # dest is required to avoid a crash when the user inputs no command
+    subparser = parser.add_subparsers(title='slrkit commands',
+                                      required=True, dest='command')
     # init
     parser_init = subparser.add_parser('init', help='Initialize a slr-kit '
                                                     'project')
