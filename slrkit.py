@@ -18,7 +18,11 @@ SCRIPTS = {
                         'depends': ['preprocess', 'gen_terms']},
     'fawoc_terms': {'module': 'fawoc.fawoc', 'depends': ['gen_terms']},
     'fawoc_acronyms': {'module': 'fawoc.fawoc', 'depends': ['acronyms']},
+    'fawoc_journals': {'module': 'fawoc.fawoc', 'depends': ['journals']},
     'report': {'module': 'topic_report', 'depends': []},
+    'journals': {'module': 'journal_lister', 'depends': []},
+    'filter_paper': {'module': 'filter_paper',
+                     'depends': ['import', 'journals']},
 }
 
 
@@ -98,8 +102,8 @@ def prepare_configfile(modulename, metafile):
     return conf, args
 
 
-def init_project(args):
-    config_dir, meta, metafile = create_meta(args)
+def init_project(slrkit_args):
+    config_dir, meta, metafile = create_meta(slrkit_args)
 
     try:
         config_dir.mkdir(exist_ok=True)
@@ -135,7 +139,8 @@ def init_project(args):
             for k in conf.keys():
                 conf[k] = obj.get(k, conf[k])
 
-            shutil.copy2(p, p.with_suffix(p.suffix + '.bak'))
+            if not slrkit_args.no_backup:
+                shutil.copy2(p, p.with_suffix(p.suffix + '.bak'))
 
         with open(p, 'w') as file:
             file.write(tomlkit.dumps(conf))
@@ -355,6 +360,28 @@ def run_report(args):
     report(cmd_args)
 
 
+def run_journals(args):
+    confname = 'journals.toml'
+    config, config_dir, meta = check_project(args, confname)
+    from journal_lister import journal_lister, init_argparser as journal_argparser
+    script_args = journal_argparser().slrkit_arguments
+    cmd_args = prepare_script_arguments(config, config_dir, confname,
+                                        script_args)
+    os.chdir(args.cwd)
+    journal_lister(cmd_args)
+
+
+def run_filter(args):
+    confname = 'filter_paper.toml'
+    config, config_dir, meta = check_project(args, confname)
+    from filter_paper import filter_paper, init_argparser as filter_argparser
+    script_args = filter_argparser().slrkit_arguments
+    cmd_args = prepare_script_arguments(config, config_dir, confname,
+                                        script_args)
+    os.chdir(args.cwd)
+    filter_paper(cmd_args)
+
+
 def init_argparser():
     """
     Initialize the command line parser.
@@ -362,12 +389,14 @@ def init_argparser():
     :return: the command line parser
     :rtype: argparse.ArgumentParser
     """
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description='slrkit project handling tool')
     parser.add_argument('-C', type=_check_is_dir, dest='cwd',
                         default=pathlib.Path.cwd(), metavar='path',
                         help='Change directory to %(metavar)r before running '
                              'the specified command.')
-    subparser = parser.add_subparsers(required=True)
+    # dest is required to avoid a crash when the user inputs no command
+    subparser = parser.add_subparsers(title='slrkit commands',
+                                      required=True, dest='command')
     # init
     parser_init = subparser.add_parser('init', help='Initialize a slr-kit '
                                                     'project')
@@ -378,6 +407,8 @@ def init_argparser():
                                               'project')
     parser_init.add_argument('--description', '-D', action='store', type=str,
                              default='', help='Description of the project')
+    parser_init.add_argument('--no-backup', action='store_true',
+                             help='Do not save the existing toml files')
     parser_init.set_defaults(func=init_project)
     # import
     parser_import = subparser.add_parser('import', help='Import a bibliographic'
@@ -414,8 +445,8 @@ def init_argparser():
     # fawoc
     parser_fawoc = subparser.add_parser('fawoc', help='Run fawoc in a slr-kit '
                                                       'project')
-    parser_fawoc.add_argument('operation', choices=['terms', 'acronyms'],
-                              default='terms', nargs='?',
+    parser_fawoc.add_argument('operation', default='terms', nargs='?',
+                              choices=['terms', 'acronyms', 'journals'],
                               help='Specifies what things the user want to '
                                    'classify with fawoc. This argument can be '
                                    'one of %(choices)r. If not specified it '
@@ -434,6 +465,18 @@ def init_argparser():
                                                  'containing the lda '
                                                  'topic-paper results')
     parser_report.set_defaults(func=run_report)
+    # journals_list
+    parser_journals = subparser.add_parser('journals',
+                                           help='Prepare a list of journals, '
+                                                'suitable to be classified with'
+                                                'with fawoc.')
+    parser_journals.set_defaults(func=run_journals)
+    # filter_paper
+    parser_filter = subparser.add_parser('filter_paper',
+                                         help='Filters the abstracts file '
+                                              'marking the papers pubblished in '
+                                              'the approved journals as "good".')
+    parser_filter.set_defaults(func=run_filter)
     return parser
 
 

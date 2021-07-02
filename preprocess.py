@@ -469,6 +469,15 @@ def preprocess(args):
                           encoding='utf-8', nrows=args.input_rows)
     dataset.fillna('', inplace=True)
     assert_column(args.datafile, dataset, target_column)
+    try:
+        dataset = dataset[dataset['status'] == 'good'].copy()
+    except KeyError:
+        # no column 'status', so no filtering
+        pass
+    else:
+        dataset.drop(columns='status', inplace=True)
+        dataset.reset_index(drop=True, inplace=True)
+
     debug_logger.debug('Dataset loaded {} items'.format(len(dataset[target_column])))
 
     # csvFileName da CLI
