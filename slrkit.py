@@ -18,6 +18,7 @@ SCRIPTS = {
                         'depends': ['preprocess', 'gen_terms']},
     'fawoc_terms': {'module': 'fawoc.fawoc', 'depends': ['gen_terms']},
     'fawoc_acronyms': {'module': 'fawoc.fawoc', 'depends': ['acronyms']},
+    'fawoc_journals': {'module': 'fawoc.fawoc', 'depends': ['journals']},
     'report': {'module': 'topic_report', 'depends': []},
     'journals': {'module': 'journal_lister', 'depends': []},
 }
@@ -431,8 +432,8 @@ def init_argparser():
     # fawoc
     parser_fawoc = subparser.add_parser('fawoc', help='Run fawoc in a slr-kit '
                                                       'project')
-    parser_fawoc.add_argument('operation', choices=['terms', 'acronyms'],
-                              default='terms', nargs='?',
+    parser_fawoc.add_argument('operation', default='terms', nargs='?',
+                              choices=['terms', 'acronyms', 'journals'],
                               help='Specifies what things the user want to '
                                    'classify with fawoc. This argument can be '
                                    'one of %(choices)r. If not specified it '
