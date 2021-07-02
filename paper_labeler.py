@@ -14,9 +14,11 @@ def init_argparser():
     """
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('ris_path', type=str, help='path to the ris file')
-    parser.add_argument('preproc_path', type=str, help='path to preproc file')
-    parser.add_argument('journal_path', type=str, help='path to journal classified file')
+    parser.add_argument('ris_file', type=str, help='path to the ris file')
+    parser.add_argument('abstract_file', type=str,
+                        help='path to the file with the abstracts of the papers')
+    parser.add_argument('journal_file', type=str,
+                        help='path to the file with the classified journals')
 
     return parser
 
@@ -73,34 +75,34 @@ def csv_reader(preproc_path, journal_path):
     return preproc_list, journal_list
 
 
-def paper_labeler(preproc_list, journal_list, paper_journal_list):
+def paper_labeler(abstracts, journal, paper_journal_list):
     """
     Labels every Paper from preproc list with the relative journal classification
 
-    :param preproc_list: List with every paper data
-    :type preproc_list: list
-    :param journal_list: List with journal data and classification
-    :type journal_list: list
+    :param abstracts: List with every paper data
+    :type abstracts: list
+    :param journal: List with journal data and classification
+    :type journal: list
     :param paper_journal_list: list with title-journal for every paper
     :type paper_journal_list: list
     :return: Preproc list with an appended column called status
     :rtype: list
     """
-    if 'status' in preproc_list[0]:
-        index = preproc_list[0].index('status')
-        for row in preproc_list:
+    if 'status' in abstracts[0]:
+        index = abstracts[0].index('status')
+        for row in abstracts:
             del row[index]
 
-    preproc_list[0].insert(1, 'status')
+    abstracts[0].insert(1, 'status')
 
-    for paper in preproc_list[1:]:
+    for paper in abstracts[1:]:
         title = paper[1]
         journal_name = ''
         status = ''
         for item in paper_journal_list:
             if title == item[0]:
                 journal_name = item[1]
-        for journal in journal_list[1:]:
+        for journal in journal[1:]:
             if journal_name == journal[1]:
                 if journal[2] == 'relevant':
                     status = 'good'
@@ -108,22 +110,22 @@ def paper_labeler(preproc_list, journal_list, paper_journal_list):
                     status = 'rejected'
         paper.insert(1, status)
 
-    return preproc_list
+    return abstracts
 
 
 def main():
     parser = init_argparser()
     args = parser.parse_args()
 
-    ris_path = args.ris_path
-    preproc_path = args.preproc_path
-    journal_path = args.journal_path
+    ris_path = args.ris_file
+    abstracts_path = args.abstract_file
+    journal_path = args.journal_file
 
     paper_journal_list = ris_reader(ris_path)
-    preproc_list, journal_list = csv_reader(preproc_path, journal_path)
-    out_list = paper_labeler(preproc_list, journal_list, paper_journal_list)
+    abstracts_list, journal_list = csv_reader(abstracts_path, journal_path)
+    out_list = paper_labeler(abstracts_list, journal_list, paper_journal_list)
 
-    with open(preproc_path, 'w', encoding='utf8', newline='') as myfile:
+    with open(abstracts_path, 'w', encoding='utf8', newline='') as myfile:
         wr = csv.writer(myfile, delimiter='\t', quoting=csv.QUOTE_ALL, )
         for line in out_list:
             wr.writerow(line)
