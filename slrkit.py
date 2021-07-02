@@ -21,6 +21,8 @@ SCRIPTS = {
     'fawoc_journals': {'module': 'fawoc.fawoc', 'depends': ['journals']},
     'report': {'module': 'topic_report', 'depends': []},
     'journals': {'module': 'journal_lister', 'depends': []},
+    'filter_paper': {'module': 'filter_paper',
+                     'depends': ['import', 'journals']},
 }
 
 
