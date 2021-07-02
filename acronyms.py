@@ -42,6 +42,15 @@ def acronyms(args):
     # na_filter=False avoids NaN if the abstract is missing
     dataset = pd.read_csv(args.datafile, delimiter='\t', na_filter=False,
                           encoding='utf-8')
+    try:
+        dataset = dataset[dataset['status'] == 'good'].copy()
+    except KeyError:
+        # no column 'status', so no filtering
+        pass
+    else:
+        dataset.drop(columns='status', inplace=True)
+        dataset.reset_index(drop=True, inplace=True)
+
     acrolist = extract_acronyms(dataset, args.column)
 
     if args.output is not None:
