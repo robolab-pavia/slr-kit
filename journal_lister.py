@@ -30,7 +30,6 @@ def ris_reader(ris_path):
     :rtype: list
     """
     journal_list = []
-
     with open(ris_path, 'r', encoding='utf-8') as bibliography_file:
         entries = readris(bibliography_file)
         for entry in entries:
@@ -52,18 +51,24 @@ def journal2csv(journal_list, csv_path):
     :param csv_path: Path to csv output file
     :type csv_path: Path
     """
-    journal_no_dup = list(set(journal_list))
+    journal_no_dup = set(journal_list)
+    fieldnames = ['id', 'term', 'label', 'count']
+    journal_fawoc_list = []
+    for journal in journal_no_dup:
+        paper_count = journal_list.count(journal)
+        journal_fawoc_list.append({
+            'term': journal,
+            'label': '',
+            'count': paper_count,
+        })
 
-    counter = len(journal_no_dup)
-    journal_fawoc_list = [['id', 'term', 'label', 'count']]
-    for i in range(counter):
-        paper_count = journal_list.count(journal_no_dup[i])
-        line = [str(i), journal_no_dup[i], '', paper_count]
-        journal_fawoc_list.append(line)
-
+    journal_fawoc_list.sort(key=lambda e: e['count'], reverse=True)
     with open(csv_path, 'w', newline='') as myfile:
-        wr = csv.writer(myfile, delimiter='\t', quoting=csv.QUOTE_ALL, )
-        for line in journal_fawoc_list:
+        wr = csv.DictWriter(myfile, fieldnames=fieldnames, delimiter='\t',
+                            quoting=csv.QUOTE_ALL, )
+        wr.writeheader()
+        for i, line in enumerate(journal_fawoc_list):
+            line['id'] = i
             wr.writerow(line)
 
 
