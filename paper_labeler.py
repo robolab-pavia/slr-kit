@@ -61,11 +61,11 @@ def csv_reader(preproc_path, journal_path):
     :return: list of preproc file and journal file
     :rtype: tuple(list, list)
     """
-    with open(preproc_path, encoding="utf8", newline='') as f:
+    with open(preproc_path, encoding='utf8', newline="") as f:
         reader = csv.reader(f, delimiter='\t')
         preproc_list = list(reader)
 
-    with open(journal_path, encoding="utf8", newline='') as f:
+    with open(journal_path, encoding='utf8', newline="") as f:
         reader = csv.reader(f, delimiter='\t')
         journal_list = list(reader)
 
@@ -123,7 +123,7 @@ def main():
     preproc_list, journal_list = csv_reader(preproc_path, journal_path)
     out_list = paper_labeler(preproc_list, journal_list, paper_journal_list)
 
-    with open(preproc_path, 'w', encoding="utf8", newline='') as myfile:
+    with open(preproc_path, 'w', encoding='utf8', newline='') as myfile:
         wr = csv.writer(myfile, delimiter='\t', quoting=csv.QUOTE_ALL, )
         for line in out_list:
             wr.writerow(line)
