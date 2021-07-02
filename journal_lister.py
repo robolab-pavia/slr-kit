@@ -1,4 +1,3 @@
-import argparse
 import pathlib
 import csv
 
@@ -11,7 +10,7 @@ def init_argparser():
     Initialize the command line parser.
 
     :return: the command line parser
-    :rtype: argparse.ArgumentParser
+    :rtype: ArgParse
     """
     parser = ArgParse()
     parser.add_argument('ris_file', type=str, help='path to the ris file',
