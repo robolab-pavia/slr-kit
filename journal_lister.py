@@ -3,6 +3,7 @@ import pathlib
 import csv
 
 from RISparser import readris
+from slrkit_utils.argument_parser import ArgParse
 
 
 def init_argparser():
@@ -12,11 +13,11 @@ def init_argparser():
     :return: the command line parser
     :rtype: argparse.ArgumentParser
     """
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument('ris_file', type=str, help='path to the ris file')
-    parser.add_argument('outfile', type=str, help='path to csv output file')
-
+    parser = ArgParse()
+    parser.add_argument('ris_file', type=str, help='path to the ris file',
+                        suggest_suffix='.ris')
+    parser.add_argument('outfile', type=str, help='path to csv output file',
+                        output=True, suggest_suffix='_journals.csv')
     return parser
 
 
@@ -75,6 +76,10 @@ def journal2csv(journal_list, csv_path):
 def main():
     parser = init_argparser()
     args = parser.parse_args()
+    journal_lister(args)
+
+
+def journal_lister(args):
     ris_path = pathlib.Path(args.ris_file)
     csv_path = pathlib.Path(args.outfile)
 
