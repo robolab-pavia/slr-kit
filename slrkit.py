@@ -357,6 +357,17 @@ def run_report(args):
     report(cmd_args)
 
 
+def run_journals(args):
+    confname = 'journals.toml'
+    config, config_dir, meta = check_project(args, confname)
+    from journal_lister import journal_lister, init_argparser as journal_argparser
+    script_args = journal_argparser().slrkit_arguments
+    cmd_args = prepare_script_arguments(config, config_dir, confname,
+                                        script_args)
+    os.chdir(args.cwd)
+    journal_lister(cmd_args)
+
+
 def init_argparser():
     """
     Initialize the command line parser.
@@ -438,6 +449,12 @@ def init_argparser():
                                                  'containing the lda '
                                                  'topic-paper results')
     parser_report.set_defaults(func=run_report)
+    # journals_list
+    parser_journals = subparser.add_parser('journals',
+                                           help='Prepare a list of journals, '
+                                                'suitable to be classified with'
+                                                'with fawoc.')
+    parser_journals.set_defaults(func=run_journals)
     return parser
 
 
