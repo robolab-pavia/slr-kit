@@ -82,7 +82,7 @@ def append_label(abstracts, journal, paper_journal):
     return abstracts
 
 
-def paper_labeler(args):
+def filter_paper(args):
     ris_path = args.ris_file
     abstracts_path = args.abstract_file
     journal_path = args.journal_file
@@ -97,7 +97,7 @@ def paper_labeler(args):
 def main():
     parser = init_argparser()
     args = parser.parse_args()
-    paper_labeler(args)
+    filter_paper(args)
 
 
 if __name__ == '__main__':
