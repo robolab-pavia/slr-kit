@@ -1,8 +1,8 @@
-import argparse
 import pathlib
 
 import pandas as pd
 from RISparser import readris
+from slrkit_utils.argument_parser import ArgParse
 
 
 def init_argparser():
@@ -10,15 +10,18 @@ def init_argparser():
     Initialize the command line parser.
 
     :return: the command line parser
-    :rtype: argparse.ArgumentParser
+    :rtype: ArgParse
     """
-    parser = argparse.ArgumentParser()
+    parser = ArgParse()
 
-    parser.add_argument('ris_file', type=str, help='path to the ris file')
+    parser.add_argument('ris_file', type=str, help='path to the ris file',
+                        suggest_suffix='.ris')
     parser.add_argument('abstract_file', type=str,
-                        help='path to the file with the abstracts of the papers')
+                        help='path to the file with the abstracts of the papers',
+                        input=True)
     parser.add_argument('journal_file', type=str,
-                        help='path to the file with the classified journals')
+                        help='path to the file with the classified journals',
+                        input=True)
 
     return parser
 
@@ -56,7 +59,7 @@ def ris_reader(ris_path):
     return pd.DataFrame(paper_journal_list)
 
 
-def paper_labeler(abstracts, journal, paper_journal):
+def append_label(abstracts, journal, paper_journal):
     """
     Labels every Paper from preproc list with the relative journal classification
 
@@ -79,10 +82,7 @@ def paper_labeler(abstracts, journal, paper_journal):
     return abstracts
 
 
-def main():
-    parser = init_argparser()
-    args = parser.parse_args()
-
+def paper_labeler(args):
     ris_path = args.ris_file
     abstracts_path = args.abstract_file
     journal_path = args.journal_file
@@ -90,8 +90,14 @@ def main():
     paper_journal = ris_reader(ris_path)
     preproc = pd.read_csv(abstracts_path, delimiter='\t', encoding='utf-8')
     journals = pd.read_csv(journal_path, delimiter='\t', encoding='utf-8')
-    out = paper_labeler(preproc, journals, paper_journal)
+    out = append_label(preproc, journals, paper_journal)
     out.to_csv(abstracts_path, sep='\t', index=False)
+
+
+def main():
+    parser = init_argparser()
+    args = parser.parse_args()
+    paper_labeler(args)
 
 
 if __name__ == '__main__':
