@@ -408,13 +408,13 @@ def init_argparser():
     parser_init.add_argument('--description', '-D', action='store', type=str,
                              default='', help='Description of the project')
     parser_init.add_argument('--no-backup', action='store_true',
-                             help='Do not save the existing toml files')
+                             help='Do not save the existing toml files.')
     parser_init.set_defaults(func=init_project)
     # import
     parser_import = subparser.add_parser('import', help='Import a bibliographic'
                                                         ' database converting '
                                                         'to the csv format used'
-                                                        ' by slr-kit')
+                                                        ' by slr-kit.')
 
     parser_import.set_defaults(func=run_import)
     # acronyms
@@ -444,13 +444,13 @@ def init_argparser():
     parser_lda_grid_search.set_defaults(func=run_lda_grid_search)
     # fawoc
     parser_fawoc = subparser.add_parser('fawoc', help='Run fawoc in a slr-kit '
-                                                      'project')
+                                                      'project.')
     parser_fawoc.add_argument('operation', default='terms', nargs='?',
                               choices=['terms', 'acronyms', 'journals'],
-                              help='Specifies what things the user want to '
+                              help='Specifies what the user wants to '
                                    'classify with fawoc. This argument can be '
-                                   'one of %(choices)r. If not specified it '
-                                   'defaults to %(default)r.')
+                                   'one of %(choices)r. '
+                                   'Default: %(default)r.')
     parser_fawoc.add_argument('--input', '-i', metavar='LABEL',
                               help='Input only the terms classified with the '
                                    'specified label')
@@ -460,21 +460,21 @@ def init_argparser():
     # report
     parser_report = subparser.add_parser('report', help='Run the report '
                                                         'creation script in a '
-                                                        'slr-kit project')
-    parser_report.add_argument('json_file', help='path to the json file '
-                                                 'containing the lda '
-                                                 'topic-paper results')
+                                                        'slr-kit project.')
+    parser_report.add_argument('json_file', help='Path to the json file '
+                                                 'containing the LDA '
+                                                 'topic-paper results.')
     parser_report.set_defaults(func=run_report)
     # journals_list
     parser_journals = subparser.add_parser('journals',
                                            help='Prepare a list of journals, '
-                                                'suitable to be classified with'
+                                                'suitable to be classified '
                                                 'with fawoc.')
     parser_journals.set_defaults(func=run_journals)
     # filter_paper
     parser_filter = subparser.add_parser('filter_paper',
                                          help='Filters the abstracts file '
-                                              'marking the papers pubblished in '
+                                              'marking the papers published in '
                                               'the approved journals as "good".')
     parser_filter.set_defaults(func=run_filter)
     return parser
