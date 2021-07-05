@@ -398,8 +398,8 @@ def init_argparser():
     subparser = parser.add_subparsers(title='slrkit commands',
                                       required=True, dest='command')
     # init
-    parser_init = subparser.add_parser('init', help='Initialize a slr-kit '
-                                                    'project')
+    help_str = 'Initialize a slr-kit project'
+    parser_init = subparser.add_parser('init', help=help_str, description=help_str)
     parser_init.add_argument('name', action='store', type=str,
                              help='Name of the project.')
     parser_init.add_argument('--author', '-A', action='store', type=str,
@@ -411,40 +411,43 @@ def init_argparser():
                              help='Do not save the existing toml files.')
     parser_init.set_defaults(func=init_project)
     # import
-    parser_import = subparser.add_parser('import', help='Import a bibliographic'
-                                                        ' database converting '
-                                                        'to the csv format used'
-                                                        ' by slr-kit.')
+    help_str = 'Import a bibliographic database converting to the csv format '\
+               'used by slr-kit.'
+    parser_import = subparser.add_parser('import', help=help_str,
+                                         description=help_str)
 
     parser_import.set_defaults(func=run_import)
     # acronyms
-    parser_acronyms = subparser.add_parser('acronyms', help='Extract acronyms '
-                                                            'from texts.')
+    help_str = 'Extract acronyms from texts.'
+    parser_acronyms = subparser.add_parser('acronyms', help=help_str,
+                                           description=help_str)
 
     parser_acronyms.set_defaults(func=run_acronyms)
     # preproc
-    parser_preproc = subparser.add_parser('preprocess',
-                                          help='Run the preprocess stage in a '
-                                               'slr-kit project')
+    help_str = 'Run the preprocess stage in a slr-kit project'
+    parser_preproc = subparser.add_parser('preprocess', help=help_str,
+                                          description=help_str)
     parser_preproc.set_defaults(func=run_preproc)
     # gen_terms
-    parser_genterms = subparser.add_parser('gen_terms',
-                                           help='Run the gen_terms stage in a '
-                                                'slr-kit project')
+    help_str = 'Run the gen_terms stage in a slr-kit project'
+    parser_genterms = subparser.add_parser('gen_terms', help=help_str,
+                                           description=help_str)
     parser_genterms.set_defaults(func=run_genterms)
     # lda
-    parser_lda = subparser.add_parser('lda', help='Run the lda stage in a '
-                                                  'slr-kit project')
+    help_str = 'Run the lda stage in a slr-kit project'
+    parser_lda = subparser.add_parser('lda', help=help_str,
+                                      description=help_str)
     parser_lda.set_defaults(func=run_lda)
     # lda_grid_search
+    help_str = 'Run the lda_grid_searchstage  in a slr-kit project'
     parser_lda_grid_search = subparser.add_parser('lda_grid_search',
-                                                  help='Run the lda_grid_search'
-                                                       ' stage in a slr-kit '
-                                                       'project')
+                                                  help=help_str,
+                                                  description=help_str)
     parser_lda_grid_search.set_defaults(func=run_lda_grid_search)
     # fawoc
-    parser_fawoc = subparser.add_parser('fawoc', help='Run fawoc in a slr-kit '
-                                                      'project.')
+    help_str = 'Run fawoc in a slr-kit project.'
+    parser_fawoc = subparser.add_parser('fawoc', help=help_str,
+                                        description=help_str)
     parser_fawoc.add_argument('operation', default='terms', nargs='?',
                               choices=['terms', 'acronyms', 'journals'],
                               help='Specifies what the user wants to '
@@ -458,9 +461,9 @@ def init_argparser():
                               help='Width of fawoc windows.')
     parser_fawoc.set_defaults(func=run_fawoc)
     # report
-    parser_report = subparser.add_parser('report', help='Run the report '
-                                                        'creation script in a '
-                                                        'slr-kit project.')
+    help_str = 'Run the report creation script in a slr-kit project.'
+    parser_report = subparser.add_parser('report', help=help_str,
+                                         description=help_str)
     parser_report.add_argument('json_file', help='Path to the json file '
                                                  'containing the LDA '
                                                  'topic-paper results.')
