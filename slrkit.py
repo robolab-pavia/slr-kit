@@ -14,8 +14,8 @@ SCRIPTS = {
     'preprocess': {'module': 'preprocess', 'depends': ['import']},
     'gen_terms': {'module': 'gen_terms', 'depends': ['preprocess']},
     'lda': {'module': 'lda', 'depends': ['preprocess', 'gen_terms']},
-    'lda_grid_search': {'module': 'lda_grid_search',
-                        'depends': ['preprocess', 'gen_terms']},
+    'optimize_lda': {'module': 'lda_grid_search',
+                     'depends': ['preprocess', 'gen_terms']},
     'fawoc_terms': {'module': 'fawoc.fawoc', 'depends': ['gen_terms']},
     'fawoc_acronyms': {'module': 'fawoc.fawoc', 'depends': ['acronyms']},
     'fawoc_journals': {'module': 'fawoc.fawoc', 'depends': ['journals_extract']},
@@ -276,7 +276,7 @@ def run_lda(args):
     lda(cmd_args)
 
 
-def run_lda_grid_search(args):
+def optimize_lda(args):
     confname = 'lda_grid_search.toml'
     config, config_dir, meta = check_project(args, confname)
     from lda_grid_search import lda_grid_search, init_argparser as lda_gs_argparse
@@ -410,7 +410,7 @@ def init_argparser():
                              help='Do not save the existing toml files.')
     parser_init.set_defaults(func=init_project)
     # import
-    help_str = 'Import a bibliographic database converting to the csv format '\
+    help_str = 'Import a bibliographic database converting to the csv format ' \
                'used by slr-kit.'
     parser_import = subparser.add_parser('import', help=help_str,
                                          description=help_str)
@@ -437,12 +437,12 @@ def init_argparser():
     parser_lda = subparser.add_parser('lda', help=help_str,
                                       description=help_str)
     parser_lda.set_defaults(func=run_lda)
-    # lda_grid_search
-    help_str = 'Run the lda_grid_searchstage  in a slr-kit project'
-    parser_lda_grid_search = subparser.add_parser('lda_grid_search',
-                                                  help=help_str,
-                                                  description=help_str)
-    parser_lda_grid_search.set_defaults(func=run_lda_grid_search)
+    # optimize_lda
+    help_str = 'Run an optimization phase for the lda stage in a slr-kit project'
+    parser_optimize_lda = subparser.add_parser('optimize_lda',
+                                               help=help_str,
+                                               description=help_str)
+    parser_optimize_lda.set_defaults(func=optimize_lda)
     # fawoc
     help_str = 'Run fawoc in a slr-kit project.'
     parser_fawoc = subparser.add_parser('fawoc', help=help_str,
