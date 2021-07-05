@@ -12,11 +12,11 @@ SCRIPTS = {
     'import': {'module': 'import_biblio', 'depends': []},
     'acronyms': {'module': 'acronyms', 'depends': ['import']},
     'preprocess': {'module': 'preprocess', 'depends': ['import']},
-    'gen_terms': {'module': 'gen_terms', 'depends': ['preprocess']},
-    'lda': {'module': 'lda', 'depends': ['preprocess', 'gen_terms']},
+    'terms_generate': {'module': 'gen_terms', 'depends': ['preprocess']},
+    'lda': {'module': 'lda', 'depends': ['preprocess', 'terms_generate']},
     'optimize_lda': {'module': 'lda_grid_search',
-                     'depends': ['preprocess', 'gen_terms']},
-    'fawoc_terms': {'module': 'fawoc.fawoc', 'depends': ['gen_terms']},
+                     'depends': ['preprocess', 'terms_generate']},
+    'fawoc_terms': {'module': 'fawoc.fawoc', 'depends': ['terms_generate']},
     'fawoc_acronyms': {'module': 'fawoc.fawoc', 'depends': ['acronyms']},
     'fawoc_journals': {'module': 'fawoc.fawoc', 'depends': ['journals_extract']},
     'report': {'module': 'topic_report', 'depends': []},
@@ -246,15 +246,21 @@ def run_preproc(args):
     preprocess(cmd_args)
 
 
-def run_genterms(args):
-    confname = 'gen_terms.toml'
+def run_terms(args):
+    if args.terms_operation is None or args.terms_operation == 'generate':
+        confname = 'terms_generate.toml'
+        from gen_terms import (gen_terms as script_to_run,
+                               init_argparser as argparser)
+    else:
+        msg = 'Unexpected subcommand {!r} for command terms: Aborting'
+        sys.exit(msg.format(args.journals_operation))
+
     config, config_dir, meta = check_project(args, confname)
-    from gen_terms import gen_terms, init_argparser as gt_argparse
-    script_args = gt_argparse().slrkit_arguments
+    script_args = argparser().slrkit_arguments
     cmd_args = prepare_script_arguments(config, config_dir, confname,
                                         script_args)
     os.chdir(args.cwd)
-    gen_terms(cmd_args)
+    script_to_run(cmd_args)
 
 
 def run_lda(args):
@@ -427,11 +433,17 @@ def init_argparser():
     parser_preproc = subparser.add_parser('preprocess', help=help_str,
                                           description=help_str)
     parser_preproc.set_defaults(func=run_preproc)
-    # gen_terms
-    help_str = 'Run the gen_terms stage in a slr-kit project'
-    parser_genterms = subparser.add_parser('gen_terms', help=help_str,
-                                           description=help_str)
-    parser_genterms.set_defaults(func=run_genterms)
+    # terms
+    help_str = 'Subcommand to extract and handle lists of terms in a slr-kit ' \
+               'project. Requires a sub-command'
+    terms_parser = subparser.add_parser('terms', help=help_str,
+                                        description=help_str)
+    terms_parser.set_defaults(func=run_terms)
+    terms_subp = terms_parser.add_subparsers(title='terms commands',
+                                             dest='terms_operation')
+    # terms_generate
+    help_str = 'Generates a list of terms from documents in a slr-kit project'
+    terms_subp.add_parser('generate', help=help_str, description=help_str)
     # lda
     help_str = 'Run the lda stage in a slr-kit project'
     parser_lda = subparser.add_parser('lda', help=help_str,
