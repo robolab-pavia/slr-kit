@@ -18,11 +18,11 @@ SCRIPTS = {
                         'depends': ['preprocess', 'gen_terms']},
     'fawoc_terms': {'module': 'fawoc.fawoc', 'depends': ['gen_terms']},
     'fawoc_acronyms': {'module': 'fawoc.fawoc', 'depends': ['acronyms']},
-    'fawoc_journals': {'module': 'fawoc.fawoc', 'depends': ['journals']},
+    'fawoc_journals': {'module': 'fawoc.fawoc', 'depends': ['journals_extract']},
     'report': {'module': 'topic_report', 'depends': []},
-    'journals': {'module': 'journal_lister', 'depends': []},
-    'filter_paper': {'module': 'filter_paper',
-                     'depends': ['import', 'journals']},
+    'journals_extract': {'module': 'journal_lister', 'depends': []},
+    'journals_filter': {'module': 'filter_paper',
+                        'depends': ['import', 'journals_extract']},
 }
 
 
@@ -361,25 +361,24 @@ def run_report(args):
 
 
 def run_journals(args):
-    confname = 'journals.toml'
+    if args.journals_operation is None or args.journals_operation == 'extract':
+        confname = 'journals_extract.toml'
+        from journal_lister import (journal_lister as script_to_run,
+                                    init_argparser as argparser)
+    elif args.journals_operation == 'filter':
+        confname = 'journals_filter.toml'
+        from filter_paper import (filter_paper as script_to_run,
+                                  init_argparser as argparser)
+    else:
+        msg = 'Unexpected subcommand {!r} for command journals: Aborting'
+        sys.exit(msg.format(args.journals_operation))
+
     config, config_dir, meta = check_project(args, confname)
-    from journal_lister import journal_lister, init_argparser as journal_argparser
-    script_args = journal_argparser().slrkit_arguments
+    script_args = argparser().slrkit_arguments
     cmd_args = prepare_script_arguments(config, config_dir, confname,
                                         script_args)
     os.chdir(args.cwd)
-    journal_lister(cmd_args)
-
-
-def run_filter(args):
-    confname = 'filter_paper.toml'
-    config, config_dir, meta = check_project(args, confname)
-    from filter_paper import filter_paper, init_argparser as filter_argparser
-    script_args = filter_argparser().slrkit_arguments
-    cmd_args = prepare_script_arguments(config, config_dir, confname,
-                                        script_args)
-    os.chdir(args.cwd)
-    filter_paper(cmd_args)
+    script_to_run(cmd_args)
 
 
 def init_argparser():
@@ -468,24 +467,29 @@ def init_argparser():
                                                  'containing the LDA '
                                                  'topic-paper results.')
     parser_report.set_defaults(func=run_report)
-    # journals_list
-    parser_journals = subparser.add_parser('journals',
-                                           help='Prepare a list of journals, '
-                                                'suitable to be classified '
-                                                'with fawoc.')
-    parser_journals.set_defaults(func=run_journals)
+    # journals
+    help_str = 'Subcommand to extract and filter a list of journals. ' \
+               'Requires a subcommand.'
+    journals_p = subparser.add_parser('journals', help=help_str,
+                                      description=help_str)
+
+    journals_subp = journals_p.add_subparsers(title='journals command',
+                                              dest='journals_operation')
+    # journal_lister
+    help_str = 'Prepare a list of journals, suitable to be classified with ' \
+               'fawoc.'
+    journals_subp.add_parser('extract', help=help_str, description=help_str)
     # filter_paper
-    parser_filter = subparser.add_parser('filter_paper',
-                                         help='Filters the abstracts file '
-                                              'marking the papers published in '
-                                              'the approved journals as "good".')
-    parser_filter.set_defaults(func=run_filter)
+    help_str = 'Filters the abstracts file marking the papers published in ' \
+               'the approved journals as "good".'
+    journals_subp.add_parser('filter', help=help_str, description=help_str)
+
+    journals_p.set_defaults(func=run_journals)
     return parser
 
 
 def main():
     args = init_argparser().parse_args()
-
     # execute the command
     args.func(args)
 
