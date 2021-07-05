@@ -158,8 +158,17 @@ def train(c_idx, n_topics, _a, _b):
     c_v = cv_model.get_coherence()
     stop = timer()
     uid = str(uuid.uuid4())
-    _logger.debug('{} {} {} {} {} {} {}'.format(c_idx, n_topics, _a, _b, c_v,
-                                                stop - start, uid))
+    if isinstance(_a, float):
+        alpha = '{:.3}'.format(_a)
+    else:
+        alpha = _a
+    if isinstance(_b, float):
+        beta = '{:.3}'.format(_b)
+    else:
+        beta = _b
+    _logger.debug('{:.4f} {} {} {} {} {} {:.3f}'.format(c_v, uid, c_idx,
+                                                        n_topics, alpha,
+                                                        beta, stop - start))
     output_dir = _outdir / uid
     output_dir.mkdir(exist_ok=True)
     model.save(str(output_dir / 'model'))
