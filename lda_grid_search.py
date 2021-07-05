@@ -133,11 +133,11 @@ def prepare_corpus(docs, no_above, no_below):
         return corpus, dictionary
 
 
-def init_train(corpora, seed, outdir, logfile):
+def init_train(corpora, seed, outdir, logger):
     global _corpora, _seed, _logger, _outdir
     _corpora = corpora
     _seed = seed
-    _logger = setup_logger('debug_logger', logfile, level=logging.DEBUG)
+    _logger = logger
     _outdir = outdir
 
 
@@ -167,7 +167,7 @@ def train(c_idx, n_topics, _a, _b):
     return c_idx, n_topics, _a, _b, c_v, stop - start, uid
 
 
-def compute_optimal_model(corpora, topics_range, alpha, beta, outdir, logfile,
+def compute_optimal_model(corpora, topics_range, alpha, beta, outdir, logger,
                           seed=None):
     """
     Train several models iterating over the specified number of topics and performs
@@ -183,6 +183,10 @@ def compute_optimal_model(corpora, topics_range, alpha, beta, outdir, logfile,
     :param beta: Beta parameter values to test. Every value accepted by gensim
     is valid.
     :type beta: list[float or str]
+    :param outdir: directory where all the workers write the resulting model
+    :type outdir: pathlib.Path
+    :param logger: logger object that all the workers will use
+    :type logger: logging.Logger
     :param seed: random number generator seed
     :type seed: int or None
     :return: Dataframe with the model performances
@@ -203,7 +207,7 @@ def compute_optimal_model(corpora, topics_range, alpha, beta, outdir, logfile,
     # iterate through all the combinations
 
     with Pool(processes=PHYSICAL_CPUS, initializer=init_train,
-              initargs=(corpora, seed, outdir, logfile)) as pool:
+              initargs=(corpora, seed, outdir, logger)) as pool:
         results = pool.starmap(train, product(corpora.keys(), topics_range,
                                               alpha, beta))
         # get the coherence score for the given parameters
@@ -310,7 +314,7 @@ def lda_grid_search(args):
                                                    * len(beta)
                                                    * len(topics_range)))
     results = compute_optimal_model(corpora, topics_range, alpha, beta,
-                                    output_dir, logfile, seed=args.seed)
+                                    output_dir, logger, seed=args.seed)
 
     results.to_csv(args.result, sep='\t', index=False)
     best = results.loc[results['coherence'].idxmax()]
