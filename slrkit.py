@@ -473,7 +473,7 @@ def init_argparser():
     journals_p = subparser.add_parser('journals', help=help_str,
                                       description=help_str)
 
-    journals_subp = journals_p.add_subparsers(title='journals command',
+    journals_subp = journals_p.add_subparsers(title='journals commands',
                                               dest='journals_operation')
     # journal_lister
     help_str = 'Prepare a list of journals, suitable to be classified with ' \
