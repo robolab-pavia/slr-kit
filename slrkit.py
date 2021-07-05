@@ -12,17 +12,17 @@ SCRIPTS = {
     'import': {'module': 'import_biblio', 'depends': []},
     'acronyms': {'module': 'acronyms', 'depends': ['import']},
     'preprocess': {'module': 'preprocess', 'depends': ['import']},
-    'gen_terms': {'module': 'gen_terms', 'depends': ['preprocess']},
-    'lda': {'module': 'lda', 'depends': ['preprocess', 'gen_terms']},
-    'lda_grid_search': {'module': 'lda_grid_search',
-                        'depends': ['preprocess', 'gen_terms']},
-    'fawoc_terms': {'module': 'fawoc.fawoc', 'depends': ['gen_terms']},
+    'terms_generate': {'module': 'gen_terms', 'depends': ['preprocess']},
+    'lda': {'module': 'lda', 'depends': ['preprocess', 'terms_generate']},
+    'optimize_lda': {'module': 'lda_grid_search',
+                     'depends': ['preprocess', 'terms_generate']},
+    'fawoc_terms': {'module': 'fawoc.fawoc', 'depends': ['terms_generate']},
     'fawoc_acronyms': {'module': 'fawoc.fawoc', 'depends': ['acronyms']},
-    'fawoc_journals': {'module': 'fawoc.fawoc', 'depends': ['journals']},
+    'fawoc_journals': {'module': 'fawoc.fawoc', 'depends': ['journals_extract']},
     'report': {'module': 'topic_report', 'depends': []},
-    'journals': {'module': 'journal_lister', 'depends': []},
-    'filter_paper': {'module': 'filter_paper',
-                     'depends': ['import', 'journals']},
+    'journals_extract': {'module': 'journal_lister', 'depends': []},
+    'journals_filter': {'module': 'filter_paper',
+                        'depends': ['import', 'journals_extract']},
 }
 
 
@@ -246,15 +246,21 @@ def run_preproc(args):
     preprocess(cmd_args)
 
 
-def run_genterms(args):
-    confname = 'gen_terms.toml'
+def run_terms(args):
+    if args.terms_operation is None or args.terms_operation == 'generate':
+        confname = 'terms_generate.toml'
+        from gen_terms import (gen_terms as script_to_run,
+                               init_argparser as argparser)
+    else:
+        msg = 'Unexpected subcommand {!r} for command terms: Aborting'
+        sys.exit(msg.format(args.journals_operation))
+
     config, config_dir, meta = check_project(args, confname)
-    from gen_terms import gen_terms, init_argparser as gt_argparse
-    script_args = gt_argparse().slrkit_arguments
+    script_args = argparser().slrkit_arguments
     cmd_args = prepare_script_arguments(config, config_dir, confname,
                                         script_args)
     os.chdir(args.cwd)
-    gen_terms(cmd_args)
+    script_to_run(cmd_args)
 
 
 def run_lda(args):
@@ -276,7 +282,7 @@ def run_lda(args):
     lda(cmd_args)
 
 
-def run_lda_grid_search(args):
+def optimize_lda(args):
     confname = 'lda_grid_search.toml'
     config, config_dir, meta = check_project(args, confname)
     from lda_grid_search import lda_grid_search, init_argparser as lda_gs_argparse
@@ -361,25 +367,24 @@ def run_report(args):
 
 
 def run_journals(args):
-    confname = 'journals.toml'
+    if args.journals_operation is None or args.journals_operation == 'extract':
+        confname = 'journals_extract.toml'
+        from journal_lister import (journal_lister as script_to_run,
+                                    init_argparser as argparser)
+    elif args.journals_operation == 'filter':
+        confname = 'journals_filter.toml'
+        from filter_paper import (filter_paper as script_to_run,
+                                  init_argparser as argparser)
+    else:
+        msg = 'Unexpected subcommand {!r} for command journals: Aborting'
+        sys.exit(msg.format(args.journals_operation))
+
     config, config_dir, meta = check_project(args, confname)
-    from journal_lister import journal_lister, init_argparser as journal_argparser
-    script_args = journal_argparser().slrkit_arguments
+    script_args = argparser().slrkit_arguments
     cmd_args = prepare_script_arguments(config, config_dir, confname,
                                         script_args)
     os.chdir(args.cwd)
-    journal_lister(cmd_args)
-
-
-def run_filter(args):
-    confname = 'filter_paper.toml'
-    config, config_dir, meta = check_project(args, confname)
-    from filter_paper import filter_paper, init_argparser as filter_argparser
-    script_args = filter_argparser().slrkit_arguments
-    cmd_args = prepare_script_arguments(config, config_dir, confname,
-                                        script_args)
-    os.chdir(args.cwd)
-    filter_paper(cmd_args)
+    script_to_run(cmd_args)
 
 
 def init_argparser():
@@ -398,8 +403,8 @@ def init_argparser():
     subparser = parser.add_subparsers(title='slrkit commands',
                                       required=True, dest='command')
     # init
-    parser_init = subparser.add_parser('init', help='Initialize a slr-kit '
-                                                    'project')
+    help_str = 'Initialize a slr-kit project'
+    parser_init = subparser.add_parser('init', help=help_str, description=help_str)
     parser_init.add_argument('name', action='store', type=str,
                              help='Name of the project.')
     parser_init.add_argument('--author', '-A', action='store', type=str,
@@ -411,40 +416,49 @@ def init_argparser():
                              help='Do not save the existing toml files.')
     parser_init.set_defaults(func=init_project)
     # import
-    parser_import = subparser.add_parser('import', help='Import a bibliographic'
-                                                        ' database converting '
-                                                        'to the csv format used'
-                                                        ' by slr-kit.')
+    help_str = 'Import a bibliographic database converting to the csv format ' \
+               'used by slr-kit.'
+    parser_import = subparser.add_parser('import', help=help_str,
+                                         description=help_str)
 
     parser_import.set_defaults(func=run_import)
     # acronyms
-    parser_acronyms = subparser.add_parser('acronyms', help='Extract acronyms '
-                                                            'from texts.')
+    help_str = 'Extract acronyms from texts.'
+    parser_acronyms = subparser.add_parser('acronyms', help=help_str,
+                                           description=help_str)
 
     parser_acronyms.set_defaults(func=run_acronyms)
     # preproc
-    parser_preproc = subparser.add_parser('preprocess',
-                                          help='Run the preprocess stage in a '
-                                               'slr-kit project')
+    help_str = 'Run the preprocess stage in a slr-kit project'
+    parser_preproc = subparser.add_parser('preprocess', help=help_str,
+                                          description=help_str)
     parser_preproc.set_defaults(func=run_preproc)
-    # gen_terms
-    parser_genterms = subparser.add_parser('gen_terms',
-                                           help='Run the gen_terms stage in a '
-                                                'slr-kit project')
-    parser_genterms.set_defaults(func=run_genterms)
+    # terms
+    help_str = 'Subcommand to extract and handle lists of terms in a slr-kit ' \
+               'project. Requires a sub-command'
+    terms_parser = subparser.add_parser('terms', help=help_str,
+                                        description=help_str)
+    terms_parser.set_defaults(func=run_terms)
+    terms_subp = terms_parser.add_subparsers(title='terms commands',
+                                             dest='terms_operation')
+    # terms_generate
+    help_str = 'Generates a list of terms from documents in a slr-kit project'
+    terms_subp.add_parser('generate', help=help_str, description=help_str)
     # lda
-    parser_lda = subparser.add_parser('lda', help='Run the lda stage in a '
-                                                  'slr-kit project')
+    help_str = 'Run the lda stage in a slr-kit project'
+    parser_lda = subparser.add_parser('lda', help=help_str,
+                                      description=help_str)
     parser_lda.set_defaults(func=run_lda)
-    # lda_grid_search
-    parser_lda_grid_search = subparser.add_parser('lda_grid_search',
-                                                  help='Run the lda_grid_search'
-                                                       ' stage in a slr-kit '
-                                                       'project')
-    parser_lda_grid_search.set_defaults(func=run_lda_grid_search)
+    # optimize_lda
+    help_str = 'Run an optimization phase for the lda stage in a slr-kit project'
+    parser_optimize_lda = subparser.add_parser('optimize_lda',
+                                               help=help_str,
+                                               description=help_str)
+    parser_optimize_lda.set_defaults(func=optimize_lda)
     # fawoc
-    parser_fawoc = subparser.add_parser('fawoc', help='Run fawoc in a slr-kit '
-                                                      'project.')
+    help_str = 'Run fawoc in a slr-kit project.'
+    parser_fawoc = subparser.add_parser('fawoc', help=help_str,
+                                        description=help_str)
     parser_fawoc.add_argument('operation', default='terms', nargs='?',
                               choices=['terms', 'acronyms', 'journals'],
                               help='Specifies what the user wants to '
@@ -458,31 +472,36 @@ def init_argparser():
                               help='Width of fawoc windows.')
     parser_fawoc.set_defaults(func=run_fawoc)
     # report
-    parser_report = subparser.add_parser('report', help='Run the report '
-                                                        'creation script in a '
-                                                        'slr-kit project.')
+    help_str = 'Run the report creation script in a slr-kit project.'
+    parser_report = subparser.add_parser('report', help=help_str,
+                                         description=help_str)
     parser_report.add_argument('json_file', help='Path to the json file '
                                                  'containing the LDA '
                                                  'topic-paper results.')
     parser_report.set_defaults(func=run_report)
-    # journals_list
-    parser_journals = subparser.add_parser('journals',
-                                           help='Prepare a list of journals, '
-                                                'suitable to be classified '
-                                                'with fawoc.')
-    parser_journals.set_defaults(func=run_journals)
+    # journals
+    help_str = 'Subcommand to extract and filter a list of journals. ' \
+               'Requires a subcommand.'
+    journals_p = subparser.add_parser('journals', help=help_str,
+                                      description=help_str)
+
+    journals_subp = journals_p.add_subparsers(title='journals commands',
+                                              dest='journals_operation')
+    # journal_lister
+    help_str = 'Prepare a list of journals, suitable to be classified with ' \
+               'fawoc.'
+    journals_subp.add_parser('extract', help=help_str, description=help_str)
     # filter_paper
-    parser_filter = subparser.add_parser('filter_paper',
-                                         help='Filters the abstracts file '
-                                              'marking the papers published in '
-                                              'the approved journals as "good".')
-    parser_filter.set_defaults(func=run_filter)
+    help_str = 'Filters the abstracts file marking the papers published in ' \
+               'the approved journals as "good".'
+    journals_subp.add_parser('filter', help=help_str, description=help_str)
+
+    journals_p.set_defaults(func=run_journals)
     return parser
 
 
 def main():
     args = init_argparser().parse_args()
-
     # execute the command
     args.func(args)
 
