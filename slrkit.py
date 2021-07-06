@@ -298,9 +298,6 @@ def optimize_lda(args):
         setattr(cmd_args, 'outdir', args.cwd.resolve())
 
     os.chdir(args.cwd)
-    result_default = script_args['result']
-    param = config.get('result', result_default['value'])
-    setattr(cmd_args, 'result', argparse.FileType('w')(param))
 
     lda_grid_search(cmd_args)
 

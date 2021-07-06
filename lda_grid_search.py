@@ -2,12 +2,14 @@ import logging
 import pathlib
 import sys
 import uuid
+
 # disable warnings if they are not explicitly wanted
 if not sys.warnoptions:
     import warnings
     warnings.simplefilter('ignore')
 
 import argparse
+from datetime import datetime
 from itertools import product
 from multiprocessing import Pool
 from pathlib import Path
@@ -96,11 +98,8 @@ def init_argparser():
                         help='if set, it saves the plot of the coherence as '
                              '<outdir>/lda_plot.pdf')
     parser.add_argument('--result', '-r', metavar='FILENAME',
-                        type=argparse.FileType('w'),
-                        default='-', help='Where to save the training results '
-                                          'in CSV format.If omitted or -, '
-                                          'stdout is  used.',
-                        non_standard=True)
+                        help='Where to save the training results '
+                             'in CSV format. If "-", stdout is used.')
     parser.add_argument('--placeholder', '-p',
                         default=STOPWORD_PLACEHOLDER,
                         help='Placeholder for barrier word. Also used as a '
@@ -263,6 +262,11 @@ def lda_grid_search(args):
     preproc_file = args.preproc_file
     output_dir = args.outdir
     logfile = args.logfile
+    if args.result is None:
+        now = datetime.now()
+        result_file = f'{now:%Y-%m-%d_%H%M%S}_results.csv'
+    else:
+        result_file = args.result
 
     logger = setup_logger('debug_logger', logfile, level=logging.DEBUG)
     logger.info('==== lda_grid_search started ====')
@@ -325,7 +329,11 @@ def lda_grid_search(args):
     results = compute_optimal_model(corpora, topics_range, alpha, beta,
                                     output_dir, logger, seed=args.seed)
 
-    results.to_csv(args.result, sep='\t', index=False)
+    if result_file == '-':
+        results.to_csv(sys.stdout, sep='\t', index=False)
+    else:
+        results.to_csv(result_file, sep='\t', index=False)
+
     best = results.loc[results['coherence'].idxmax()]
 
     print('Best model:')
