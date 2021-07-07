@@ -446,10 +446,22 @@ def load_documents(preproc_file, target_col, title_col, delimiter,
     return documents, titles
 
 
-def output_topics(model, dictionary, docs, titles, outdir, file_prefix):
-    topics, docs_topics, avg_topic_coherence = prepare_topics(model, docs,
-                                                              titles,
-                                                              dictionary)
+def output_topics(topics, docs_topics, outdir, file_prefix):
+    """
+    Saves the topics and docs-topics association to json files
+
+    The saved files are: <outdir>/<file_prefix>_terms-topics_<timestamp>.json
+    for the topics, and <outdir>/<file_prefix>_docs-topics_<timestamp>.json for
+    the docs-topics association.
+    :param topics: dict of the topics as returned by prepare_topics
+    :type topics: dict[int, dict[str, str or dict[str, float]]]
+    :param docs_topics: docs-topics association as returned by prepare_topics
+    :type docs_topics: list[dict[str, int or bool or str or dict[int, str]]]
+    :param outdir: where to save the files
+    :type outdir: Path
+    :param file_prefix: prefix of the files
+    :type file_prefix: str
+    """
     now = datetime.now()
     name = f'{file_prefix}_terms-topics_{now:%Y-%m-%d_%H%M%S}.json'
     topic_file = outdir / name
@@ -480,6 +492,7 @@ def lda(args):
     terms_file = args.terms_file
     preproc_file = args.preproc_file
     output_dir = args.outdir
+    output_dir.mkdir(exist_ok=True)
 
     placeholder = args.placeholder
     relevant_prefix = placeholder
@@ -533,7 +546,7 @@ def lda(args):
                                                               dictionary)
 
     print(f'Average topic coherence: {avg_topic_coherence:.4f}.')
-    output_topics(model, dictionary, docs, titles, output_dir, 'lda')
+    output_topics(topics, docs_topics, output_dir, 'lda')
 
     if args.model:
         lda_path: Path = args.outdir / 'lda_model'
