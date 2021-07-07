@@ -244,6 +244,7 @@ def lda_grid_search(args):
     terms_file = args.terms_file
     preproc_file = args.preproc_file
     output_dir = args.outdir
+    output_dir.mkdir(exist_ok=True)
     logfile = args.logfile
     if args.result is None:
         now = datetime.now()
