@@ -29,7 +29,8 @@ from utils import STOPWORD_PLACEHOLDER, setup_logger
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
 _corpora: Optional[Dict[Tuple[str], Tuple[List[Tuple[int, int]],
-                                          Dictionary, List[List[str]]]]] = None
+                                          Dictionary, List[List[str]],
+                                          int]]] = None
 _seed: Optional[int] = None
 _logger: Optional[logging.Logger] = None
 _outdir: Optional[pathlib.Path] = None
@@ -128,7 +129,7 @@ def init_train(corpora, seed, outdir, logger):
 def train(c_idx, n_topics, _a, _b):
     global _corpora, _seed, _logger, _outdir
     start = timer()
-    corpus, dictionary, texts = _corpora[c_idx]
+    corpus, dictionary, texts, n_docs = _corpora[c_idx]
     model = LdaModel(corpus, num_topics=n_topics,
                      id2word=dictionary, chunksize=len(corpus),
                      passes=10, random_state=_seed,
@@ -155,7 +156,7 @@ def train(c_idx, n_topics, _a, _b):
     output_dir.mkdir(exist_ok=True)
     model.save(str(output_dir / 'model'))
     dictionary.save(str(output_dir / 'model_dictionary'))
-    return c_idx, n_topics, _a, _b, c_v, stop - start, uid
+    return c_idx, n_topics, _a, _b, c_v, stop - start, uid, n_docs, len(corpus)
 
 
 def compute_optimal_model(corpora, topics_range, alpha, beta, outdir, logger,
@@ -165,7 +166,7 @@ def compute_optimal_model(corpora, topics_range, alpha, beta, outdir, logger,
     LDA hyper-parameters alpha and beta tuning
 
     :param corpora: Gensim corpus
-    :type corpora: dict[tuple[str, ...], tuple[list[tuple[int, int]], Dictionary, list[list[str]]]]
+    :type corpora: dict[tuple[str, ...], tuple[list[tuple[int, int]], Dictionary, list[list[str]], int]]
     :param topics_range: range of the topics number to test
     :type topics_range: range
     :param alpha: Alpha parameter values to test. Every value accepted by gensim
@@ -194,9 +195,10 @@ def compute_optimal_model(corpora, topics_range, alpha, beta, outdir, logger,
         'times': [],
         'seed': [],
         'uuid': [],
+        'num_docs': [],
+        'num_not_empty': [],
     }
     # iterate through all the combinations
-
     with Pool(processes=PHYSICAL_CPUS, initializer=init_train,
               initargs=(corpora, seed, outdir, logger)) as pool:
         results = pool.starmap(train, product(corpora.keys(), topics_range,
@@ -204,7 +206,7 @@ def compute_optimal_model(corpora, topics_range, alpha, beta, outdir, logger,
         # get the coherence score for the given parameters
         # LDA multi-core implementation with maximum number of workers
         for res in results:
-            c, n, a, b, cv, t, uid = res
+            c, n, a, b, cv, t, uid, n_docs, n_not_empty = res
             # Save the model results
             model_results['corpus'].append(c[0])
             model_results['no_below'].append(c[1])
@@ -216,6 +218,8 @@ def compute_optimal_model(corpora, topics_range, alpha, beta, outdir, logger,
             model_results['times'].append(t)
             model_results['seed'].append(seed)
             model_results['uuid'].append(uid)
+            model_results['num_docs'].append(n_docs)
+            model_results['num_not_empty'].append(n_not_empty)
 
     return pd.DataFrame(model_results)
 
@@ -301,10 +305,26 @@ def lda_grid_search(args):
                 msg = (f'Combination {(labels, no_below, no_above)!r} skipped: '
                        f'all documents are empty')
                 print(msg, file=sys.stderr)
+                logger.info(msg)
             else:
-                corpora[(labels, no_below, no_above)] = (corpus,
+                not_empty_bows = []
+                not_empty_docs = []
+                for c, d in zip(corpus, docs):
+                    not_empty_bows.append(c)
+                    not_empty_docs.append(d)
+
+                n_docs = len(corpus)
+                n_not_empty = len(not_empty_bows)
+                empty_docs = n_docs - n_not_empty
+                msg = f'Combination {(labels, no_below, no_above)!r} has ' \
+                      f'{n_not_empty} non empty documents and {empty_docs} empty ' \
+                      f'document'
+                print(msg, file=sys.stderr)
+                logger.info(msg)
+                corpora[(labels, no_below, no_above)] = (not_empty_bows,
                                                          dictionary,
-                                                         docs)
+                                                         not_empty_docs,
+                                                         n_docs)
 
     logger.info('N° of training process {}'.format(len(corpora)
                                                    * len(alpha)
