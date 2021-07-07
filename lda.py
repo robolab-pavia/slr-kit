@@ -305,6 +305,24 @@ def prepare_documents(preproc_file, terms_file, ngrams, labels,
 
 
 def prepare_corpus(docs, no_above, no_below):
+    """
+    Prepares the bag-of-words representation of the documents
+
+    It prepares also the dictionary object used by LdaModel
+    :param docs: documents to elaborate
+    :type docs: list[list[str]]
+    :param no_above: keep terms which are contained in no more than this
+        fraction of documents (fraction of total corpus size, not an absolute
+        number).
+    :type no_above: float
+    :param no_below: keep tokens which are contained in at least this number of
+        documents (absolute number).
+    :type no_below: int
+    :return: bag-of-words representation of the documents and the dictionary object.
+        If all the documents are empty after the filtering phase, the returned
+        values are both None.
+    :rtype: tuple[list[list[tuple[int, int]]] or None, Dictionary or None]
+    """
     # Make a index to word dictionary.
     dictionary = Dictionary(docs)
     # Filter out words that occur less than no_above documents, or more than
@@ -354,9 +372,11 @@ def train_lda_model(docs, topics=20, alpha='auto', beta='auto', no_above=0.5,
         sys.exit('All filtered documents are empty. Check the filter parameters '
                  'and the input files.')
     id2word = dictionary.id2token
+    # filter the empty documents
+    bows = [c for c in corpus if c != []]
     # Train LDA model.
     model = LdaModel(
-        corpus=corpus,
+        corpus=bows,
         id2word=id2word,
         chunksize=len(corpus),
         alpha=alpha,
@@ -382,9 +402,31 @@ def prepare_topics(model, docs, titles, dictionary):
     :return: the dict of the topics, the docs-topics assignement and
         the average coherence score
     :rtype: tuple[dict[int, dict[str, str or dict[str, float]]],
-        list[dict[str, int or str or dict[int, str]]], float]
+        list[dict[str, int or bool or str or dict[int, str]]], float]
     """
-    cm = CoherenceModel(model=model, texts=docs, dictionary=dictionary,
+    docs_topics = []
+    not_empty_docs = []
+    for i, (title, d) in enumerate(zip(titles, docs)):
+        bow = dictionary.doc2bow(d)
+        isempty = False
+        if bow:
+            t = model.get_document_topics(bow)
+            t.sort(key=lambda x: x[1], reverse=True)
+            not_empty_docs.append(d)
+        else:
+            # document is empty after the filtering so no topics
+            t = []
+            isempty = True
+        d_t = {
+            'id': i,
+            'title': title,
+            'topics': {tu[0]: float(tu[1]) for tu in t},
+            'empty': isempty
+        }
+        docs_topics.append(d_t)
+
+    cm = CoherenceModel(model=model, texts=not_empty_docs,
+                        dictionary=dictionary,
                         coherence='c_v', processes=PHYSICAL_CPUS)
 
     # Average topic coherence is the sum of topic coherences of all topics,
@@ -402,18 +444,6 @@ def prepare_topics(model, docs, titles, dictionary):
             'coherence': f'{float(coherence[i]):.5f}',
         }
         topics[i] = t_dict
-
-    docs_topics = []
-    for i, (title, d) in enumerate(zip(titles, docs)):
-        bow = dictionary.doc2bow(d)
-        t = model.get_document_topics(bow)
-        t.sort(key=lambda x: x[1], reverse=True)
-        d_t = {
-            'id': i,
-            'title': title,
-            'topics': {tu[0]: float(tu[1]) for tu in t},
-        }
-        docs_topics.append(d_t)
 
     return topics, docs_topics, avg_topic_coherence
 
