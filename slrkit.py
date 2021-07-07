@@ -283,7 +283,7 @@ def run_lda(args):
 
 
 def optimize_lda(args):
-    confname = 'lda_grid_search.toml'
+    confname = 'optimize_lda.toml'
     config, config_dir, meta = check_project(args, confname)
     from lda_grid_search import lda_grid_search, init_argparser as lda_gs_argparse
     script_args = lda_gs_argparse().slrkit_arguments
