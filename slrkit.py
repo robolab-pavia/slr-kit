@@ -112,6 +112,9 @@ def init_project(slrkit_args):
         msg = 'Error: {} exist and is not a directory'
         sys.exit(msg.format(e.filename))
 
+    # change directory to args.cwd to be sure that all the Path.cwd() used as
+    # default argument values are right
+    os.chdir(slrkit_args.cwd)
     config_files = {}
     for configname, script_data in SCRIPTS.items():
         config_files[configname] = prepare_configfile(script_data['module'],
