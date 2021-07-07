@@ -23,7 +23,8 @@ from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel, LdaModel
 
 from slrkit_utils.argument_parser import AppendMultipleFilesAction, ArgParse
-from lda import (PHYSICAL_CPUS, prepare_documents, output_topics, load_acronyms)
+from lda import (PHYSICAL_CPUS, prepare_documents, load_acronyms,
+                 prepare_corpus)
 from utils import STOPWORD_PLACEHOLDER, setup_logger
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
@@ -112,24 +113,6 @@ def init_argparser():
                         help='log file name. If omitted %(default)r is used',
                         logfile=True)
     return parser
-
-
-def prepare_corpus(docs, no_above, no_below):
-    dictionary = Dictionary(docs)
-    # Filter out words that occur less than no_above documents, or more than
-    # no_below % of the documents.
-    dictionary.filter_extremes(no_below=no_below, no_above=no_above)
-    # Finally, we transform the documents to a vectorized form. We simply
-    # compute the frequency of each word, including the bigrams.
-    # Bag-of-words representation of the documents.
-    corpus = [dictionary.doc2bow(doc) for doc in docs]
-    try:
-        _ = dictionary[0]  # This is only to "load" the dictionary.
-    except KeyError:
-        # nothing in this corpus
-        return None, None
-    else:
-        return corpus, dictionary
 
 
 def init_train(corpora, seed, outdir, logger):
