@@ -310,8 +310,9 @@ def lda_grid_search(args):
                 not_empty_bows = []
                 not_empty_docs = []
                 for c, d in zip(corpus, docs):
-                    not_empty_bows.append(c)
-                    not_empty_docs.append(d)
+                    if c:
+                        not_empty_bows.append(c)
+                        not_empty_docs.append(d)
 
                 n_docs = len(corpus)
                 n_not_empty = len(not_empty_bows)
