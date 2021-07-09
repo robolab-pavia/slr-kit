@@ -37,10 +37,32 @@ _logger: Optional[logging.Logger] = None
 
 class _ValidateInt(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
-        if int(values) <= 0:
+        try:
+            v = int(values)
+        except ValueError:
+            parser.exit(1, f'Value {values!r} is not a valid int')
+            return
+
+        if v <= 0:
             parser.exit(1, f'{self.dest!r} must be greater than 0')
 
-        setattr(namespace, self.dest, self.type(values))
+        setattr(namespace, self.dest, v)
+
+
+class _ValidateProb(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        try:
+            v = float(values)
+        except ValueError:
+            parser.exit(1, f'Value {values!r} is not a valid float')
+            return
+
+        if v < 0:
+            parser.exit(1, f'{self.dest!r} must be greater than 0')
+        elif v > 1.0:
+            parser.exit(1, f'{self.dest!r} must be less than 1')
+
+        setattr(namespace, self.dest, v)
 
 
 def init_argparser():
@@ -76,9 +98,6 @@ def init_argparser():
                         help='Additional keywords files')
     parser.add_argument('--acronyms', '-a',
                         help='TSV files with the approved acronyms')
-    parser.add_argument('--model', action='store_true',
-                        help='if set, the best lda model is saved to directory '
-                             '<outdir>/lda_model')
     parser.add_argument('--min-topics', '-m', type=int,
                         default=5, action=_ValidateInt,
                         help='Minimum number of topics to retrieve '
@@ -87,17 +106,29 @@ def init_argparser():
                         default=20, action=_ValidateInt,
                         help='Maximum number of topics to retrieve '
                              '(default: %(default)s)')
-    parser.add_argument('--step-topics', '-s', type=int,
-                        default=1, action=_ValidateInt,
-                        help='Step in range(min,max,step) for topics retrieving'
-                             ' (default: %(default)s)')
+    parser.add_argument('--initial-population', '-P', type=int,
+                        default=100, action=_ValidateInt,
+                        help='Size of the initial population. (default: '
+                             '%(default)s)')
+    parser.add_argument('--mu', type=int, default=100, action=_ValidateInt,
+                        help='Number of individuals selected for each new '
+                             'generation. (default: %(default)s)')
+    parser.add_argument('--lambda', type=int, default=20, action=_ValidateInt,
+                        help='Number of individuals generated at each new '
+                             'generation. (default: %(default)s)')
+    parser.add_argument('--generations', '-G', type=int, default=20,
+                        action=_ValidateInt,
+                        help='Number of generations. (default: %(default)s)')
+    parser.add_argument('--crossover', type=float, default=0.5,
+                        action=_ValidateProb,
+                        help='Crossover probability of the GA. '
+                             '(default: %(default)s)')
+    parser.add_argument('--mutation', type=float, default=0.2,
+                        action=_ValidateProb,
+                        help='Mutation probability of the GA. '
+                             '(default: %(default)s)')
     parser.add_argument('--seed', type=int, action=_ValidateInt,
                         help='Seed to be used in training')
-    parser.add_argument('--plot-show', action='store_true',
-                        help='if set, it plots the coherence')
-    parser.add_argument('--plot-save', action='store_true',
-                        help='if set, it saves the plot of the coherence as '
-                             '<outdir>/lda_plot.pdf')
     parser.add_argument('--result', '-r', metavar='FILENAME',
                         help='Where to save the training results '
                              'in CSV format. If "-", stdout is used.')
@@ -120,71 +151,6 @@ def init_train(corpora, seed, logger):
     _corpus = corpora
     _seed = seed
     _logger = logger
-
-
-def compute_optimal_model(corpora, topics_range, alpha, beta, outdir, logger,
-                          seed=None):
-    """
-    Train several models iterating over the specified number of topics and performs
-    LDA hyper-parameters alpha and beta tuning
-
-    :param corpora: Gensim corpus
-    :type corpora: dict[tuple[str, ...], tuple[list[tuple[int, int]], Dictionary, list[list[str]], int]]
-    :param topics_range: range of the topics number to test
-    :type topics_range: range
-    :param alpha: Alpha parameter values to test. Every value accepted by gensim
-    is valid.
-    :type alpha: list[float or str]
-    :param beta: Beta parameter values to test. Every value accepted by gensim
-    is valid.
-    :type beta: list[float or str]
-    :param outdir: directory where all the workers write the resulting model
-    :type outdir: pathlib.Path
-    :param logger: logger object that all the workers will use
-    :type logger: logging.Logger
-    :param seed: random number generator seed
-    :type seed: int or None
-    :return: Dataframe with the model performances
-    :rtype: pd.DataFrame
-    """
-    model_results = {
-        'corpus': [],
-        'no_below': [],
-        'no_above': [],
-        'topics': [],
-        'alpha': [],
-        'beta': [],
-        'coherence': [],
-        'times': [],
-        'seed': [],
-        'uuid': [],
-        'num_docs': [],
-        'num_not_empty': [],
-    }
-    # iterate through all the combinations
-    with Pool(processes=PHYSICAL_CPUS, initializer=init_train,
-              initargs=(corpora, seed, outdir, logger)) as pool:
-        results = pool.starmap(train, product(corpora.keys(), topics_range,
-                                              alpha, beta))
-        # get the coherence score for the given parameters
-        # LDA multi-core implementation with maximum number of workers
-        for res in results:
-            c, n, a, b, cv, t, uid, n_docs, n_not_empty = res
-            # Save the model results
-            model_results['corpus'].append(c[0])
-            model_results['no_below'].append(c[1])
-            model_results['no_above'].append(c[2])
-            model_results['topics'].append(n)
-            model_results['alpha'].append(a)
-            model_results['beta'].append(b)
-            model_results['coherence'].append(cv)
-            model_results['times'].append(t)
-            model_results['seed'].append(seed)
-            model_results['uuid'].append(uid)
-            model_results['num_docs'].append(n_docs)
-            model_results['num_not_empty'].append(n_not_empty)
-
-    return pd.DataFrame(model_results)
 
 
 def load_additional_terms(input_file):
@@ -372,7 +338,7 @@ def lda_grid_search(args):
     toolbox.decorate('mutate', check_types(tenth_of_titles, args.min_topics,
                                            args.max_topics))
 
-    toolbox.register('select', tools.selTournament, tournsize=10)
+    toolbox.register('select', tools.selTournament, tournsize=5)
     toolbox.register('evaluate', evaluate)
     hof = tools.HallOfFame(5)
     stats = tools.Statistics(lambda ind: ind.fitness.values)
@@ -381,14 +347,18 @@ def lda_grid_search(args):
     stats.register('min', np.min)
     stats.register('max', np.max)
 
-    pop = toolbox.population(n=102)
-    with Pool(processes=6, initializer=init_train,
+    pop = toolbox.population(n=args.initial_population)
+    with Pool(processes=PHYSICAL_CPUS, initializer=init_train,
               initargs=(docs, args.seed, logger)) as pool:
         toolbox.register('map', pool.map)
+        lambda_ = getattr(args, 'lambda')
         final_pop, logbook = algorithms.eaMuPlusLambda(pop, toolbox,
-                                                       mu=100, lambda_=24,
-                                                       cxpb=0.5, mutpb=0.3,
-                                                       ngen=4, halloffame=hof,
+                                                       mu=args.mu,
+                                                       lambda_=lambda_,
+                                                       cxpb=args.crossover,
+                                                       mutpb=args.mutation,
+                                                       ngen=args.generations,
+                                                       halloffame=hof,
                                                        stats=stats,
                                                        verbose=True)
     print(hof)
