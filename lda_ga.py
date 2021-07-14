@@ -233,7 +233,7 @@ def check_bounds(val, min_, max_):
         return val
 
 
-# topics, alpha, beta, no_above, no_below label
+# [topics, alpha, beta, no_above, no_below, label]
 def check_types(max_no_below, min_topics, max_topics):
     def decorator(func):
         def wrapper(*args, **kargs):
@@ -361,7 +361,15 @@ def lda_grid_search(args):
                                                        halloffame=hof,
                                                        stats=stats,
                                                        verbose=True)
-    print(hof)
+    print('topics, alpha, beta, no_above, no_below, label, fitness, alpha to use')
+    for h in hof:
+        print(h, h.fitness, end='')
+        if h[5] > 0:
+            print('sym')
+        elif h[5] < 0:
+            print('asym')
+        else:
+            print('alpha value')
     logger.info('==== lda_ga_grid_search ended ====')
 
 
