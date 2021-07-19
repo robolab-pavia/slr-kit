@@ -127,6 +127,10 @@ def init_argparser():
                         action=_ValidateProb,
                         help='Mutation probability of the GA. '
                              '(default: %(default)s)')
+    parser.add_argument('--best-individuals', '-B', type=int, default=5,
+                        action=_ValidateInt,
+                        help='Number of best individuals to collect. '
+                             '(default: %(default)s)')
     parser.add_argument('--seed', type=int, action=_ValidateInt,
                         help='Seed to be used in training')
     parser.add_argument('--result', '-r', metavar='FILENAME',
@@ -340,7 +344,7 @@ def lda_grid_search(args):
 
     toolbox.register('select', tools.selTournament, tournsize=5)
     toolbox.register('evaluate', evaluate)
-    hof = tools.HallOfFame(5)
+    hof = tools.HallOfFame(args.best_individuals)
     stats = tools.Statistics(lambda ind: ind.fitness.values)
     stats.register('avg', np.mean)
     stats.register('std', np.std)
