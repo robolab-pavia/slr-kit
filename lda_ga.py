@@ -368,15 +368,32 @@ def lda_grid_search(args):
                                                        halloffame=hof,
                                                        stats=stats,
                                                        verbose=True)
-    print('topics, alpha, beta, no_above, no_below, label, fitness, alpha to use')
+    results = {
+        'topics': [],
+        'alpha': [],
+        'beta': [],
+        'no_above': [],
+        'no_below': [],
+        'coherence': [],
+    }
     for h in hof:
-        print(h, h.fitness, end='')
-        if h[5] > 0:
-            print('sym')
+        results['topics'].append(h[0])
+        if h[5] == 0:
+            results['alpha'].append(h[1])
         elif h[5] < 0:
-            print('asym')
+            results['alpha'].append('asymmetric')
         else:
-            print('alpha value')
+            results['alpha'].append('symmetric')
+        results['beta'].append(h[2])
+        results['no_above'].append(h[3])
+        results['no_below'].append(h[4])
+        results['coherence'].append(h.fitness.values[0])
+
+    df = pd.DataFrame(results)
+    df.to_csv(result_file, sep='\t', index=False)
+    with pd.option_context('display.width', 80,
+                           'display.float_format', '{:,.3f}'.format):
+        print(df)
     logger.info('==== lda_ga_grid_search ended ====')
 
 
