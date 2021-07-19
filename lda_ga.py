@@ -348,10 +348,13 @@ def lda_grid_search(args):
     stats.register('max', np.max)
 
     pop = toolbox.population(n=args.initial_population)
+    lambda_ = getattr(args, 'lambda')
+    estimated_trainings = args.initial_population + lambda_ * args.generations
+    print('Estimated trainings:', estimated_trainings)
+    logger.info(f'Estimated trainings: {estimated_trainings}')
     with Pool(processes=PHYSICAL_CPUS, initializer=init_train,
               initargs=(docs, args.seed, logger)) as pool:
         toolbox.register('map', pool.map)
-        lambda_ = getattr(args, 'lambda')
         final_pop, logbook = algorithms.eaMuPlusLambda(pop, toolbox,
                                                        mu=args.mu,
                                                        lambda_=lambda_,
