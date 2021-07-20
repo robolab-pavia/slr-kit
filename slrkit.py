@@ -159,7 +159,7 @@ def init_project(slrkit_args):
         file.write(tomlkit.dumps(metadoc))
 
 
-def check_project(args, filename):
+def check_project(args, filename, from_project=True):
     metafile = args.cwd / 'META.toml'
     try:
         meta = toml_load(metafile)
@@ -171,7 +171,10 @@ def check_project(args, filename):
     except KeyError:
         msg = 'Error: {} is invalid invalid, no "Config" entry found'
         sys.exit(msg.format(metafile.resolve().absolute()))
-    config_file = config_dir / filename
+    if from_project:
+        config_file = config_dir / filename
+    else:
+        config_file = pathlib.Path(filename)
     try:
         config = toml_load(config_file)
     except FileNotFoundError:
@@ -267,8 +270,13 @@ def run_terms(args):
 
 
 def run_lda(args):
-    confname = 'lda.toml'
-    config, config_dir, meta = check_project(args, confname)
+    if args.config is not None:
+        confname = args.config
+        from_project = False
+    else:
+        confname = 'lda.toml'
+        from_project = True
+    config, config_dir, meta = check_project(args, confname, from_project)
     from lda import lda, init_argparser as lda_argparse
     script_args = lda_argparse().slrkit_arguments
     cmd_args = prepare_script_arguments(config, config_dir, confname,
@@ -448,6 +456,9 @@ def init_argparser():
     help_str = 'Run the lda stage in a slr-kit project'
     parser_lda = subparser.add_parser('lda', help=help_str,
                                       description=help_str)
+    parser_lda.add_argument('--config', '-c',
+                            help='Path to the toml file to be used instead of '
+                                 'the project one')
     parser_lda.set_defaults(func=run_lda)
     # optimize_lda
     help_str = 'Run an optimization phase for the lda stage in a slr-kit project'
