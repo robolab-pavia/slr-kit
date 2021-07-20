@@ -4,16 +4,19 @@ import sys
 
 import random
 import argparse
+import uuid
 from datetime import datetime
 from itertools import product
-from multiprocessing import Pool
+from multiprocessing import Pool, Queue
 from pathlib import Path
 from timeit import default_timer as timer
 from typing import Optional, List, Tuple, Dict
 
+import tomlkit
 from deap import base, creator, algorithms, tools
 import numpy as np
 import pandas as pd
+import os
 
 # disable warnings if they are not explicitly wanted
 if not sys.warnoptions:
@@ -33,6 +36,8 @@ from utils import STOPWORD_PLACEHOLDER, setup_logger
 _corpus: Optional[List[List[str]]] = None
 _seed: Optional[int] = None
 _logger: Optional[logging.Logger] = None
+_queue: Optional[Queue] = None
+_outdir: Optional[pathlib.Path] = None
 
 
 class _ValidateInt(argparse.Action):
@@ -132,7 +137,7 @@ def init_argparser():
                         help='Number of best individuals to collect. '
                              '(default: %(default)s)')
     parser.add_argument('--seed', type=int, action=_ValidateInt,
-                        help='Seed to be used in training')
+                        help='Seed to be used in training. The ga uses seed + 1')
     parser.add_argument('--result', '-r', metavar='FILENAME',
                         help='Where to save the training results '
                              'in CSV format. If "-", stdout is used.')
@@ -150,11 +155,13 @@ def init_argparser():
     return parser
 
 
-def init_train(corpora, seed, logger):
-    global _corpus, _seed, _logger
+def init_train(corpora, seed, logger, queue, outdir):
+    global _corpus, _seed, _logger, _queue, _outdir
     _corpus = corpora
     _seed = seed
     _logger = logger
+    _queue = queue
+    _outdir = outdir
 
 
 def load_additional_terms(input_file):
@@ -179,7 +186,7 @@ def load_additional_terms(input_file):
 
 # topics, alpha, beta, no_above, no_below label
 def evaluate(ind):
-    global _corpus, _seed, _logger
+    global _corpus, _seed, _logger, _queue, _outdir
     # unpack parameter
     n_topics = ind[0]
     if ind[5] == 0:
@@ -192,6 +199,15 @@ def evaluate(ind):
     beta = ind[2]
     no_above = ind[3]
     no_below = ind[4]
+    result = {}
+    u = str(uuid.uuid4())
+    result['topics'] = n_topics
+    result['alpha'] = alpha
+    result['beta'] = beta
+    result['no_above'] = no_above
+    result['no_below'] = no_below
+    result['uuid'] = u
+    result['seed'] = _seed
     start = timer()
     dictionary = Dictionary(_corpus)
     # Filter out words that occur less than no_above documents, or more than
@@ -200,7 +216,11 @@ def evaluate(ind):
     try:
         _ = dictionary[0]  # This is only to "load" the dictionary.
     except KeyError:
-        return (-float('inf'),)
+        c_v = -float('inf')
+        result['coherence'] = c_v
+        result['time'] = 0
+        _queue.put(result)
+        return (c_v, )
 
     not_empty_bows = []
     not_empty_docs = []
@@ -220,7 +240,14 @@ def evaluate(ind):
                               processes=1)
     c_v = cv_model.get_coherence()
     stop = timer()
-    return (c_v,)
+    result['coherence'] = c_v
+    result['time'] = stop - start
+    _queue.put(result)
+    output_dir = _outdir / u
+    output_dir.mkdir(exist_ok=True)
+    model.save(str(output_dir / 'model'))
+    dictionary.save(str(output_dir / 'model_dictionary'))
+    return (c_v, )
 
 
 def random_label():
@@ -318,8 +345,8 @@ def lda_grid_search(args):
     tenth_of_titles = len(titles) // 10
 
     # ga preparation
-    if args.seed is not None:
-        random.seed(args.seed)
+    # if args.seed is not None:
+    #     random.seed(args.seed)
     creator.create('FitnessMax', base.Fitness, weights=(1.0,))
     creator.create('Individual', list, fitness=creator.FitnessMax)
 
@@ -356,8 +383,9 @@ def lda_grid_search(args):
     estimated_trainings = args.initial_population + lambda_ * args.generations
     print('Estimated trainings:', estimated_trainings)
     logger.info(f'Estimated trainings: {estimated_trainings}')
+    q = Queue(estimated_trainings)
     with Pool(processes=PHYSICAL_CPUS, initializer=init_train,
-              initargs=(docs, args.seed, logger)) as pool:
+              initargs=(docs, args.seed, logger, q, output_dir)) as pool:
         toolbox.register('map', pool.map)
         final_pop, logbook = algorithms.eaMuPlusLambda(pop, toolbox,
                                                        mu=args.mu,
@@ -368,28 +396,42 @@ def lda_grid_search(args):
                                                        halloffame=hof,
                                                        stats=stats,
                                                        verbose=True)
-    results = {
-        'topics': [],
-        'alpha': [],
-        'beta': [],
-        'no_above': [],
-        'no_below': [],
-        'coherence': [],
-    }
-    for h in hof:
-        results['topics'].append(h[0])
-        if h[5] == 0:
-            results['alpha'].append(h[1])
-        elif h[5] < 0:
-            results['alpha'].append('asymmetric')
+    results = []
+    while not q.empty():
+        results.append(q.get())
+        u = results[-1]['uuid']
+        conf = tomlkit.document()
+        conf.add('preproc_file', str(preproc_file))
+        conf.add('terms_file', str(terms_file))
+        conf.add('outdir', str(output_dir))
+        conf.add('text-column', args.target_column)
+        conf.add('title-column', args.title)
+        if args.additional_file is not None:
+            conf.add('additional-terms', args.additional_file)
         else:
-            results['alpha'].append('symmetric')
-        results['beta'].append(h[2])
-        results['no_above'].append(h[3])
-        results['no_below'].append(h[4])
-        results['coherence'].append(h.fitness.values[0])
+            conf.add('additional-terms', [])
+        if args.acronyms is not None:
+            conf.add('acronyms', args.acronyms)
+        else:
+            conf.add('acronyms', '')
+        conf.add('topics', results[-1]['topics'])
+        conf.add('alpha', results[-1]['alpha'])
+        conf.add('beta', results[-1]['beta'])
+        conf.add('no_below', results[-1]['no_below'])
+        conf.add('no_above', results[-1]['no_above'])
+        conf.add('seed', results[-1]['seed'])
+        conf.add('no-ngrams', args.no_ngrams)
+        conf.add('model', False)
+        conf.add('no-relevant', False)
+        conf.add('load-model', str(output_dir / u))
+        conf.add('placeholder', placeholder)
+        conf.add('delimiter', args.delimiter)
+        with open(output_dir / ''.join([u, '.toml']), 'w') as file:
+            file.write(tomlkit.dumps(conf))
 
+    q.close()
     df = pd.DataFrame(results)
+    df.sort_values(by=['coherence'], ascending=False, inplace=True)
     df.to_csv(result_file, sep='\t', index=False)
     with pd.option_context('display.width', 80,
                            'display.float_format', '{:,.3f}'.format):
