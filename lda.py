@@ -382,7 +382,8 @@ def train_lda_model(docs, topics=20, alpha='auto', beta='auto', no_above=0.5,
         alpha=alpha,
         eta=beta,
         num_topics=topics,
-        random_state=seed
+        random_state=seed,
+        minimum_probability=0.0
     )
     return model, dictionary
 
@@ -427,7 +428,7 @@ def prepare_topics(model, docs, titles, dictionary):
 
     cm = CoherenceModel(model=model, texts=not_empty_docs,
                         dictionary=dictionary,
-                        coherence='c_v', processes=PHYSICAL_CPUS)
+                        coherence='c_v', processes=1)  # PHYSICAL_CPUS)
 
     # Average topic coherence is the sum of topic coherences of all topics,
     # divided by the number of topics.
