@@ -7,11 +7,12 @@ Introduces Gensim's LDA model and demonstrates its use on the NIPS corpus.
 """
 import sys
 # disable warnings if they are not explicitly wanted
+import tomlkit
+
 if not sys.warnoptions:
     import warnings
     warnings.simplefilter('ignore')
 
-import argparse
 import json
 from datetime import datetime
 from itertools import repeat
@@ -36,7 +37,7 @@ def init_argparser():
     Initialize the command line parser.
 
     :return: the command line parser
-    :rtype: argparse.ArgumentParser
+    :rtype: ArgParse
     """
     epilog = "This script outputs the topics in " \
              "<outdir>/lda_terms-topics_<date>_<time>.json and the topics" \
@@ -109,6 +110,10 @@ def init_argparser():
     parser.add_argument('--delimiter', action='store', type=str,
                         default='\t', help='Delimiter used in preproc_file. '
                                            'Default %(default)r')
+    parser.add_argument('--config', '-c', action='store', type=Path,
+                        help='Path to a toml config file like the one used by '
+                             'the slrkit lda command. It overrides all the cli '
+                             'arguments.', cli_only=True)
     return parser
 
 
@@ -587,7 +592,23 @@ def lda(args):
 
 
 def main():
-    args = init_argparser().parse_args()
+    parser = init_argparser()
+    args = parser.parse_args()
+    if args.config is not None:
+        try:
+            with open(args.config) as file:
+                config = tomlkit.loads(file.read())
+        except FileNotFoundError:
+            msg = 'Error: config file {} not found'
+            sys.exit(msg.format(args.config))
+
+        from slrkit import prepare_script_arguments
+        args = prepare_script_arguments(config, args.config.parent,
+                                        args.config.name,
+                                        parser.slrkit_arguments)
+        # handle the outdir parameter
+        param = Path(config.get('outdir', Path.cwd()))
+        setattr(args, 'outdir', param.resolve())
     lda(args)
 
 
