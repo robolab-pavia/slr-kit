@@ -84,6 +84,14 @@ class LdaIndividual:
         self.fitness = creator.FitnessMax()
 
     @classmethod
+    def order_from_name(cls, name):
+        for i, f in enumerate(dataclasses.fields(cls)):
+            if f.name == name:
+                return i
+        else:
+            raise ValueError(f'{name!r} is not a valid field name')
+
+    @classmethod
     def random_individual(cls, min_topics, max_topics, max_no_below):
         return LdaIndividual(random.randint(min_topics, max_topics),
                              random.random(),
@@ -404,7 +412,26 @@ def lda_grid_search(args):
                      args.min_topics, args.max_topics, tenth_of_titles)
     toolbox.register('population', tools.initRepeat, list, toolbox.individual)
     toolbox.register('mate', tools.cxTwoPoint)
-    toolbox.register('mutate', tools.mutGaussian, mu=0, sigma=1, indpb=0.05)
+    # the following dict contains the gaussian mutation parameter for each field
+    # of the individual. The format is field-name: (mean value, sigma value)
+    # TODO: find a way to input this thing from outside
+    gauss_param = {
+        'topics': (0, 1),
+        'alpha_val': (0, 1),
+        'beta': (0, 1),
+        'no_below': (0, 1),
+        'no_above': (0, 1),
+        'alpha_type': (0, 1)
+    }
+    mut_mu = [0] * len(gauss_param)
+    mut_sigma = [0] * len(gauss_param)
+    for f, v in gauss_param.items():
+        i = LdaIndividual.order_from_name(f)
+        mut_mu[i] = v[0]
+        mut_sigma[i] = v[1]
+
+    toolbox.register('mutate', tools.mutGaussian, mu=mut_mu, sigma=mut_sigma,
+                     indpb=0.05)
     toolbox.decorate('mate', check_types(tenth_of_titles, args.min_topics,
                                          args.max_topics))
     toolbox.decorate('mutate', check_types(tenth_of_titles, args.min_topics,
