@@ -1,22 +1,20 @@
+import argparse
+import dataclasses
 import logging
 import pathlib
-import sys
-
 import random
-import argparse
+import sys
 import uuid
 from datetime import datetime
-from itertools import product
 from multiprocessing import Pool, Queue
 from pathlib import Path
 from timeit import default_timer as timer
-from typing import Optional, List, Tuple, Dict
+from typing import Optional, List, Union
 
-import tomlkit
-from deap import base, creator, algorithms, tools
 import numpy as np
 import pandas as pd
-import os
+import tomlkit
+from deap import base, creator, algorithms, tools
 
 # disable warnings if they are not explicitly wanted
 if not sys.warnoptions:
@@ -28,8 +26,7 @@ from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel, LdaModel
 
 from slrkit_utils.argument_parser import AppendMultipleFilesAction, ArgParse
-from lda import (PHYSICAL_CPUS, prepare_documents, load_acronyms,
-                 prepare_corpus)
+from lda import (PHYSICAL_CPUS, prepare_documents, load_acronyms)
 from utils import STOPWORD_PLACEHOLDER, setup_logger
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
@@ -68,6 +65,85 @@ class _ValidateProb(argparse.Action):
             parser.exit(1, f'{self.dest!r} must be less than 1')
 
         setattr(namespace, self.dest, v)
+
+
+creator.create('FitnessMax', base.Fitness, weights=(1.0,))
+
+
+@dataclasses.dataclass
+class LdaIndividual:
+    topics: int
+    alpha_val: float
+    beta: float
+    no_above: float
+    no_below: int
+    alpha_type: int
+    fitness: creator.FitnessMax = dataclasses.field(init=False)
+
+    def __post_init__(self):
+        self.fitness = creator.FitnessMax()
+
+    @classmethod
+    def random_individual(cls, min_topics, max_topics, max_no_below):
+        return LdaIndividual(random.randint(min_topics, max_topics),
+                             random.random(),
+                             random.random(),
+                             random.random(),
+                             random.randint(1, max_no_below),
+                             random.choices([0, 1, -1], [0.6, 0.2, 0.2], k=1)[0])
+
+    @property
+    def alpha(self) -> Union[float, str]:
+        if self.alpha_type == 0:
+            return self.alpha_val
+        elif self.alpha_type > 0:
+            return 'symmetric'
+        else:
+            return 'asymmetric'
+
+    def __len__(self):
+        return 6
+
+    def __getitem__(self, item):
+        return dataclasses.astuple(self, tuple_factory=list)[item]
+
+    def __setitem__(self, key, value):
+        if isinstance(key, slice):
+            indexes = range(*key.indices(len(self)))
+        elif isinstance(key, int):
+            indexes = [key]
+        else:
+            msg = f'Invalid type for an index: {type(key).__name__!r}'
+            raise TypeError(msg)
+
+        if isinstance(value, (int, float)):
+            value = [value]
+        elif not isinstance(value, (tuple, list)):
+            msg = f'Unsupported type for assignement: {type(value).__name__!r}'
+            raise TypeError(msg)
+
+        for val_index, i in enumerate(indexes):
+            # Where is the switch statement when is needed?
+            if i == 0:
+                self.topics = int(np.round(value[val_index]))
+            elif i in [1, 2, 3]:
+                if not isinstance(value[val_index], float):
+                    raise TypeError(f'Required float for assignement to {i} index')
+
+                inf = float('inf')
+                if i == 1:
+                    self.alpha_val = check_bounds(value[val_index], 0.0, inf)
+                elif i == 2:
+                    self.beta = check_bounds(value[val_index], 0.0, inf)
+                else:
+                    self.no_above = check_bounds(value[val_index], 0.0, 1.0)
+            elif i == 4:
+                self.no_below = int(np.round(value[val_index]))
+            elif i == 5:
+                v = int(np.round(value[val_index]))
+                if v != 0:
+                    v = np.sign(v)
+                self.alpha_type = v
 
 
 def init_argparser():
@@ -185,20 +261,14 @@ def load_additional_terms(input_file):
 
 
 # topics, alpha, beta, no_above, no_below label
-def evaluate(ind):
+def evaluate(ind: LdaIndividual):
     global _corpus, _seed, _logger, _queue, _outdir
     # unpack parameter
-    n_topics = ind[0]
-    if ind[5] == 0:
-        alpha = ind[1]
-    elif ind[5] > 0:
-        alpha = 'symmetric'
-    else:
-        alpha = 'asymmetric'
-
-    beta = ind[2]
-    no_above = ind[3]
-    no_below = ind[4]
+    n_topics = ind.topics
+    alpha = ind.alpha
+    beta = ind.beta
+    no_above = ind.no_above
+    no_below = ind.no_below
     result = {}
     u = str(uuid.uuid4())
     result['topics'] = n_topics
@@ -220,7 +290,7 @@ def evaluate(ind):
         result['coherence'] = c_v
         result['time'] = 0
         _queue.put(result)
-        return (c_v, )
+        return (c_v,)
 
     not_empty_bows = []
     not_empty_docs = []
@@ -247,12 +317,7 @@ def evaluate(ind):
     output_dir.mkdir(exist_ok=True)
     model.save(str(output_dir / 'model'))
     dictionary.save(str(output_dir / 'model_dictionary'))
-    return (c_v, )
-
-
-def random_label():
-    return random.choices([0, -1, 1],
-                          [0.6, 0.2, 0.2], k=1)[0]
+    return (c_v,)
 
 
 def check_bounds(val, min_, max_):
@@ -273,27 +338,12 @@ def check_types(max_no_below, min_topics, max_topics):
             for child in offspring:
                 # topics
                 if isinstance(child[0], float):
-                    child[0] = int(np.round(child[0]))
-                    child[0] = check_bounds(child[0], min_topics, max_topics)
+                    child.topics = int(np.round(child[0]))
+                    child.topics = check_bounds(child[0], min_topics, max_topics)
                 # no_below
                 if isinstance(child[4], float):
-                    child[4] = int(np.round(child[4]))
-                    child[4] = check_bounds(child[4], 1, max_no_below)
-                # no_above
-                child[3] = check_bounds(child[3], 0.0, 1.0)
-                # alpha and beta
-                # alpha and beta have no max bound
-                child[1] = check_bounds(child[1], 0.0, inf)
-                child[2] = check_bounds(child[2], 0.0, inf)
-                # other
-                if isinstance(child[5], float):
-                    ch = [-1, 0, 1]
-                    v = int(np.floor(child[5]))
-                    if v != 0:
-                        v = np.sign(v)
-
-                    ch.remove(v)
-                    child[5] = random.choice(ch)
+                    child.no_below = int(np.round(child[4]))
+                    child.no_below = check_bounds(child[4], 1, max_no_below)
 
             return offspring
 
@@ -347,20 +397,11 @@ def lda_grid_search(args):
     # ga preparation
     # if args.seed is not None:
     #     random.seed(args.seed)
-    creator.create('FitnessMax', base.Fitness, weights=(1.0,))
-    creator.create('Individual', list, fitness=creator.FitnessMax)
+    creator.create('Individual', LdaIndividual, fitness=creator.FitnessMax)
 
     toolbox = base.Toolbox()
-    toolbox.register('init_topics', random.randint, args.min_topics,
-                     args.max_topics)
-    toolbox.register('init_no_below', random.randint, 1, tenth_of_titles)
-    toolbox.register('init_float', random.random)
-    toolbox.register('init_label', random_label)
-    # topics, alpha, beta, no_above, no_below, label
-    toolbox.register('individual', tools.initCycle, creator.Individual,
-                     (toolbox.init_topics, toolbox.init_float,
-                      toolbox.init_float, toolbox.init_float,
-                      toolbox.init_no_below, toolbox.init_label), n=1)
+    toolbox.register('individual', LdaIndividual.random_individual,
+                     args.min_topics, args.max_topics, tenth_of_titles)
     toolbox.register('population', tools.initRepeat, list, toolbox.individual)
     toolbox.register('mate', tools.cxTwoPoint)
     toolbox.register('mutate', tools.mutGaussian, mu=0, sigma=1, indpb=0.05)
