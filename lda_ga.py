@@ -9,7 +9,7 @@ from datetime import datetime
 from multiprocessing import Pool, Queue
 from pathlib import Path
 from timeit import default_timer as timer
-from typing import Optional, List, Union
+from typing import Optional, List, Union, ClassVar
 
 import numpy as np
 import pandas as pd
@@ -70,41 +70,113 @@ class _ValidateProb(argparse.Action):
 creator.create('FitnessMax', base.Fitness, weights=(1.0,))
 
 
+class BoundsNotSetError(Exception):
+    pass
+
+
 @dataclasses.dataclass
 class LdaIndividual:
-    topics: int
-    alpha_val: float
-    beta: float
-    no_above: float
-    no_below: int
-    alpha_type: int
+    _topics: int
+    _alpha_val: float
+    _beta: float
+    _no_above: float
+    _no_below: int
+    _alpha_type: int
     fitness: creator.FitnessMax = dataclasses.field(init=False)
+    topics_bounds: ClassVar[range] = None
+    max_no_below: ClassVar[int] = None
 
     def __post_init__(self):
         self.fitness = creator.FitnessMax()
 
     @classmethod
+    def set_bounds(cls, min_topics, max_topics, max_no_below):
+        cls.topics_bounds = range(min_topics, max_topics)
+        cls.max_no_below = max_no_below
+
+    @classmethod
     def order_from_name(cls, name):
         for i, f in enumerate(dataclasses.fields(cls)):
-            if f.name == name:
+            if f.name == '_' + name:
                 return i
         else:
             raise ValueError(f'{name!r} is not a valid field name')
 
     @classmethod
-    def random_individual(cls, min_topics, max_topics, max_no_below):
-        return LdaIndividual(random.randint(min_topics, max_topics),
+    def random_individual(cls):
+        if cls.topics_bounds is None:
+            raise BoundsNotSetError('set_bounds must be called first')
+
+        return LdaIndividual(random.randint(cls.topics_bounds.start,
+                                            cls.topics_bounds.stop),
                              random.random(),
                              random.random(),
                              random.random(),
-                             random.randint(1, max_no_below),
-                             random.choices([0, 1, -1], [0.6, 0.2, 0.2], k=1)[0])
+                             random.randint(1, cls.max_no_below),
+                             random.choices([0, 1, -1],
+                                            [0.6, 0.2, 0.2], k=1)[0])
+
+    @property
+    def topics(self):
+        return self._topics
+
+    @topics.setter
+    def topics(self, val):
+        if self.topics_bounds is None:
+            raise BoundsNotSetError('set_bounds must be called first')
+        self._topics = check_bounds(val, self.topics_bounds.start,
+                                    self.topics_bounds.stop)
+
+    @property
+    def alpha_val(self):
+        return self._alpha_val
+
+    @alpha_val.setter
+    def alpha_val(self, val):
+        self._alpha_val = check_bounds(val, 0.0, float('inf'))
+
+    @property
+    def beta(self):
+        return self._beta
+
+    @beta.setter
+    def beta(self, val):
+        self._beta = check_bounds(val, 0.0, float('inf'))
+
+    @property
+    def no_above(self):
+        return self._no_above
+
+    @no_above.setter
+    def no_above(self, val):
+        self._no_above = check_bounds(val, 0.0, 1.0)
+
+    @property
+    def no_below(self):
+        return self._no_below
+
+    @no_below.setter
+    def no_below(self, val):
+        if self.topics_bounds is None:
+            raise BoundsNotSetError('set_bounds must be called first')
+        self._no_below = check_bounds(val, 1, self.max_no_below)
+
+    @property
+    def alpha_type(self):
+        return self._alpha_type
+
+    @alpha_type.setter
+    def alpha_type(self, val):
+        v = int(np.round(val))
+        if v != 0:
+            v = np.sign(v)
+        self._alpha_type = v
 
     @property
     def alpha(self) -> Union[float, str]:
-        if self.alpha_type == 0:
-            return self.alpha_val
-        elif self.alpha_type > 0:
+        if self._alpha_type == 0:
+            return self._alpha_val
+        elif self._alpha_type > 0:
             return 'symmetric'
         else:
             return 'asymmetric'
@@ -133,25 +205,22 @@ class LdaIndividual:
         for val_index, i in enumerate(indexes):
             # Where is the switch statement when is needed?
             if i == 0:
-                self.topics = int(np.round(value[val_index]))
+                self.topics = value[val_index]
             elif i in [1, 2, 3]:
                 if not isinstance(value[val_index], float):
                     raise TypeError(f'Required float for assignement to {i} index')
 
                 inf = float('inf')
                 if i == 1:
-                    self.alpha_val = check_bounds(value[val_index], 0.0, inf)
+                    self.alpha_val = value[val_index]
                 elif i == 2:
-                    self.beta = check_bounds(value[val_index], 0.0, inf)
+                    self.beta = value[val_index]
                 else:
-                    self.no_above = check_bounds(value[val_index], 0.0, 1.0)
+                    self.no_above = value[val_index]
             elif i == 4:
-                self.no_below = int(np.round(value[val_index]))
+                self.no_below = value[val_index]
             elif i == 5:
-                v = int(np.round(value[val_index]))
-                if v != 0:
-                    v = np.sign(v)
-                self.alpha_type = v
+                self.alpha_type = value[val_index]
 
 
 def init_argparser():
@@ -403,13 +472,15 @@ def lda_grid_search(args):
     tenth_of_titles = len(titles) // 10
 
     # ga preparation
-    # if args.seed is not None:
-    #     random.seed(args.seed)
+    if args.seed is not None:
+        random.seed(args.seed)
+
+    # set the bound used by LdaIndividual to check the topics and no_below values
+    LdaIndividual.set_bounds(args.min_topics, args.max_topics, tenth_of_titles)
     creator.create('Individual', LdaIndividual, fitness=creator.FitnessMax)
 
     toolbox = base.Toolbox()
-    toolbox.register('individual', LdaIndividual.random_individual,
-                     args.min_topics, args.max_topics, tenth_of_titles)
+    toolbox.register('individual', LdaIndividual.random_individual)
     toolbox.register('population', tools.initRepeat, list, toolbox.individual)
     toolbox.register('mate', tools.cxTwoPoint)
     # the following dict contains the gaussian mutation parameter for each field
@@ -432,10 +503,10 @@ def lda_grid_search(args):
 
     toolbox.register('mutate', tools.mutGaussian, mu=mut_mu, sigma=mut_sigma,
                      indpb=0.05)
-    toolbox.decorate('mate', check_types(tenth_of_titles, args.min_topics,
-                                         args.max_topics))
-    toolbox.decorate('mutate', check_types(tenth_of_titles, args.min_topics,
-                                           args.max_topics))
+    # toolbox.decorate('mate', check_types(tenth_of_titles, args.min_topics,
+    #                                      args.max_topics))
+    # toolbox.decorate('mutate', check_types(tenth_of_titles, args.min_topics,
+    #                                        args.max_topics))
 
     toolbox.register('select', tools.selTournament, tournsize=5)
     toolbox.register('evaluate', evaluate)
