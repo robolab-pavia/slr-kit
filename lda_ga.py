@@ -103,18 +103,25 @@ class LdaIndividual:
             raise ValueError(f'{name!r} is not a valid field name')
 
     @classmethod
-    def random_individual(cls):
+    def random_individual(cls, prob_no_filters=0.5):
         if cls.topics_bounds is None:
             raise BoundsNotSetError('set_bounds must be called first')
 
-        return LdaIndividual(random.randint(cls.topics_bounds.start,
-                                            cls.topics_bounds.stop),
-                             random.random(),
-                             random.random(),
-                             random.random(),
-                             random.randint(1, cls.max_no_below),
-                             random.choices([0, 1, -1],
-                                            [0.6, 0.2, 0.2], k=1)[0])
+        no_below = 1
+        no_above = 1.0
+        if random.random() < 1 - prob_no_filters:
+            no_below = random.randint(1, cls.max_no_below)
+            no_above = random.random()
+
+        return LdaIndividual(_topics=random.randint(cls.topics_bounds.start,
+                                                    cls.topics_bounds.stop),
+                             _alpha_val=random.random(),
+                             _beta=random.random(),
+                             _no_above=no_above,
+                             _no_below=no_below,
+                             _alpha_type=random.choices([0, 1, -1],
+                                                        [0.6, 0.2, 0.2],
+                                                        k=1)[0])
 
     @property
     def topics(self):
@@ -481,7 +488,8 @@ def lda_grid_search(args):
     creator.create('Individual', LdaIndividual, fitness=creator.FitnessMax)
 
     toolbox = base.Toolbox()
-    toolbox.register('individual', LdaIndividual.random_individual)
+    toolbox.register('individual', LdaIndividual.random_individual,
+                     prob_no_filters=0.5)
     toolbox.register('population', tools.initRepeat, list, toolbox.individual)
     toolbox.register('mate', tools.cxTwoPoint)
     # the following dict contains the gaussian mutation parameter for each field
