@@ -124,7 +124,8 @@ class LdaIndividual:
     def topics(self, val):
         if self.topics_bounds is None:
             raise BoundsNotSetError('set_bounds must be called first')
-        self._topics = check_bounds(val, self.topics_bounds.start,
+        self._topics = check_bounds(int(np.round(val)),
+                                    self.topics_bounds.start,
                                     self.topics_bounds.stop)
 
     @property
@@ -159,7 +160,7 @@ class LdaIndividual:
     def no_below(self, val):
         if self.topics_bounds is None:
             raise BoundsNotSetError('set_bounds must be called first')
-        self._no_below = check_bounds(val, 1, self.max_no_below)
+        self._no_below = check_bounds(int(np.round(val)), 1, self.max_no_below)
 
     @property
     def alpha_type(self):
