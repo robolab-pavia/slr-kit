@@ -99,7 +99,9 @@ class LdaIndividual:
         cls.min_no_above = min_no_above
 
     @classmethod
-    def order_from_name(cls, name):
+    def order_from_name(cls, name: str) -> int:
+        if name == 'alpha':
+            name = name + '_val'
         for i, f in enumerate(dataclasses.fields(cls)):
             if f.name == '_' + name:
                 return i
@@ -250,10 +252,13 @@ def init_argparser():
     parser.add_argument('terms_file', action='store', type=Path,
                         help='path to the file with the classified terms.',
                         input=True)
+    parser.add_argument('ga_params', action='store', type=Path,
+                        help='path to the file with the parameters for the ga.')
     parser.add_argument('outdir', action='store', type=Path, nargs='?',
                         default=Path.cwd(), help='path to the directory where '
                                                  'to save the results.',
                         non_standard=True)
+
     parser.add_argument('--text-column', '-t', action='store', type=str,
                         default='abstract_lem', dest='target_column',
                         help='Column in preproc_file to process. '
@@ -270,39 +275,6 @@ def init_argparser():
                         help='Additional keywords files')
     parser.add_argument('--acronyms', '-a',
                         help='TSV files with the approved acronyms')
-    parser.add_argument('--min-topics', '-m', type=int,
-                        default=5, action=_ValidateInt,
-                        help='Minimum number of topics to retrieve '
-                             '(default: %(default)s)')
-    parser.add_argument('--max-topics', '-M', type=int,
-                        default=20, action=_ValidateInt,
-                        help='Maximum number of topics to retrieve '
-                             '(default: %(default)s)')
-    parser.add_argument('--initial-population', '-P', type=int,
-                        default=100, action=_ValidateInt,
-                        help='Size of the initial population. (default: '
-                             '%(default)s)')
-    parser.add_argument('--mu', type=int, default=100, action=_ValidateInt,
-                        help='Number of individuals selected for each new '
-                             'generation. (default: %(default)s)')
-    parser.add_argument('--lambda', type=int, default=20, action=_ValidateInt,
-                        help='Number of individuals generated at each new '
-                             'generation. (default: %(default)s)')
-    parser.add_argument('--generations', '-G', type=int, default=20,
-                        action=_ValidateInt,
-                        help='Number of generations. (default: %(default)s)')
-    parser.add_argument('--crossover', type=float, default=0.5,
-                        action=_ValidateProb,
-                        help='Crossover probability of the GA. '
-                             '(default: %(default)s)')
-    parser.add_argument('--mutation', type=float, default=0.2,
-                        action=_ValidateProb,
-                        help='Mutation probability of the GA. '
-                             '(default: %(default)s)')
-    parser.add_argument('--best-individuals', '-B', type=int, default=5,
-                        action=_ValidateInt,
-                        help='Number of best individuals to collect. '
-                             '(default: %(default)s)')
     parser.add_argument('--seed', type=int, action=_ValidateInt,
                         help='Seed to be used in training. The ga uses seed + 1')
     parser.add_argument('--result', '-r', metavar='FILENAME',
@@ -420,27 +392,27 @@ def check_bounds(val, min_, max_):
         return val
 
 
-# [topics, alpha, beta, no_above, no_below, label]
-def check_types(max_no_below, min_topics, max_topics):
-    def decorator(func):
-        def wrapper(*args, **kargs):
-            inf = float('inf')
-            offspring = func(*args, **kargs)
-            for child in offspring:
-                # topics
-                if isinstance(child[0], float):
-                    child.topics = int(np.round(child[0]))
-                    child.topics = check_bounds(child[0], min_topics, max_topics)
-                # no_below
-                if isinstance(child[4], float):
-                    child.no_below = int(np.round(child[4]))
-                    child.no_below = check_bounds(child[4], 1, max_no_below)
+def load_ga_params(args):
+    with open(args.ga_params) as file:
+        params = tomlkit.loads(file.read())
+    default_params_file = Path(__file__).parent / 'ga_param.toml'
+    with open(default_params_file) as file:
+        defaults = tomlkit.loads(file.read())
+    for sec in defaults.keys():
+        if sec not in params:
+            params.add(sec, defaults[sec])
+            continue
+        for k, v in defaults[sec].items():
+            if k not in params[sec]:
+                params[sec].add(k, v)
+            elif sec == 'mutate':
+                if 'mu' not in params[sec][k]:
+                    params[sec][k].add('mu', v['mu'])
+                if 'sigma' not in params[sec][k]:
+                    params[sec][k].add('sigma', v['sigma'])
 
-            return offspring
-
-        return wrapper
-
-    return decorator
+    del file, defaults, default_params_file
+    return params
 
 
 def lda_grid_search(args):
@@ -459,9 +431,6 @@ def lda_grid_search(args):
     logger.info('==== lda_ga_grid_search started ====')
     placeholder = args.placeholder
     relevant_prefix = placeholder
-
-    if args.min_topics > args.max_topics:
-        sys.exit('max_topics must be greater than min_topics')
 
     additional_keyword = set()
 
@@ -484,73 +453,77 @@ def lda_grid_search(args):
                                      relevant_prefix=relevant_prefix)
 
     tenth_of_titles = len(titles) // 10
+    params = load_ga_params(args)
+    if params['limits']['min_topics'] > params['limits']['max_topics']:
+        sys.exit('limits.max_topics must be greater than limits.min_topics')
+
+    if (params['probabilities']['no_filter'] < 0
+            or params['probabilities']['no_filter'] > 1.0):
+        sys.exit('probabilities.no_filter must be a value between 0 and 1')
+
+    if params['probabilities']['mate'] + params['probabilities']['mutate'] > 1:
+        sys.exit('The sum of the crossover and mutation probabilities must be '
+                 'smaller or equal to 1.0')
 
     # ga preparation
     if args.seed is not None:
         random.seed(args.seed)
 
     # set the bound used by LdaIndividual to check the topics and no_below values
-    LdaIndividual.set_bounds(args.min_topics, args.max_topics,
-                             tenth_of_titles, 0.1)
+    max_no_below = params['limits']['max_no_below']
+    if max_no_below == -1:
+        max_no_below = tenth_of_titles
+    elif max_no_below >= len(titles):
+        sys.exit('max_no_below cannot have the same value as the number of documents')
+
+    try:
+        LdaIndividual.set_bounds(params['limits']['min_topics'],
+                                 params['limits']['max_topics'],
+                                 max_no_below, params['limits']['min_no_above'])
+    except ValueError as e:
+        sys.exit(e.args[0])
+
     creator.create('Individual', LdaIndividual, fitness=creator.FitnessMax)
 
     toolbox = base.Toolbox()
     toolbox.register('individual', LdaIndividual.random_individual,
-                     prob_no_filters=0.5)
+                     prob_no_filters=params['probabilities']['no_filter'])
     toolbox.register('population', tools.initRepeat, list, toolbox.individual)
     toolbox.register('mate', tools.cxTwoPoint)
-    # the following dict contains the gaussian mutation parameter for each field
-    # of the individual. The format is field-name: (mean value, sigma value)
-    # TODO: find a way to input this thing from outside
-    gauss_param = {
-        'topics': (0, 1),
-        'alpha_val': (0, 1),
-        'beta': (0, 1),
-        'no_below': (0, 1),
-        'no_above': (0, 1),
-        'alpha_type': (0, 1)
-    }
-    mut_mu = [0] * len(gauss_param)
-    mut_sigma = [0] * len(gauss_param)
-    for f, v in gauss_param.items():
+    mut_mu = [0.0] * len(params['mutate'])
+    mut_sigma = list(mut_mu)
+    for f, v in params['mutate'].items():
         i = LdaIndividual.order_from_name(f)
-        mut_mu[i] = v[0]
-        mut_sigma[i] = v[1]
+        mut_mu[i] = float(v['mu'])
+        mut_sigma[i] = float(v['sigma'])
 
     toolbox.register('mutate', tools.mutGaussian, mu=mut_mu, sigma=mut_sigma,
-                     indpb=0.05)
-    # toolbox.decorate('mate', check_types(tenth_of_titles, args.min_topics,
-    #                                      args.max_topics))
-    # toolbox.decorate('mutate', check_types(tenth_of_titles, args.min_topics,
-    #                                        args.max_topics))
-
-    toolbox.register('select', tools.selTournament, tournsize=5)
+                     indpb=params['probabilities']['component_mutation'])
+    toolbox.register('select', tools.selTournament,
+                     tournsize=params['algorithm']['tournament_size'])
     toolbox.register('evaluate', evaluate)
-    hof = tools.HallOfFame(args.best_individuals)
     stats = tools.Statistics(lambda ind: ind.fitness.values)
     stats.register('avg', np.mean)
     stats.register('std', np.std)
     stats.register('min', np.min)
     stats.register('max', np.max)
 
-    pop = toolbox.population(n=args.initial_population)
-    lambda_ = getattr(args, 'lambda')
-    estimated_trainings = args.initial_population + lambda_ * args.generations
+    pop = toolbox.population(n=params['algorithm']['initial'])
+    mu = params['algorithm']['mu']
+    lambda_ = params['algorithm']['lambda']
+    ngen = params['algorithm']['generations']
+    estimated_trainings = len(pop) + lambda_ * ngen
     print('Estimated trainings:', estimated_trainings)
     logger.info(f'Estimated trainings: {estimated_trainings}')
     q = Queue(estimated_trainings)
     with Pool(processes=PHYSICAL_CPUS, initializer=init_train,
               initargs=(docs, args.seed, logger, q, output_dir)) as pool:
         toolbox.register('map', pool.map)
-        final_pop, logbook = algorithms.eaMuPlusLambda(pop, toolbox,
-                                                       mu=args.mu,
-                                                       lambda_=lambda_,
-                                                       cxpb=args.crossover,
-                                                       mutpb=args.mutation,
-                                                       ngen=args.generations,
-                                                       halloffame=hof,
-                                                       stats=stats,
-                                                       verbose=True)
+        _, _ = algorithms.eaMuPlusLambda(pop, toolbox,
+                                         mu=mu, lambda_=lambda_,
+                                         cxpb=params['probabilities']['mate'],
+                                         mutpb=params['probabilities']['mutate'],
+                                         ngen=ngen, stats=stats, verbose=True)
     results = []
     while not q.empty():
         results.append(q.get())
