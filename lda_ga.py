@@ -85,14 +85,18 @@ class LdaIndividual:
     fitness: creator.FitnessMax = dataclasses.field(init=False)
     topics_bounds: ClassVar[range] = None
     max_no_below: ClassVar[int] = None
+    min_no_above: ClassVar[int] = None
 
     def __post_init__(self):
         self.fitness = creator.FitnessMax()
 
     @classmethod
-    def set_bounds(cls, min_topics, max_topics, max_no_below):
+    def set_bounds(cls, min_topics, max_topics, max_no_below, min_no_above):
         cls.topics_bounds = range(min_topics, max_topics)
         cls.max_no_below = max_no_below
+        if min_no_above > 1.0:
+            raise ValueError('min_no_above must be less then 1.0')
+        cls.min_no_above = min_no_above
 
     @classmethod
     def order_from_name(cls, name):
@@ -111,7 +115,7 @@ class LdaIndividual:
         no_above = 1.0
         if random.random() < 1 - prob_no_filters:
             no_below = random.randint(1, cls.max_no_below)
-            no_above = random.random()
+            no_above = random.uniform(cls.min_no_above, 1.0)
 
         return LdaIndividual(_topics=random.randint(cls.topics_bounds.start,
                                                     cls.topics_bounds.stop),
@@ -157,7 +161,9 @@ class LdaIndividual:
 
     @no_above.setter
     def no_above(self, val):
-        self._no_above = check_bounds(val, 0.0, 1.0)
+        if self.topics_bounds is None:
+            raise BoundsNotSetError('set_bounds must be called first')
+        self._no_above = check_bounds(val, self.min_no_above, 1.0)
 
     @property
     def no_below(self):
@@ -484,7 +490,8 @@ def lda_grid_search(args):
         random.seed(args.seed)
 
     # set the bound used by LdaIndividual to check the topics and no_below values
-    LdaIndividual.set_bounds(args.min_topics, args.max_topics, tenth_of_titles)
+    LdaIndividual.set_bounds(args.min_topics, args.max_topics,
+                             tenth_of_titles, 0.1)
     creator.create('Individual', LdaIndividual, fitness=creator.FitnessMax)
 
     toolbox = base.Toolbox()
