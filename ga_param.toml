@@ -13,7 +13,7 @@ tournament_size = 10 # number of individuals randomly selected for the selection
 mutate = 0.2 # probability of mutation
 component_mutation = 0.05 # probability of a mutation of each individual component
 mate = 0.5 # probability of crossover (mating)
-no_filter = 0.5 # probability that a new individual is selected with no term filter (no_above = no_below = 1)
+no_filter = 0.5 # probability that a new individual is created with no term filter (no_above = no_below = 1)
 [mutate]
 # if a component is selected for mutation, a random gaussian number with mu mean and sigma standard deviation is added to the component
 topics.mu = 0
