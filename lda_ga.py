@@ -76,6 +76,22 @@ class BoundsNotSetError(Exception):
 
 @dataclasses.dataclass
 class LdaIndividual:
+    """
+    Represents an individual, a set of parameters for the LDA model
+
+    The fitness attribute is used by DEAP for the optimization
+    topics_bounds, max_no_below, min_no_above are class attribute and are used
+    as bounds for the topics, no_above and no_below parameters.
+    They must be set with the set_bounds class method before every operation,
+    even the creation of a new instance.
+    All the other attribute are protected. To access one value, use the
+    corresponding property, or its index.
+    The association between index and attribute is given by the order_from_name
+    and name_from_order class methods.
+    The alpha property is used to retrive the actual alpha value to use from the
+    _alpha_val and _alpha_type values.
+    The random_individual creates a new individual with random values.
+    """
     _topics: int
     _alpha_val: float
     _beta: float
@@ -101,7 +117,21 @@ class LdaIndividual:
 
     @classmethod
     def set_bounds(cls, min_topics, max_topics, max_no_below, min_no_above):
-        cls.topics_bounds = range(min_topics, max_topics)
+        """
+        Sets the bounds used in properties to check the values
+
+        Must be called before every operation
+        :param min_topics: minimum number of topics
+        :type min_topics: int
+        :param max_topics: maximum number of topics
+        :type max_topics: int
+        :param max_no_below: maximum value for the no_below parameter
+        :type max_no_below: int
+        :param min_no_above: minimum value for the no_above parameter
+        :type min_no_above: float
+        :raise ValueError: if min_no_above is > 1.0
+        """
+        cls.topics_bounds = range(min_topics, max_topics + 1)
         cls.max_no_below = max_no_below
         if min_no_above > 1.0:
             raise ValueError('min_no_above must be less then 1.0')
@@ -143,6 +173,18 @@ class LdaIndividual:
 
     @classmethod
     def random_individual(cls, prob_no_filters=0.5):
+        """
+        Creates a random individual
+
+        The prob_no_filters is the probability that the created individual has
+        no_below == no_above == 1.
+        :param prob_no_filters: probability that the individual has no_below
+            and no_above set to 1
+        :type prob_no_filters: float
+        :return: the new individual
+        :rtype: LdaIndividual
+        :raise BoundsNotSetError: if the set_bounds method is not called first
+        """
         if cls.topics_bounds is None:
             raise BoundsNotSetError('set_bounds must be called first')
 
