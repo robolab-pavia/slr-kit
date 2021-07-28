@@ -88,7 +88,16 @@ class LdaIndividual:
     min_no_above: ClassVar[int] = None
 
     def __post_init__(self):
+        if self.topics_bounds is None:
+            raise BoundsNotSetError('set_bounds must be called first')
         self.fitness = creator.FitnessMax()
+        # these assignments triggers the checks on the values
+        self.topics = self._topics
+        self.alpha_val = self._alpha_val
+        self.beta = self._beta
+        self.no_above = self._no_above
+        self.no_below = self._no_below
+        self.alpha_type = self._alpha_type
 
     @classmethod
     def set_bounds(cls, min_topics, max_topics, max_no_below, min_no_above):
