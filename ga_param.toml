@@ -18,8 +18,8 @@ no_filter = 0.5 # probability that a new individual is selected with no term fil
 # if a component is selected for mutation, a random gaussian number with mu mean and sigma standard deviation is added to the component
 topics.mu = 0
 topics.sigma = 1
-alpha.mu = 0
-alpha.sigma = 1
+alpha_val.mu = 0
+alpha_val.sigma = 1
 beta.mu = 0
 beta.sigma = 1
 no_above.mu = 0
