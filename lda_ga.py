@@ -108,14 +108,38 @@ class LdaIndividual:
         cls.min_no_above = min_no_above
 
     @classmethod
-    def order_from_name(cls, name: str) -> int:
-        if name == 'alpha':
-            name = name + '_val'
+    def index_from_name(cls, name: str) -> int:
+        """
+        Gives the index of a parameter given its name
+
+        :param name: name of the parameter
+        :type name: str
+        :return: the index of the parameter
+        :rtype: int
+        :raise ValueError: if the name is not valid
+        """
         for i, f in enumerate(dataclasses.fields(cls)):
             if f.name == '_' + name:
                 return i
         else:
             raise ValueError(f'{name!r} is not a valid field name')
+
+    @classmethod
+    def name_from_index(cls, index: int) -> str:
+        """
+        Gives the name of a parameter given its index
+
+        :param index: index of the parameter
+        :type index: str
+        :return: the name of the parameter
+        :rtype: str
+        :raise ValueError: if the index is not valid
+        """
+        try:
+            name = dataclasses.fields(cls)[index].name
+        except IndexError:
+            raise ValueError(f'{index!r} is not a valid index')
+        return name.strip('_')
 
     @classmethod
     def random_individual(cls, prob_no_filters=0.5):
@@ -228,24 +252,8 @@ class LdaIndividual:
             raise TypeError(msg)
 
         for val_index, i in enumerate(indexes):
-            # Where is the switch statement when is needed?
-            if i == 0:
-                self.topics = value[val_index]
-            elif i in [1, 2, 3]:
-                if not isinstance(value[val_index], float):
-                    raise TypeError(f'Required float for assignement to {i} index')
-
-                inf = float('inf')
-                if i == 1:
-                    self.alpha_val = value[val_index]
-                elif i == 2:
-                    self.beta = value[val_index]
-                else:
-                    self.no_above = value[val_index]
-            elif i == 4:
-                self.no_below = value[val_index]
-            elif i == 5:
-                self.alpha_type = value[val_index]
+            name = self.name_from_index(i)
+            setattr(self, name, value[val_index])
 
 
 def init_argparser():
@@ -502,7 +510,7 @@ def lda_grid_search(args):
     mut_mu = [0.0] * len(params['mutate'])
     mut_sigma = list(mut_mu)
     for f, v in params['mutate'].items():
-        i = LdaIndividual.order_from_name(f)
+        i = LdaIndividual.index_from_name(f)
         mut_mu[i] = float(v['mu'])
         mut_sigma[i] = float(v['sigma'])
 
