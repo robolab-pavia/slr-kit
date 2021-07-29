@@ -77,9 +77,6 @@ def init_argparser():
                         help='Additional keywords files')
     parser.add_argument('--acronyms', '-a',
                         help='TSV files with the approved acronyms')
-    parser.add_argument('--model', action='store_true',
-                        help='if set, the best lda model is saved to directory '
-                             '<outdir>/lda_model')
     parser.add_argument('--min-topics', '-m', type=int,
                         default=5, action=_ValidateInt,
                         help='Minimum number of topics to retrieve '
@@ -342,21 +339,6 @@ def lda_grid_search(args):
 
     print('Best model:')
     print(best)
-
-    if args.model:
-        corpus, dictionary, docs = corpora[(best['corpus'],
-                                            best['no_below'],
-                                            best['no_above'])]
-        model = LdaModel(corpus, num_topics=best['topics'],
-                         id2word=dictionary, chunksize=len(corpus),
-                         passes=10, random_state=best['seed'],
-                         minimum_probability=0.0,
-                         alpha=best['alpha'], eta=best['beta'])
-
-        lda_path = output_dir / 'lda_model'
-        lda_path.mkdir(exist_ok=True)
-        model.save(str(lda_path / 'model'))
-        dictionary.save(str(lda_path / 'model_dictionary'))
 
     if args.plot_show or args.plot_save:
         max_cv = results.groupby('topics')['coherence'].idxmax()
