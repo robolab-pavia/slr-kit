@@ -486,32 +486,26 @@ def load_ga_params(args):
 
 
 def lda_grid_search(args):
-    terms_file = args.terms_file
-    preproc_file = args.preproc_file
-    output_dir = args.outdir
-    output_dir.mkdir(exist_ok=True)
-    logfile = args.logfile
+    logger = setup_logger('debug_logger', args.logfile, level=logging.DEBUG)
+    logger.info('==== lda_ga_grid_search started ====')
+    args.outdir.mkdir(exist_ok=True)
     if args.result is None:
         now = datetime.now()
         result_file = f'{now:%Y-%m-%d_%H%M%S}_results.csv'
     else:
         result_file = args.result
 
-    logger = setup_logger('debug_logger', logfile, level=logging.DEBUG)
-    logger.info('==== lda_ga_grid_search started ====')
-    placeholder = args.placeholder
-    relevant_prefix = placeholder
-
+    relevant_prefix = args.placeholder
     additional_keyword = prepare_additional_keyword(args)
     acronyms = prepare_acronyms(args)
 
-    docs, titles = prepare_documents(preproc_file, terms_file,
+    docs, titles = prepare_documents(args.preproc_file, args.terms_file,
                                      not args.no_ngrams, ('keyword', 'relevant'),
                                      args.target_column, args.title,
                                      delimiter=args.delimiter,
                                      additional_keyword=additional_keyword,
                                      acronyms=acronyms,
-                                     placeholder=placeholder,
+                                     placeholder=args.placeholder,
                                      relevant_prefix=relevant_prefix)
 
     tenth_of_titles = len(titles) // 10
@@ -569,7 +563,7 @@ def lda_grid_search(args):
     logger.info(f'Estimated trainings: {estimated_trainings}')
     q = Queue(estimated_trainings)
     with Pool(processes=PHYSICAL_CPUS, initializer=init_train,
-              initargs=(docs, args.seed, logger, q, output_dir)) as pool:
+              initargs=(docs, args.seed, logger, q, args.outdir)) as pool:
         toolbox.register('map', pool.map)
         _, _ = algorithms.eaMuPlusLambda(pop, toolbox,
                                          mu=mu, lambda_=lambda_,
@@ -581,9 +575,9 @@ def lda_grid_search(args):
         results.append(q.get())
         u = results[-1]['uuid']
         conf = tomlkit.document()
-        conf.add('preproc_file', str(preproc_file))
-        conf.add('terms_file', str(terms_file))
-        conf.add('outdir', str(output_dir))
+        conf.add('preproc_file', str(args.preproc_file))
+        conf.add('terms_file', str(args.terms_file))
+        conf.add('outdir', str(args.outdir))
         conf.add('text-column', args.target_column)
         conf.add('title-column', args.title)
         if args.additional_file is not None:
@@ -603,10 +597,10 @@ def lda_grid_search(args):
         conf.add('no-ngrams', args.no_ngrams)
         conf.add('model', False)
         conf.add('no-relevant', False)
-        conf.add('load-model', str(output_dir / u))
-        conf.add('placeholder', placeholder)
+        conf.add('load-model', str(args.outdir / u))
+        conf.add('placeholder', args.placeholder)
         conf.add('delimiter', args.delimiter)
-        with open(output_dir / ''.join([u, '.toml']), 'w') as file:
+        with open(args.outdir / ''.join([u, '.toml']), 'w') as file:
             file.write(tomlkit.dumps(conf))
 
     q.close()
