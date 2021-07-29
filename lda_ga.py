@@ -567,7 +567,7 @@ def optimization(documents, params, toolbox, queue, args):
                                          lambda_=params['algorithm']['lambda'],
                                          cxpb=params['probabilities']['mate'],
                                          mutpb=params['probabilities']['mutate'],
-                                         ngen=params['algorithm']['initial'],
+                                         ngen=params['algorithm']['generations'],
                                          stats=stats, verbose=True)
 
 
@@ -654,7 +654,7 @@ def lda_ga_optimization(args):
 
     estimated_trainings = (params['algorithm']['initial']
                            + (params['algorithm']['lambda']
-                              * params['algorithm']['initial']))
+                              * params['algorithm']['generations']))
     print('Estimated trainings:', estimated_trainings)
     logger.info(f'Estimated trainings: {estimated_trainings}')
 
