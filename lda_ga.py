@@ -28,7 +28,7 @@ from gensim.models import CoherenceModel, LdaModel
 from slrkit_utils.argument_parser import (AppendMultipleFilesAction, ArgParse,
                                           ValidateInt)
 from lda import (PHYSICAL_CPUS, prepare_documents, prepare_acronyms,
-                 prepare_additional_keyword)
+                 prepare_additional_keyword, prepare_topics, output_topics)
 from utils import STOPWORD_PLACEHOLDER, setup_logger
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
@@ -648,6 +648,13 @@ def lda_ga_optimization(args):
     optimization(docs, params, toolbox, q, args, model_dir)
     df = collect_results(q)
     q.close()
+
+    best = df.at[0, 'uuid']
+    lda_path = model_dir / best
+    model = LdaModel.load(str(lda_path / 'model'))
+    dictionary = Dictionary.load(str(lda_path / 'model_dictionary'))
+    topics, docs_topics, _ = prepare_topics(model, docs, titles, dictionary)
+    output_topics(topics, docs_topics, outdir, 'best-model')
 
     save_toml_files(args, df, outdir)
     df.to_csv(outdir / 'results.csv', sep='\t', index_label='id')
