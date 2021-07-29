@@ -485,7 +485,7 @@ def load_ga_params(args):
     return params
 
 
-def lda_grid_search(args):
+def lda_ga_optimization(args):
     logger = setup_logger('debug_logger', args.logfile, level=logging.DEBUG)
     logger.info('==== lda_ga_grid_search started ====')
     args.outdir.mkdir(exist_ok=True)
@@ -615,7 +615,7 @@ def lda_grid_search(args):
 
 def main():
     args = init_argparser().parse_args()
-    lda_grid_search(args)
+    lda_ga_optimization(args)
 
 
 if __name__ == '__main__':
