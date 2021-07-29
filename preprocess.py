@@ -8,6 +8,8 @@ from timeit import default_timer as timer
 from typing import Generator, Tuple, Sequence
 
 import pandas as pd
+import nltk
+nltk.download('wordnet')
 from nltk.stem.wordnet import WordNetLemmatizer
 from psutil import cpu_count
 
