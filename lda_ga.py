@@ -502,6 +502,7 @@ def collect_results(queue):
 
     df = pd.DataFrame(results)
     df.sort_values(by=['coherence'], ascending=False, inplace=True)
+    df.reset_index(drop=True, inplace=True)
     return df
 
 
@@ -664,7 +665,7 @@ def lda_ga_optimization(args):
     q.close()
 
     save_toml_files(args, df)
-    df.to_csv(result_file, sep='\t', index=False)
+    df.to_csv(result_file, sep='\t', index_label='id')
     with pd.option_context('display.width', 80,
                            'display.float_format', '{:,.3f}'.format):
         print(df)
