@@ -510,18 +510,29 @@ def output_topics(topics, docs_topics, outdir, file_prefix):
         json.dump(docs_topics, file, indent='\t')
 
 
-def load_acronyms(args):
-    acro_df = pd.read_csv(args.acronyms, delimiter='\t', encoding='utf-8')
-    assert_column(args.acronyms, acro_df, ['term', 'label'])
-    acronyms = []
-    for _, row in acro_df.iterrows():
-        if row['label'] not in ['relevant', 'keyword']:
-            continue
+def prepare_additional_keyword(args):
+    additional_keyword = set()
+    if args.additional_file is not None:
+        for sfile in args.additional_file:
+            additional_keyword |= load_additional_terms(sfile)
+    return additional_keyword
 
-        sp = row['term'].split('|')
-        acronyms.append(sp[1].strip(' ()').lower())
-    del acro_df
-    return acronyms
+
+def prepare_acronyms(args):
+    if args.acronyms is not None:
+        acro_df = pd.read_csv(args.acronyms, delimiter='\t', encoding='utf-8')
+        assert_column(args.acronyms, acro_df, ['term', 'label'])
+        acronyms = []
+        for _, row in acro_df.iterrows():
+            if row['label'] not in ['relevant', 'keyword']:
+                continue
+
+            sp = row['term'].split('|')
+            acronyms.append(sp[1].strip(' ()').lower())
+        del acro_df
+        return acronyms
+    else:
+        return None
 
 
 def lda(args):
@@ -538,16 +549,8 @@ def lda(args):
     else:
         labels = ('keyword', 'relevant')
 
-    additional_keyword = set()
-
-    if args.additional_file is not None:
-        for sfile in args.additional_file:
-            additional_keyword |= load_additional_terms(sfile)
-
-    if args.acronyms is not None:
-        acronyms = load_acronyms(args)
-    else:
-        acronyms = None
+    additional_keyword = prepare_additional_keyword(args)
+    acronyms = prepare_acronyms(args)
 
     docs, titles = prepare_documents(preproc_file, terms_file,
                                      not args.no_ngrams, labels,

@@ -23,8 +23,8 @@ from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel, LdaModel
 
 from slrkit_utils.argument_parser import AppendMultipleFilesAction, ArgParse
-from lda import (PHYSICAL_CPUS, prepare_documents, load_acronyms,
-                 prepare_corpus)
+from lda import (PHYSICAL_CPUS, prepare_documents, prepare_corpus,
+                 prepare_acronyms, prepare_additional_keyword)
 from utils import STOPWORD_PLACEHOLDER, setup_logger
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
@@ -261,16 +261,8 @@ def lda_grid_search(args):
     if args.min_topics > args.max_topics:
         sys.exit('max_topics must be greater than min_topics')
 
-    additional_keyword = set()
-
-    if args.additional_file is not None:
-        for sfile in args.additional_file:
-            additional_keyword |= load_additional_terms(sfile)
-
-    if args.acronyms is not None:
-        acronyms = load_acronyms(args)
-    else:
-        acronyms = None
+    additional_keyword = prepare_additional_keyword(args)
+    acronyms = prepare_acronyms(args)
 
     topics_range = range(args.min_topics, args.max_topics + args.step_topics,
                          args.step_topics)
