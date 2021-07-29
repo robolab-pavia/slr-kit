@@ -25,7 +25,8 @@ if not sys.warnoptions:
 from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel, LdaModel
 
-from slrkit_utils.argument_parser import AppendMultipleFilesAction, ArgParse
+from slrkit_utils.argument_parser import (AppendMultipleFilesAction, ArgParse,
+                                          ValidateInt)
 from lda import (PHYSICAL_CPUS, prepare_documents, prepare_acronyms,
                  prepare_additional_keyword)
 from utils import STOPWORD_PLACEHOLDER, setup_logger
@@ -35,37 +36,6 @@ _corpus: Optional[List[List[str]]] = None
 _seed: Optional[int] = None
 _queue: Optional[Queue] = None
 _outdir: Optional[pathlib.Path] = None
-
-
-class _ValidateInt(argparse.Action):
-    def __call__(self, parser, namespace, values, option_string=None):
-        try:
-            v = int(values)
-        except ValueError:
-            parser.exit(1, f'Value {values!r} is not a valid int')
-            return
-
-        if v <= 0:
-            parser.exit(1, f'{self.dest!r} must be greater than 0')
-
-        setattr(namespace, self.dest, v)
-
-
-class _ValidateProb(argparse.Action):
-    def __call__(self, parser, namespace, values, option_string=None):
-        try:
-            v = float(values)
-        except ValueError:
-            parser.exit(1, f'Value {values!r} is not a valid float')
-            return
-
-        if v < 0:
-            parser.exit(1, f'{self.dest!r} must be greater than 0')
-        elif v > 1.0:
-            parser.exit(1, f'{self.dest!r} must be less than 1')
-
-        setattr(namespace, self.dest, v)
-
 
 creator.create('FitnessMax', base.Fitness, weights=(1.0,))
 
@@ -334,7 +304,7 @@ def init_argparser():
                         help='Additional keywords files')
     parser.add_argument('--acronyms', '-a',
                         help='TSV files with the approved acronyms')
-    parser.add_argument('--seed', type=int, action=_ValidateInt,
+    parser.add_argument('--seed', type=int, action=ValidateInt,
                         help='Seed to be used in training. The ga uses seed + 1')
     parser.add_argument('--result', '-r', metavar='FILENAME',
                         help='Where to save the training results '

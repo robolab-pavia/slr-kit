@@ -8,7 +8,6 @@ if not sys.warnoptions:
     import warnings
     warnings.simplefilter('ignore')
 
-import argparse
 from datetime import datetime
 from itertools import product
 from multiprocessing import Pool
@@ -22,7 +21,8 @@ import pandas as pd
 from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel, LdaModel
 
-from slrkit_utils.argument_parser import AppendMultipleFilesAction, ArgParse
+from slrkit_utils.argument_parser import (AppendMultipleFilesAction, ArgParse,
+                                          ValidateInt)
 from lda import (PHYSICAL_CPUS, prepare_documents, prepare_corpus,
                  prepare_acronyms, prepare_additional_keyword)
 from utils import STOPWORD_PLACEHOLDER, setup_logger
@@ -34,14 +34,6 @@ _corpora: Optional[Dict[Tuple[str], Tuple[List[Tuple[int, int]],
 _seed: Optional[int] = None
 _logger: Optional[logging.Logger] = None
 _outdir: Optional[pathlib.Path] = None
-
-
-class _ValidateInt(argparse.Action):
-    def __call__(self, parser, namespace, values, option_string=None):
-        if int(values) <= 0:
-            parser.exit(1, f'{self.dest!r} must be greater than 0')
-
-        setattr(namespace, self.dest, self.type(values))
 
 
 def init_argparser():
@@ -78,18 +70,18 @@ def init_argparser():
     parser.add_argument('--acronyms', '-a',
                         help='TSV files with the approved acronyms')
     parser.add_argument('--min-topics', '-m', type=int,
-                        default=5, action=_ValidateInt,
+                        default=5, action=ValidateInt,
                         help='Minimum number of topics to retrieve '
                              '(default: %(default)s)')
     parser.add_argument('--max-topics', '-M', type=int,
-                        default=20, action=_ValidateInt,
+                        default=20, action=ValidateInt,
                         help='Maximum number of topics to retrieve '
                              '(default: %(default)s)')
     parser.add_argument('--step-topics', '-s', type=int,
-                        default=1, action=_ValidateInt,
+                        default=1, action=ValidateInt,
                         help='Step in range(min,max,step) for topics retrieving'
                              ' (default: %(default)s)')
-    parser.add_argument('--seed', type=int, action=_ValidateInt,
+    parser.add_argument('--seed', type=int, action=ValidateInt,
                         help='Seed to be used in training')
     parser.add_argument('--plot-show', action='store_true',
                         help='if set, it plots the coherence')
