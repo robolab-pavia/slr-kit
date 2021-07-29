@@ -472,6 +472,16 @@ def load_ga_params(args):
                     params[sec][k].add('sigma', v['sigma'])
 
     del file, defaults, default_params_file
+    if params['limits']['min_topics'] > params['limits']['max_topics']:
+        sys.exit('limits.max_topics must be greater than limits.min_topics')
+
+    if (params['probabilities']['no_filter'] < 0
+            or params['probabilities']['no_filter'] > 1.0):
+        sys.exit('probabilities.no_filter must be a value between 0 and 1')
+
+    if params['probabilities']['mate'] + params['probabilities']['mutate'] > 1:
+        sys.exit('The sum of the crossover and mutation probabilities must be '
+                 'smaller or equal to 1.0')
     return params
 
 
@@ -506,16 +516,6 @@ def lda_grid_search(args):
 
     tenth_of_titles = len(titles) // 10
     params = load_ga_params(args)
-    if params['limits']['min_topics'] > params['limits']['max_topics']:
-        sys.exit('limits.max_topics must be greater than limits.min_topics')
-
-    if (params['probabilities']['no_filter'] < 0
-            or params['probabilities']['no_filter'] > 1.0):
-        sys.exit('probabilities.no_filter must be a value between 0 and 1')
-
-    if params['probabilities']['mate'] + params['probabilities']['mutate'] > 1:
-        sys.exit('The sum of the crossover and mutation probabilities must be '
-                 'smaller or equal to 1.0')
 
     # ga preparation
     if args.seed is not None:
