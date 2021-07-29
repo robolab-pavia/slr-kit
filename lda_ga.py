@@ -476,12 +476,26 @@ def collect_results(queue):
     return df
 
 
-def save_toml_files(args, results_df):
+def save_toml_files(args, results_df, outdir):
+    """
+    Saves the toml files that will be used to load the models in lda.py
+
+    The toml file are saved in <outdir>/toml. If this directory not exists, it
+    is created.
+    :param args: cli arguments
+    :type args: argparse.Namespace
+    :param results_df: dataframe with the training results
+    :type results_df: pd.DataFrame
+    :param outdir: path to the directory of the outputs
+    :type outdir: Path
+    """
+    toml_dir = outdir / 'toml'
+    toml_dir.mkdir(exist_ok=True)
     for _, row in results_df.iterrows():
         conf = tomlkit.document()
         conf.add('preproc_file', str(args.preproc_file))
         conf.add('terms_file', str(args.terms_file))
-        conf.add('outdir', str(args.outdir))
+        conf.add('outdir', str(outdir))
         conf.add('text-column', args.target_column)
         conf.add('title-column', args.title)
         if args.additional_file is not None:
@@ -502,14 +516,14 @@ def save_toml_files(args, results_df):
         conf.add('model', False)
         conf.add('no-relevant', False)
         u = row['uuid']
-        conf.add('load-model', str(args.outdir / u))
+        conf.add('load-model', str(outdir / 'models' / u))
         conf.add('placeholder', args.placeholder)
         conf.add('delimiter', args.delimiter)
-        with open(args.outdir / ''.join([u, '.toml']), 'w') as file:
+        with open(toml_dir / ''.join([u, '.toml']), 'w') as file:
             file.write(tomlkit.dumps(conf))
 
 
-def optimization(documents, params, toolbox, queue, args):
+def optimization(documents, params, toolbox, queue, args, model_dir):
     """
     Performs the optimization of the LDA model using the GA
 
@@ -523,6 +537,8 @@ def optimization(documents, params, toolbox, queue, args):
     :type queue: Queue
     :param args: command line arguments
     :type args: argparse.Namespace
+    :param model_dir: path to the directory where to save the models
+    :type model_dir: Path
     """
     pop = toolbox.population(n=params['algorithm']['initial'])
     stats = tools.Statistics(lambda ind: ind.fitness.values)
@@ -531,7 +547,7 @@ def optimization(documents, params, toolbox, queue, args):
     stats.register('min', np.min)
     stats.register('max', np.max)
     with Pool(processes=PHYSICAL_CPUS, initializer=init_train,
-              initargs=(documents, args.seed, queue, args.outdir)) as pool:
+              initargs=(documents, args.seed, queue, model_dir)) as pool:
         toolbox.register('map', pool.map)
         _, _ = algorithms.eaMuPlusLambda(pop, toolbox,
                                          mu=params['algorithm']['mu'],
@@ -583,12 +599,11 @@ def prepare_ga_toolbox(max_no_below, params):
 def lda_ga_optimization(args):
     logger = setup_logger('debug_logger', args.logfile, level=logging.DEBUG)
     logger.info('==== lda_ga_grid_search started ====')
-    args.outdir.mkdir(exist_ok=True)
-    if args.result is None:
-        now = datetime.now()
-        result_file = f'{now:%Y-%m-%d_%H%M%S}_results.csv'
-    else:
-        result_file = args.result
+    now = datetime.now()
+    outdir = args.outdir / f'{now:%Y-%m-%d_%H%M%S}_lda_results'
+    outdir.mkdir(exist_ok=True, parents=True)
+    model_dir = outdir / 'models'
+    model_dir.mkdir(exist_ok=True)
 
     relevant_prefix = args.placeholder
     additional_keyword = prepare_additional_keyword(args)
@@ -630,12 +645,12 @@ def lda_ga_optimization(args):
     logger.info(f'Estimated trainings: {estimated_trainings}')
 
     q = Queue(estimated_trainings)
-    optimization(docs, params, toolbox, q, args)
+    optimization(docs, params, toolbox, q, args, model_dir)
     df = collect_results(q)
     q.close()
 
-    save_toml_files(args, df)
-    df.to_csv(result_file, sep='\t', index_label='id')
+    save_toml_files(args, df, outdir)
+    df.to_csv(outdir / 'results.csv', sep='\t', index_label='id')
     with pd.option_context('display.width', 80,
                            'display.float_format', '{:,.3f}'.format):
         print(df)
