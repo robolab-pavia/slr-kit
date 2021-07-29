@@ -33,7 +33,6 @@ from utils import STOPWORD_PLACEHOLDER, setup_logger
 # these globals are used by the multiprocess workers used in compute_optimal_model
 _corpus: Optional[List[List[str]]] = None
 _seed: Optional[int] = None
-_logger: Optional[logging.Logger] = None
 _queue: Optional[Queue] = None
 _outdir: Optional[pathlib.Path] = None
 
@@ -354,11 +353,10 @@ def init_argparser():
     return parser
 
 
-def init_train(corpora, seed, logger, queue, outdir):
-    global _corpus, _seed, _logger, _queue, _outdir
+def init_train(corpora, seed, queue, outdir):
+    global _corpus, _seed, _queue, _outdir
     _corpus = corpora
     _seed = seed
-    _logger = logger
     _queue = queue
     _outdir = outdir
 
@@ -385,7 +383,7 @@ def load_additional_terms(input_file):
 
 # topics, alpha, beta, no_above, no_below label
 def evaluate(ind: LdaIndividual):
-    global _corpus, _seed, _logger, _queue, _outdir
+    global _corpus, _seed, _queue, _outdir
     # unpack parameter
     n_topics = ind.topics
     alpha = ind.alpha
@@ -452,37 +450,163 @@ def check_bounds(val, min_, max_):
         return val
 
 
-def load_ga_params(args):
-    with open(args.ga_params) as file:
-        params = tomlkit.loads(file.read())
+def load_ga_params(ga_params):
+    """
+    Loads the parameter used by the GA from a toml file
+
+    :param ga_params: path to the toml file with the parameters
+    :type ga_params: Path
+    :return: the parameters dict
+    :rtype: dict[str, Any]
+    :raise ValueError: if some parameter have the wrong value. The error cause
+        is stored in the exception arguments
+    """
+    with open(ga_params) as file:
+        params = dict(tomlkit.loads(file.read()))
     default_params_file = Path(__file__).parent / 'ga_param.toml'
     with open(default_params_file) as file:
-        defaults = tomlkit.loads(file.read())
+        defaults = dict(tomlkit.loads(file.read()))
     for sec in defaults.keys():
         if sec not in params:
-            params.add(sec, defaults[sec])
+            params[sec] = defaults[sec]
             continue
         for k, v in defaults[sec].items():
             if k not in params[sec]:
-                params[sec].add(k, v)
+                params[sec][k] = v
             elif sec == 'mutate':
                 if 'mu' not in params[sec][k]:
-                    params[sec][k].add('mu', v['mu'])
+                    params[sec][k]['mu'] = v['mu']
                 if 'sigma' not in params[sec][k]:
-                    params[sec][k].add('sigma', v['sigma'])
+                    params[sec][k]['sigma'] = v['sigma']
 
     del file, defaults, default_params_file
     if params['limits']['min_topics'] > params['limits']['max_topics']:
-        sys.exit('limits.max_topics must be greater than limits.min_topics')
+        raise ValueError('limits.max_topics must be > limits.min_topics')
 
     if (params['probabilities']['no_filter'] < 0
             or params['probabilities']['no_filter'] > 1.0):
-        sys.exit('probabilities.no_filter must be a value between 0 and 1')
+        raise ValueError('probabilities.no_filter must be a value between'
+                         '0 and 1')
 
     if params['probabilities']['mate'] + params['probabilities']['mutate'] > 1:
-        sys.exit('The sum of the crossover and mutation probabilities must be '
-                 'smaller or equal to 1.0')
+        raise ValueError('The sum of the crossover and mutation probabilities '
+                         'must be <= 1.0')
+
     return params
+
+
+def collect_results(queue):
+    results = []
+    while not queue.empty():
+        results.append(queue.get())
+
+    df = pd.DataFrame(results)
+    df.sort_values(by=['coherence'], ascending=False, inplace=True)
+    return df
+
+
+def save_toml_files(args, results_df):
+    for _, row in results_df.iterrows():
+        conf = tomlkit.document()
+        conf.add('preproc_file', str(args.preproc_file))
+        conf.add('terms_file', str(args.terms_file))
+        conf.add('outdir', str(args.outdir))
+        conf.add('text-column', args.target_column)
+        conf.add('title-column', args.title)
+        if args.additional_file is not None:
+            conf.add('additional-terms', args.additional_file)
+        else:
+            conf.add('additional-terms', [])
+        if args.acronyms is not None:
+            conf.add('acronyms', args.acronyms)
+        else:
+            conf.add('acronyms', '')
+        conf.add('topics', row['topics'])
+        conf.add('alpha', row['alpha'])
+        conf.add('beta', row['beta'])
+        conf.add('no_below', row['no_below'])
+        conf.add('no_above', row['no_above'])
+        conf.add('seed', row['seed'])
+        conf.add('no-ngrams', args.no_ngrams)
+        conf.add('model', False)
+        conf.add('no-relevant', False)
+        u = row['uuid']
+        conf.add('load-model', str(args.outdir / u))
+        conf.add('placeholder', args.placeholder)
+        conf.add('delimiter', args.delimiter)
+        with open(args.outdir / ''.join([u, '.toml']), 'w') as file:
+            file.write(tomlkit.dumps(conf))
+
+
+def optimization(documents, params, toolbox, queue, args):
+    """
+    Performs the optimization of the LDA model using the GA
+
+    :param documents: corpus of documents to elaborate
+    :type documents: list[list[str]]
+    :param params: GA parameters
+    :type params: dict[str, Any]
+    :param toolbox: DEAP toolbox with all the operators set
+    :type toolbox: base.Toolbox
+    :param queue: queue used by worker to send their results
+    :type queue: Queue
+    :param args: command line arguments
+    :type args: argparse.Namespace
+    """
+    pop = toolbox.population(n=params['algorithm']['initial'])
+    stats = tools.Statistics(lambda ind: ind.fitness.values)
+    stats.register('avg', np.mean)
+    stats.register('std', np.std)
+    stats.register('min', np.min)
+    stats.register('max', np.max)
+    with Pool(processes=PHYSICAL_CPUS, initializer=init_train,
+              initargs=(documents, args.seed, queue, args.outdir)) as pool:
+        toolbox.register('map', pool.map)
+        _, _ = algorithms.eaMuPlusLambda(pop, toolbox,
+                                         mu=params['algorithm']['mu'],
+                                         lambda_=params['algorithm']['lambda'],
+                                         cxpb=params['probabilities']['mate'],
+                                         mutpb=params['probabilities']['mutate'],
+                                         ngen=params['algorithm']['initial'],
+                                         stats=stats, verbose=True)
+
+
+def prepare_ga_toolbox(max_no_below, params):
+    """
+    Prepares the toolbox used by the GA
+
+    :param max_no_below: maximum value for the no_below parameter
+    :type max_no_below: int
+    :param params: parameters of the GA
+    :type params: dict[str, Any]
+    :return: the initialized toolbox, with the 'mate', 'mutate', 'select',
+        'individual' and 'population' attributes set
+    :rtype: base.Toolbox
+    """
+    try:
+        LdaIndividual.set_bounds(params['limits']['min_topics'],
+                                 params['limits']['max_topics'],
+                                 max_no_below, params['limits']['min_no_above'])
+    except ValueError as e:
+        sys.exit(e.args[0])
+    creator.create('Individual', LdaIndividual, fitness=creator.FitnessMax)
+    toolbox = base.Toolbox()
+    toolbox.register('individual', LdaIndividual.random_individual,
+                     prob_no_filters=params['probabilities']['no_filter'])
+    toolbox.register('population', tools.initRepeat, list, toolbox.individual)
+    toolbox.register('mate', tools.cxTwoPoint)
+    mut_mu = [0.0] * len(params['mutate'])
+    mut_sigma = list(mut_mu)
+    for f, v in params['mutate'].items():
+        i = LdaIndividual.index_from_name(f)
+        mut_mu[i] = float(v['mu'])
+        mut_sigma[i] = float(v['sigma'])
+    toolbox.register('mutate', tools.mutGaussian, mu=mut_mu, sigma=mut_sigma,
+                     indpb=params['probabilities']['component_mutation'])
+    toolbox.register('select', tools.selTournament,
+                     tournsize=params['algorithm']['tournament_size'])
+    toolbox.register('evaluate', evaluate)
+    return toolbox
 
 
 def lda_ga_optimization(args):
@@ -508,104 +632,38 @@ def lda_ga_optimization(args):
                                      placeholder=args.placeholder,
                                      relevant_prefix=relevant_prefix)
 
-    tenth_of_titles = len(titles) // 10
-    params = load_ga_params(args)
+    try:
+        params = load_ga_params(args.ga_params)
+    except ValueError as e:
+        sys.exit(e.args[0])
 
     # ga preparation
-    if args.seed is not None:
-        random.seed(args.seed)
-
+    num_docs = len(titles)
+    tenth_of_titles = num_docs // 10
     # set the bound used by LdaIndividual to check the topics and no_below values
     max_no_below = params['limits']['max_no_below']
     if max_no_below == -1:
         max_no_below = tenth_of_titles
-    elif max_no_below >= len(titles):
-        sys.exit('max_no_below cannot have the same value as the number of documents')
+    elif max_no_below >= num_docs:
+        sys.exit('max_no_below cannot be >= of the number of documents')
 
-    try:
-        LdaIndividual.set_bounds(params['limits']['min_topics'],
-                                 params['limits']['max_topics'],
-                                 max_no_below, params['limits']['min_no_above'])
-    except ValueError as e:
-        sys.exit(e.args[0])
+    if args.seed is not None:
+        random.seed(args.seed)
 
-    creator.create('Individual', LdaIndividual, fitness=creator.FitnessMax)
+    toolbox = prepare_ga_toolbox(max_no_below, params)
 
-    toolbox = base.Toolbox()
-    toolbox.register('individual', LdaIndividual.random_individual,
-                     prob_no_filters=params['probabilities']['no_filter'])
-    toolbox.register('population', tools.initRepeat, list, toolbox.individual)
-    toolbox.register('mate', tools.cxTwoPoint)
-    mut_mu = [0.0] * len(params['mutate'])
-    mut_sigma = list(mut_mu)
-    for f, v in params['mutate'].items():
-        i = LdaIndividual.index_from_name(f)
-        mut_mu[i] = float(v['mu'])
-        mut_sigma[i] = float(v['sigma'])
-
-    toolbox.register('mutate', tools.mutGaussian, mu=mut_mu, sigma=mut_sigma,
-                     indpb=params['probabilities']['component_mutation'])
-    toolbox.register('select', tools.selTournament,
-                     tournsize=params['algorithm']['tournament_size'])
-    toolbox.register('evaluate', evaluate)
-    stats = tools.Statistics(lambda ind: ind.fitness.values)
-    stats.register('avg', np.mean)
-    stats.register('std', np.std)
-    stats.register('min', np.min)
-    stats.register('max', np.max)
-
-    pop = toolbox.population(n=params['algorithm']['initial'])
-    mu = params['algorithm']['mu']
-    lambda_ = params['algorithm']['lambda']
-    ngen = params['algorithm']['generations']
-    estimated_trainings = len(pop) + lambda_ * ngen
+    estimated_trainings = (params['algorithm']['initial']
+                           + (params['algorithm']['lambda']
+                              * params['algorithm']['initial']))
     print('Estimated trainings:', estimated_trainings)
     logger.info(f'Estimated trainings: {estimated_trainings}')
-    q = Queue(estimated_trainings)
-    with Pool(processes=PHYSICAL_CPUS, initializer=init_train,
-              initargs=(docs, args.seed, logger, q, args.outdir)) as pool:
-        toolbox.register('map', pool.map)
-        _, _ = algorithms.eaMuPlusLambda(pop, toolbox,
-                                         mu=mu, lambda_=lambda_,
-                                         cxpb=params['probabilities']['mate'],
-                                         mutpb=params['probabilities']['mutate'],
-                                         ngen=ngen, stats=stats, verbose=True)
-    results = []
-    while not q.empty():
-        results.append(q.get())
-        u = results[-1]['uuid']
-        conf = tomlkit.document()
-        conf.add('preproc_file', str(args.preproc_file))
-        conf.add('terms_file', str(args.terms_file))
-        conf.add('outdir', str(args.outdir))
-        conf.add('text-column', args.target_column)
-        conf.add('title-column', args.title)
-        if args.additional_file is not None:
-            conf.add('additional-terms', args.additional_file)
-        else:
-            conf.add('additional-terms', [])
-        if args.acronyms is not None:
-            conf.add('acronyms', args.acronyms)
-        else:
-            conf.add('acronyms', '')
-        conf.add('topics', results[-1]['topics'])
-        conf.add('alpha', results[-1]['alpha'])
-        conf.add('beta', results[-1]['beta'])
-        conf.add('no_below', results[-1]['no_below'])
-        conf.add('no_above', results[-1]['no_above'])
-        conf.add('seed', results[-1]['seed'])
-        conf.add('no-ngrams', args.no_ngrams)
-        conf.add('model', False)
-        conf.add('no-relevant', False)
-        conf.add('load-model', str(args.outdir / u))
-        conf.add('placeholder', args.placeholder)
-        conf.add('delimiter', args.delimiter)
-        with open(args.outdir / ''.join([u, '.toml']), 'w') as file:
-            file.write(tomlkit.dumps(conf))
 
+    q = Queue(estimated_trainings)
+    optimization(docs, params, toolbox, q, args)
+    df = collect_results(q)
     q.close()
-    df = pd.DataFrame(results)
-    df.sort_values(by=['coherence'], ascending=False, inplace=True)
+
+    save_toml_files(args, df)
     df.to_csv(result_file, sep='\t', index=False)
     with pd.option_context('display.width', 80,
                            'display.float_format', '{:,.3f}'.format):
