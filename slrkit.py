@@ -546,11 +546,19 @@ def init_argparser():
                                                  'topic-paper results.')
     parser_report.set_defaults(func=run_report)
     # optimize_lda
-    help_str = 'Run an optimization phase for the lda stage in a slr-kit project'
+    help_str = 'Run an optimization phase for the lda stage in a' \
+               'slr-kit project, using a GA.'
     parser_optimize_lda = subparser.add_parser('optimize_lda',
                                                help=help_str,
                                                description=help_str)
     parser_optimize_lda.set_defaults(func=optimize_lda)
+    # lda_grid_search
+    help_str = 'Run an optimization phase for the lda stage in a ' \
+               'slr-kit project using a grid search method'
+    parser_optimize_lda = subparser.add_parser('lda_grid_search',
+                                               help=help_str,
+                                               description=help_str)
+    parser_optimize_lda.set_defaults(func=lda_grid_search_command)
     return parser
 
 
