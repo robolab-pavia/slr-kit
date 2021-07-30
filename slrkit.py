@@ -7,22 +7,44 @@ import sys
 
 import tomlkit
 
+
+class AddionalInitNotProvvidedError(Exception):
+    def __str__(self):
+        return f'Additional initialization code not provvided for {self.args[0]}'
+
+
+SLRKIT_DIR = pathlib.Path(__file__).parent
 SCRIPTS = {
     # config_file: module_name
-    'import': {'module': 'import_biblio', 'depends': []},
-    'acronyms': {'module': 'acronyms', 'depends': ['import']},
-    'preprocess': {'module': 'preprocess', 'depends': ['import']},
-    'terms_generate': {'module': 'gen_terms', 'depends': ['preprocess']},
-    'lda': {'module': 'lda', 'depends': ['preprocess', 'terms_generate']},
-    'optimize_lda': {'module': 'lda_grid_search',
-                     'depends': ['preprocess', 'terms_generate']},
-    'fawoc_terms': {'module': 'fawoc.fawoc', 'depends': ['terms_generate']},
-    'fawoc_acronyms': {'module': 'fawoc.fawoc', 'depends': ['acronyms']},
-    'fawoc_journals': {'module': 'fawoc.fawoc', 'depends': ['journals_extract']},
-    'report': {'module': 'topic_report', 'depends': []},
-    'journals_extract': {'module': 'journal_lister', 'depends': []},
+    'import': {'module': 'import_biblio', 'depends': [],
+               'additional_init': False},
+    'acronyms': {'module': 'acronyms', 'depends': ['import'],
+                 'additional_init': False},
+    'preprocess': {'module': 'preprocess', 'depends': ['import'],
+                   'additional_init': False},
+    'terms_generate': {'module': 'gen_terms', 'depends': ['preprocess'],
+                       'additional_init': False},
+    'lda': {'module': 'lda', 'depends': ['preprocess', 'terms_generate'],
+            'additional_init': False},
+    'optimize_lda': {'module': 'lda_ga',
+                     'depends': ['preprocess', 'terms_generate'],
+                     'additional_init': True},
+    'fawoc_terms': {'module': 'fawoc.fawoc', 'depends': ['terms_generate'],
+                    'additional_init': False},
+    'fawoc_acronyms': {'module': 'fawoc.fawoc', 'depends': ['acronyms'],
+                       'additional_init': False},
+    'fawoc_journals': {'module': 'fawoc.fawoc', 'depends': ['journals_extract'],
+                       'additional_init': False},
+    'report': {'module': 'topic_report', 'depends': [],
+               'additional_init': False},
+    'journals_extract': {'module': 'journal_lister', 'depends': [],
+                         'additional_init': False},
     'journals_filter': {'module': 'filter_paper',
-                        'depends': ['import', 'journals_extract']},
+                        'depends': ['import', 'journals_extract'],
+                        'additional_init': False},
+    'lda_grid_search': {'module': 'lda_grid_search',
+                        'depends': ['preprocess', 'terms_generate'],
+                        'additional_init': False},
 }
 
 
@@ -145,6 +167,16 @@ def init_project(slrkit_args):
             if not slrkit_args.no_backup:
                 shutil.copy2(p, p.with_suffix(p.suffix + '.bak'))
 
+        # the command requires extra initialization?
+        if SCRIPTS[configname]['additional_init']:
+            if configname == 'optimize_lda':
+                ga_params = config_dir / 'optimize_lda_ga_params.toml'
+                if not ga_params.exists():
+                    shutil.copy2(SLRKIT_DIR / 'ga_param.toml', ga_params)
+
+                conf['ga_params'] = str(config_dir / 'optimize_lda_ga_params.toml')
+            else:  # if here, no code for the additional init
+                raise AddionalInitNotProvvidedError(configname)
         with open(p, 'w') as file:
             file.write(tomlkit.dumps(conf))
 
@@ -311,6 +343,10 @@ def optimize_lda(args):
     os.chdir(args.cwd)
 
     lda_grid_search(cmd_args)
+
+
+def lda_grid_search(args):
+    pass
 
 
 def run_fawoc(args):

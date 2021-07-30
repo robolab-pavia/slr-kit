@@ -280,12 +280,10 @@ def init_argparser():
                         help='path to the file with the classified terms.',
                         input=True)
     parser.add_argument('ga_params', action='store', type=Path,
-                        help='path to the file with the parameters for the ga.',
-                        non_standard=True)
+                        help='path to the file with the parameters for the ga.')
     parser.add_argument('outdir', action='store', type=Path, nargs='?',
                         default=Path.cwd(), help='path to the directory where '
-                                                 'to save the results.',
-                        non_standard=True)
+                                                 'to save the results.')
     parser.add_argument('--text-column', '-t', action='store', type=str,
                         default='abstract_lem', dest='target_column',
                         help='Column in preproc_file to process. '
@@ -303,7 +301,7 @@ def init_argparser():
     parser.add_argument('--acronyms', '-a',
                         help='TSV files with the approved acronyms')
     parser.add_argument('--seed', type=int, action=ValidateInt,
-                        help='Seed to be used in training. The ga uses seed + 1')
+                        help='Seed to be used in training.')
     parser.add_argument('--placeholder', '-p',
                         default=STOPWORD_PLACEHOLDER,
                         help='Placeholder for barrier word. Also used as a '
