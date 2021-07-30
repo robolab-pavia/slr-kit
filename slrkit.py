@@ -430,6 +430,24 @@ def init_argparser():
                                          description=help_str)
 
     parser_import.set_defaults(func=run_import)
+    # journals
+    help_str = 'Subcommand to extract and filter a list of journals. ' \
+               'Requires a subcommand.'
+    journals_p = subparser.add_parser('journals', help=help_str,
+                                      description=help_str)
+
+    journals_subp = journals_p.add_subparsers(title='journals commands',
+                                              dest='journals_operation')
+    # journal_lister
+    help_str = 'Prepare a list of journals, suitable to be classified with ' \
+               'fawoc.'
+    journals_subp.add_parser('extract', help=help_str, description=help_str)
+    # filter_paper
+    help_str = 'Filters the abstracts file marking the papers published in ' \
+               'the approved journals as "good".'
+    journals_subp.add_parser('filter', help=help_str, description=help_str)
+
+    journals_p.set_defaults(func=run_journals)
     # acronyms
     help_str = 'Extract acronyms from texts.'
     parser_acronyms = subparser.add_parser('acronyms', help=help_str,
@@ -452,20 +470,6 @@ def init_argparser():
     # terms_generate
     help_str = 'Generates a list of terms from documents in a slr-kit project'
     terms_subp.add_parser('generate', help=help_str, description=help_str)
-    # lda
-    help_str = 'Run the lda stage in a slr-kit project'
-    parser_lda = subparser.add_parser('lda', help=help_str,
-                                      description=help_str)
-    parser_lda.add_argument('--config', '-c',
-                            help='Path to the toml file to be used instead of '
-                                 'the project one')
-    parser_lda.set_defaults(func=run_lda)
-    # optimize_lda
-    help_str = 'Run an optimization phase for the lda stage in a slr-kit project'
-    parser_optimize_lda = subparser.add_parser('optimize_lda',
-                                               help=help_str,
-                                               description=help_str)
-    parser_optimize_lda.set_defaults(func=optimize_lda)
     # fawoc
     help_str = 'Run fawoc in a slr-kit project.'
     parser_fawoc = subparser.add_parser('fawoc', help=help_str,
@@ -482,6 +486,14 @@ def init_argparser():
     parser_fawoc.add_argument('--width', '-w', action='store', type=int,
                               help='Width of fawoc windows.')
     parser_fawoc.set_defaults(func=run_fawoc)
+    # lda
+    help_str = 'Run the lda stage in a slr-kit project'
+    parser_lda = subparser.add_parser('lda', help=help_str,
+                                      description=help_str)
+    parser_lda.add_argument('--config', '-c',
+                            help='Path to the toml file to be used instead of '
+                                 'the project one')
+    parser_lda.set_defaults(func=run_lda)
     # report
     help_str = 'Run the report creation script in a slr-kit project.'
     parser_report = subparser.add_parser('report', help=help_str,
@@ -490,24 +502,12 @@ def init_argparser():
                                                  'containing the LDA '
                                                  'topic-paper results.')
     parser_report.set_defaults(func=run_report)
-    # journals
-    help_str = 'Subcommand to extract and filter a list of journals. ' \
-               'Requires a subcommand.'
-    journals_p = subparser.add_parser('journals', help=help_str,
-                                      description=help_str)
-
-    journals_subp = journals_p.add_subparsers(title='journals commands',
-                                              dest='journals_operation')
-    # journal_lister
-    help_str = 'Prepare a list of journals, suitable to be classified with ' \
-               'fawoc.'
-    journals_subp.add_parser('extract', help=help_str, description=help_str)
-    # filter_paper
-    help_str = 'Filters the abstracts file marking the papers published in ' \
-               'the approved journals as "good".'
-    journals_subp.add_parser('filter', help=help_str, description=help_str)
-
-    journals_p.set_defaults(func=run_journals)
+    # optimize_lda
+    help_str = 'Run an optimization phase for the lda stage in a slr-kit project'
+    parser_optimize_lda = subparser.add_parser('optimize_lda',
+                                               help=help_str,
+                                               description=help_str)
+    parser_optimize_lda.set_defaults(func=optimize_lda)
     return parser
 
 
