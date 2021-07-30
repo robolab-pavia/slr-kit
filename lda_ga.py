@@ -595,11 +595,6 @@ def prepare_ga_toolbox(max_no_below, params):
 def lda_ga_optimization(args):
     logger = setup_logger('debug_logger', args.logfile, level=logging.DEBUG)
     logger.info('==== lda_ga_grid_search started ====')
-    now = datetime.now()
-    outdir = args.outdir / f'{now:%Y-%m-%d_%H%M%S}_lda_results'
-    outdir.mkdir(exist_ok=True, parents=True)
-    model_dir = outdir / 'models'
-    model_dir.mkdir(exist_ok=True)
 
     relevant_prefix = args.placeholder
     additional_keyword = prepare_additional_keyword(args)
@@ -639,6 +634,13 @@ def lda_ga_optimization(args):
                               * params['algorithm']['generations']))
     print('Estimated trainings:', estimated_trainings)
     logger.info(f'Estimated trainings: {estimated_trainings}')
+
+    # prepare result directories
+    now = datetime.now()
+    outdir = args.outdir / f'{now:%Y-%m-%d_%H%M%S}_lda_results'
+    outdir.mkdir(exist_ok=True, parents=True)
+    model_dir = outdir / 'models'
+    model_dir.mkdir(exist_ok=True)
 
     q = Queue(estimated_trainings)
     optimization(docs, params, toolbox, q, args, model_dir)
