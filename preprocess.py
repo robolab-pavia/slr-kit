@@ -7,9 +7,9 @@ from multiprocessing import Pool
 from timeit import default_timer as timer
 from typing import Generator, Tuple, Sequence
 
-import pandas as pd
 import nltk
-nltk.download('wordnet')
+import pandas as pd
+
 from nltk.stem.wordnet import WordNetLemmatizer
 from psutil import cpu_count
 
@@ -452,6 +452,13 @@ def load_relevant_terms(input_file):
 
 
 def preprocess(args):
+    # download wordnet
+    try:
+        nltk.download('wordnet', quiet=True, raise_on_error=True)
+    except ValueError as e:
+        msg = 'Download of nltk wordnet failed: nltk reported: {}'
+        sys.exit(msg.format(e.args[0]))
+
     if args.language not in AVAILABLE_LEMMATIZERS:
         print(f'Language {args.language!r} is not available', file=sys.stderr)
         sys.exit(1)
