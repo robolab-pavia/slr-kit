@@ -271,9 +271,7 @@ class LdaIndividual:
 def init_argparser():
     """Initialize the command line parser."""
     epilog = 'The script tests different lda models with different ' \
-             'parameters and it tries to find the best model. The optimal ' \
-             'number of topic is searched in the interval specified by the ' \
-             'user on the command line.'
+             'parameters and it tries to find the best model using a GA.'
     parser = ArgParse(description='Performs the LDA on a dataset', epilog=epilog)
     parser.add_argument('preproc_file', action='store', type=Path,
                         help='path to the the preprocess file with the text to '
@@ -282,12 +280,12 @@ def init_argparser():
                         help='path to the file with the classified terms.',
                         input=True)
     parser.add_argument('ga_params', action='store', type=Path,
-                        help='path to the file with the parameters for the ga.')
+                        help='path to the file with the parameters for the ga.',
+                        non_standard=True)
     parser.add_argument('outdir', action='store', type=Path, nargs='?',
                         default=Path.cwd(), help='path to the directory where '
                                                  'to save the results.',
                         non_standard=True)
-
     parser.add_argument('--text-column', '-t', action='store', type=str,
                         default='abstract_lem', dest='target_column',
                         help='Column in preproc_file to process. '
