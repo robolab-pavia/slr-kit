@@ -312,6 +312,9 @@ def init_argparser():
     parser.add_argument('--delimiter', action='store', type=str,
                         default='\t', help='Delimiter used in preproc_file. '
                                            'Default %(default)r')
+    parser.add_argument('--no_timestamp', action='store_true',
+                        help='if set, no timestamp is added to the topics file '
+                             'names')
     parser.add_argument('--logfile', default='slr-kit.log',
                         help='log file name. If omitted %(default)r is used',
                         logfile=True)
@@ -649,10 +652,11 @@ def lda_ga_optimization(args):
     model = LdaModel.load(str(lda_path / 'model'))
     dictionary = Dictionary.load(str(lda_path / 'model_dictionary'))
     topics, docs_topics, _ = prepare_topics(model, docs, titles, dictionary)
-    output_topics(topics, docs_topics, outdir, 'best-model')
+    output_topics(topics, docs_topics, args.outdir, 'lda',
+                  use_timestamp=not args.no_timestamp)
 
     save_toml_files(args, df, outdir)
-    df.to_csv(outdir / 'results.csv', sep='\t', index_label='id')
+    df.to_csv(args.outdir / 'results.csv', sep='\t', index_label='id')
     with pd.option_context('display.width', 80,
                            'display.float_format', '{:,.3f}'.format):
         print(df)

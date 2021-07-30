@@ -102,6 +102,9 @@ def init_argparser():
                              'named "model" is searched. the loaded model is '
                              'used with the dataset file to generate the topics'
                              ' and the topic document association')
+    parser.add_argument('--no_timestamp', action='store_true',
+                        help='if set, no timestamp is added to the topics file '
+                             'names')
     parser.add_argument('--placeholder', '-p',
                         default=STOPWORD_PLACEHOLDER,
                         help='Placeholder for barrier word. Also used as a '
@@ -482,7 +485,7 @@ def load_documents(preproc_file, target_col, title_col, delimiter,
     return documents, titles
 
 
-def output_topics(topics, docs_topics, outdir, file_prefix):
+def output_topics(topics, docs_topics, outdir, file_prefix, use_timestamp=True):
     """
     Saves the topics and docs-topics association to json files
 
@@ -497,14 +500,20 @@ def output_topics(topics, docs_topics, outdir, file_prefix):
     :type outdir: Path
     :param file_prefix: prefix of the files
     :type file_prefix: str
+    :param use_timestamp: if True (the default) add a timestamp to file names
+    :type use_timestamp: bool
     """
-    now = datetime.now()
-    name = f'{file_prefix}_terms-topics_{now:%Y-%m-%d_%H%M%S}.json'
+    if use_timestamp:
+        now = datetime.now()
+        timestamp = f'{now:_%Y-%m-%d_%H%M%S}'
+    else:
+        timestamp = ''
+    name = f'{file_prefix}_terms-topics{timestamp}.json'
     topic_file = outdir / name
     with open(topic_file, 'w') as file:
         json.dump(topics, file, indent='\t')
 
-    name = f'{file_prefix}_docs-topics_{now:%Y-%m-%d_%H%M%S}.json'
+    name = f'{file_prefix}_docs-topics{timestamp}.json'
     docs_file = outdir / name
     with open(docs_file, 'w') as file:
         json.dump(docs_topics, file, indent='\t')
@@ -585,7 +594,8 @@ def lda(args):
                                                               dictionary)
 
     print(f'Average topic coherence: {avg_topic_coherence:.4f}.')
-    output_topics(topics, docs_topics, output_dir, 'lda')
+    output_topics(topics, docs_topics, output_dir, 'lda',
+                  use_timestamp=not args.no_timestamp)
 
     if args.model:
         lda_path: Path = args.outdir / 'lda_model'
