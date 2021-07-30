@@ -7,22 +7,44 @@ import sys
 
 import tomlkit
 
+
+class AddionalInitNotProvvidedError(Exception):
+    def __str__(self):
+        return f'Additional initialization code not provvided for {self.args[0]}'
+
+
+SLRKIT_DIR = pathlib.Path(__file__).parent
 SCRIPTS = {
     # config_file: module_name
-    'import': {'module': 'import_biblio', 'depends': []},
-    'acronyms': {'module': 'acronyms', 'depends': ['import']},
-    'preprocess': {'module': 'preprocess', 'depends': ['import']},
-    'terms_generate': {'module': 'gen_terms', 'depends': ['preprocess']},
-    'lda': {'module': 'lda', 'depends': ['preprocess', 'terms_generate']},
-    'optimize_lda': {'module': 'lda_grid_search',
-                     'depends': ['preprocess', 'terms_generate']},
-    'fawoc_terms': {'module': 'fawoc.fawoc', 'depends': ['terms_generate']},
-    'fawoc_acronyms': {'module': 'fawoc.fawoc', 'depends': ['acronyms']},
-    'fawoc_journals': {'module': 'fawoc.fawoc', 'depends': ['journals_extract']},
-    'report': {'module': 'topic_report', 'depends': []},
-    'journals_extract': {'module': 'journal_lister', 'depends': []},
+    'import': {'module': 'import_biblio', 'depends': [],
+               'additional_init': False},
+    'acronyms': {'module': 'acronyms', 'depends': ['import'],
+                 'additional_init': False},
+    'preprocess': {'module': 'preprocess', 'depends': ['import'],
+                   'additional_init': False},
+    'terms_generate': {'module': 'gen_terms', 'depends': ['preprocess'],
+                       'additional_init': False},
+    'lda': {'module': 'lda', 'depends': ['preprocess', 'terms_generate'],
+            'additional_init': False},
+    'optimize_lda': {'module': 'lda_ga',
+                     'depends': ['preprocess', 'terms_generate'],
+                     'additional_init': True},
+    'fawoc_terms': {'module': 'fawoc.fawoc', 'depends': ['terms_generate'],
+                    'additional_init': False},
+    'fawoc_acronyms': {'module': 'fawoc.fawoc', 'depends': ['acronyms'],
+                       'additional_init': False},
+    'fawoc_journals': {'module': 'fawoc.fawoc', 'depends': ['journals_extract'],
+                       'additional_init': False},
+    'report': {'module': 'topic_report', 'depends': [],
+               'additional_init': False},
+    'journals_extract': {'module': 'journal_lister', 'depends': [],
+                         'additional_init': False},
     'journals_filter': {'module': 'filter_paper',
-                        'depends': ['import', 'journals_extract']},
+                        'depends': ['import', 'journals_extract'],
+                        'additional_init': False},
+    'lda_grid_search': {'module': 'lda_grid_search',
+                        'depends': ['preprocess', 'terms_generate'],
+                        'additional_init': False},
 }
 
 
@@ -145,6 +167,16 @@ def init_project(slrkit_args):
             if not slrkit_args.no_backup:
                 shutil.copy2(p, p.with_suffix(p.suffix + '.bak'))
 
+        # the command requires extra initialization?
+        if SCRIPTS[configname]['additional_init']:
+            if configname == 'optimize_lda':
+                ga_params = config_dir / 'optimize_lda_ga_params.toml'
+                if not ga_params.exists():
+                    shutil.copy2(SLRKIT_DIR / 'ga_param.toml', ga_params)
+
+                conf['ga_params'] = str(config_dir / 'optimize_lda_ga_params.toml')
+            else:  # if here, no code for the additional init
+                raise AddionalInitNotProvvidedError(configname)
         with open(p, 'w') as file:
             file.write(tomlkit.dumps(conf))
 
@@ -159,7 +191,7 @@ def init_project(slrkit_args):
         file.write(tomlkit.dumps(metadoc))
 
 
-def check_project(args, filename):
+def check_project(args, filename, from_project=True):
     metafile = args.cwd / 'META.toml'
     try:
         meta = toml_load(metafile)
@@ -171,7 +203,10 @@ def check_project(args, filename):
     except KeyError:
         msg = 'Error: {} is invalid invalid, no "Config" entry found'
         sys.exit(msg.format(metafile.resolve().absolute()))
-    config_file = config_dir / filename
+    if from_project:
+        config_file = config_dir / filename
+    else:
+        config_file = pathlib.Path(filename)
     try:
         config = toml_load(config_file)
     except FileNotFoundError:
@@ -267,8 +302,13 @@ def run_terms(args):
 
 
 def run_lda(args):
-    confname = 'lda.toml'
-    config, config_dir, meta = check_project(args, confname)
+    if args.config is not None:
+        confname = args.config
+        from_project = False
+    else:
+        confname = 'lda.toml'
+        from_project = True
+    config, config_dir, meta = check_project(args, confname, from_project)
     from lda import lda, init_argparser as lda_argparse
     script_args = lda_argparse().slrkit_arguments
     cmd_args = prepare_script_arguments(config, config_dir, confname,
@@ -287,6 +327,17 @@ def run_lda(args):
 
 def optimize_lda(args):
     confname = 'optimize_lda.toml'
+    config, config_dir, meta = check_project(args, confname)
+    from lda_ga import lda_ga_optimization, init_argparser as lda_ga_argparse
+    script_args = lda_ga_argparse().slrkit_arguments
+    cmd_args = prepare_script_arguments(config, config_dir, confname,
+                                        script_args)
+    os.chdir(args.cwd)
+    lda_ga_optimization(cmd_args)
+
+
+def lda_grid_search_command(args):
+    confname = 'lda_grid_search.toml'
     config, config_dir, meta = check_project(args, confname)
     from lda_grid_search import lda_grid_search, init_argparser as lda_gs_argparse
     script_args = lda_gs_argparse().slrkit_arguments
@@ -422,6 +473,24 @@ def init_argparser():
                                          description=help_str)
 
     parser_import.set_defaults(func=run_import)
+    # journals
+    help_str = 'Subcommand to extract and filter a list of journals. ' \
+               'Requires a subcommand.'
+    journals_p = subparser.add_parser('journals', help=help_str,
+                                      description=help_str)
+
+    journals_subp = journals_p.add_subparsers(title='journals commands',
+                                              dest='journals_operation')
+    # journal_lister
+    help_str = 'Prepare a list of journals, suitable to be classified with ' \
+               'fawoc.'
+    journals_subp.add_parser('extract', help=help_str, description=help_str)
+    # filter_paper
+    help_str = 'Filters the abstracts file marking the papers published in ' \
+               'the approved journals as "good".'
+    journals_subp.add_parser('filter', help=help_str, description=help_str)
+
+    journals_p.set_defaults(func=run_journals)
     # acronyms
     help_str = 'Extract acronyms from texts.'
     parser_acronyms = subparser.add_parser('acronyms', help=help_str,
@@ -444,17 +513,6 @@ def init_argparser():
     # terms_generate
     help_str = 'Generates a list of terms from documents in a slr-kit project'
     terms_subp.add_parser('generate', help=help_str, description=help_str)
-    # lda
-    help_str = 'Run the lda stage in a slr-kit project'
-    parser_lda = subparser.add_parser('lda', help=help_str,
-                                      description=help_str)
-    parser_lda.set_defaults(func=run_lda)
-    # optimize_lda
-    help_str = 'Run an optimization phase for the lda stage in a slr-kit project'
-    parser_optimize_lda = subparser.add_parser('optimize_lda',
-                                               help=help_str,
-                                               description=help_str)
-    parser_optimize_lda.set_defaults(func=optimize_lda)
     # fawoc
     help_str = 'Run fawoc in a slr-kit project.'
     parser_fawoc = subparser.add_parser('fawoc', help=help_str,
@@ -471,6 +529,14 @@ def init_argparser():
     parser_fawoc.add_argument('--width', '-w', action='store', type=int,
                               help='Width of fawoc windows.')
     parser_fawoc.set_defaults(func=run_fawoc)
+    # lda
+    help_str = 'Run the lda stage in a slr-kit project'
+    parser_lda = subparser.add_parser('lda', help=help_str,
+                                      description=help_str)
+    parser_lda.add_argument('--config', '-c',
+                            help='Path to the toml file to be used instead of '
+                                 'the project one')
+    parser_lda.set_defaults(func=run_lda)
     # report
     help_str = 'Run the report creation script in a slr-kit project.'
     parser_report = subparser.add_parser('report', help=help_str,
@@ -479,24 +545,20 @@ def init_argparser():
                                                  'containing the LDA '
                                                  'topic-paper results.')
     parser_report.set_defaults(func=run_report)
-    # journals
-    help_str = 'Subcommand to extract and filter a list of journals. ' \
-               'Requires a subcommand.'
-    journals_p = subparser.add_parser('journals', help=help_str,
-                                      description=help_str)
-
-    journals_subp = journals_p.add_subparsers(title='journals commands',
-                                              dest='journals_operation')
-    # journal_lister
-    help_str = 'Prepare a list of journals, suitable to be classified with ' \
-               'fawoc.'
-    journals_subp.add_parser('extract', help=help_str, description=help_str)
-    # filter_paper
-    help_str = 'Filters the abstracts file marking the papers published in ' \
-               'the approved journals as "good".'
-    journals_subp.add_parser('filter', help=help_str, description=help_str)
-
-    journals_p.set_defaults(func=run_journals)
+    # optimize_lda
+    help_str = 'Run an optimization phase for the lda stage in a' \
+               'slr-kit project, using a GA.'
+    parser_optimize_lda = subparser.add_parser('optimize_lda',
+                                               help=help_str,
+                                               description=help_str)
+    parser_optimize_lda.set_defaults(func=optimize_lda)
+    # lda_grid_search
+    help_str = 'Run an optimization phase for the lda stage in a ' \
+               'slr-kit project using a grid search method'
+    parser_optimize_lda = subparser.add_parser('lda_grid_search',
+                                               help=help_str,
+                                               description=help_str)
+    parser_optimize_lda.set_defaults(func=lda_grid_search_command)
     return parser
 
 

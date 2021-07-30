@@ -1,0 +1,30 @@
+[limits]
+min_topics = 5
+max_topics = 20
+max_no_below = -1 # -1 means number_of_documents / 10
+min_no_above = 0.1
+[algorithm]
+mu = 100 # number of individuals that will pass each generation
+lambda = 20 # number of individuals that are generated at each generation
+initial = 100 # initial population
+generations = 10
+tournament_size = 10 # number of individuals randomly selected for the selection tournament
+[probabilities]
+mutate = 0.2 # probability of mutation
+component_mutation = 0.05 # probability of a mutation of each individual component
+mate = 0.5 # probability of crossover (mating)
+no_filter = 0.5 # probability that a new individual is created with no term filter (no_above = no_below = 1)
+[mutate]
+# if a component is selected for mutation, a random gaussian number with mu mean and sigma standard deviation is added to the component
+topics.mu = 0
+topics.sigma = 1
+alpha_val.mu = 0
+alpha_val.sigma = 1
+beta.mu = 0
+beta.sigma = 1
+no_above.mu = 0
+no_above.sigma = 1
+no_below.mu = 0
+no_below.sigma = 1
+alpha_type.mu = 0
+alpha_type.sigma = 1

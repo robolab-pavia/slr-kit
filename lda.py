@@ -7,11 +7,12 @@ Introduces Gensim's LDA model and demonstrates its use on the NIPS corpus.
 """
 import sys
 # disable warnings if they are not explicitly wanted
+import tomlkit
+
 if not sys.warnoptions:
     import warnings
     warnings.simplefilter('ignore')
 
-import argparse
 import json
 from datetime import datetime
 from itertools import repeat
@@ -36,7 +37,7 @@ def init_argparser():
     Initialize the command line parser.
 
     :return: the command line parser
-    :rtype: argparse.ArgumentParser
+    :rtype: ArgParse
     """
     epilog = "This script outputs the topics in " \
              "<outdir>/lda_terms-topics_<date>_<time>.json and the topics" \
@@ -101,6 +102,9 @@ def init_argparser():
                              'named "model" is searched. the loaded model is '
                              'used with the dataset file to generate the topics'
                              ' and the topic document association')
+    parser.add_argument('--no_timestamp', action='store_true',
+                        help='if set, no timestamp is added to the topics file '
+                             'names')
     parser.add_argument('--placeholder', '-p',
                         default=STOPWORD_PLACEHOLDER,
                         help='Placeholder for barrier word. Also used as a '
@@ -109,6 +113,10 @@ def init_argparser():
     parser.add_argument('--delimiter', action='store', type=str,
                         default='\t', help='Delimiter used in preproc_file. '
                                            'Default %(default)r')
+    parser.add_argument('--config', '-c', action='store', type=Path,
+                        help='Path to a toml config file like the one used by '
+                             'the slrkit lda command. It overrides all the cli '
+                             'arguments.', cli_only=True)
     return parser
 
 
@@ -382,7 +390,8 @@ def train_lda_model(docs, topics=20, alpha='auto', beta='auto', no_above=0.5,
         alpha=alpha,
         eta=beta,
         num_topics=topics,
-        random_state=seed
+        random_state=seed,
+        minimum_probability=0.0
     )
     return model, dictionary
 
@@ -427,7 +436,7 @@ def prepare_topics(model, docs, titles, dictionary):
 
     cm = CoherenceModel(model=model, texts=not_empty_docs,
                         dictionary=dictionary,
-                        coherence='c_v', processes=PHYSICAL_CPUS)
+                        coherence='c_v', processes=1)  # PHYSICAL_CPUS)
 
     # Average topic coherence is the sum of topic coherences of all topics,
     # divided by the number of topics.
@@ -476,7 +485,7 @@ def load_documents(preproc_file, target_col, title_col, delimiter,
     return documents, titles
 
 
-def output_topics(topics, docs_topics, outdir, file_prefix):
+def output_topics(topics, docs_topics, outdir, file_prefix, use_timestamp=True):
     """
     Saves the topics and docs-topics association to json files
 
@@ -491,31 +500,48 @@ def output_topics(topics, docs_topics, outdir, file_prefix):
     :type outdir: Path
     :param file_prefix: prefix of the files
     :type file_prefix: str
+    :param use_timestamp: if True (the default) add a timestamp to file names
+    :type use_timestamp: bool
     """
-    now = datetime.now()
-    name = f'{file_prefix}_terms-topics_{now:%Y-%m-%d_%H%M%S}.json'
+    if use_timestamp:
+        now = datetime.now()
+        timestamp = f'{now:_%Y-%m-%d_%H%M%S}'
+    else:
+        timestamp = ''
+    name = f'{file_prefix}_terms-topics{timestamp}.json'
     topic_file = outdir / name
     with open(topic_file, 'w') as file:
         json.dump(topics, file, indent='\t')
 
-    name = f'{file_prefix}_docs-topics_{now:%Y-%m-%d_%H%M%S}.json'
+    name = f'{file_prefix}_docs-topics{timestamp}.json'
     docs_file = outdir / name
     with open(docs_file, 'w') as file:
         json.dump(docs_topics, file, indent='\t')
 
 
-def load_acronyms(args):
-    acro_df = pd.read_csv(args.acronyms, delimiter='\t', encoding='utf-8')
-    assert_column(args.acronyms, acro_df, ['term', 'label'])
-    acronyms = []
-    for _, row in acro_df.iterrows():
-        if row['label'] not in ['relevant', 'keyword']:
-            continue
+def prepare_additional_keyword(args):
+    additional_keyword = set()
+    if args.additional_file is not None:
+        for sfile in args.additional_file:
+            additional_keyword |= load_additional_terms(sfile)
+    return additional_keyword
 
-        sp = row['term'].split('|')
-        acronyms.append(sp[1].strip(' ()').lower())
-    del acro_df
-    return acronyms
+
+def prepare_acronyms(args):
+    if args.acronyms is not None:
+        acro_df = pd.read_csv(args.acronyms, delimiter='\t', encoding='utf-8')
+        assert_column(args.acronyms, acro_df, ['term', 'label'])
+        acronyms = []
+        for _, row in acro_df.iterrows():
+            if row['label'] not in ['relevant', 'keyword']:
+                continue
+
+            sp = row['term'].split('|')
+            acronyms.append(sp[1].strip(' ()').lower())
+        del acro_df
+        return acronyms
+    else:
+        return None
 
 
 def lda(args):
@@ -532,16 +558,8 @@ def lda(args):
     else:
         labels = ('keyword', 'relevant')
 
-    additional_keyword = set()
-
-    if args.additional_file is not None:
-        for sfile in args.additional_file:
-            additional_keyword |= load_additional_terms(sfile)
-
-    if args.acronyms is not None:
-        acronyms = load_acronyms(args)
-    else:
-        acronyms = None
+    additional_keyword = prepare_additional_keyword(args)
+    acronyms = prepare_acronyms(args)
 
     docs, titles = prepare_documents(preproc_file, terms_file,
                                      not args.no_ngrams, labels,
@@ -576,7 +594,8 @@ def lda(args):
                                                               dictionary)
 
     print(f'Average topic coherence: {avg_topic_coherence:.4f}.')
-    output_topics(topics, docs_topics, output_dir, 'lda')
+    output_topics(topics, docs_topics, output_dir, 'lda',
+                  use_timestamp=not args.no_timestamp)
 
     if args.model:
         lda_path: Path = args.outdir / 'lda_model'
@@ -586,7 +605,23 @@ def lda(args):
 
 
 def main():
-    args = init_argparser().parse_args()
+    parser = init_argparser()
+    args = parser.parse_args()
+    if args.config is not None:
+        try:
+            with open(args.config) as file:
+                config = tomlkit.loads(file.read())
+        except FileNotFoundError:
+            msg = 'Error: config file {} not found'
+            sys.exit(msg.format(args.config))
+
+        from slrkit import prepare_script_arguments
+        args = prepare_script_arguments(config, args.config.parent,
+                                        args.config.name,
+                                        parser.slrkit_arguments)
+        # handle the outdir parameter
+        param = Path(config.get('outdir', Path.cwd()))
+        setattr(args, 'outdir', param.resolve())
     lda(args)
 
 

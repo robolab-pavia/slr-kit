@@ -18,3 +18,4 @@ tabulate
 Jinja2
 tomlkit
 git+https://github.com/robolab-pavia/slr-kit-utils.git
+deap
