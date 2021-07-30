@@ -180,9 +180,6 @@ def replace_ngram(text, n_grams):
     The n-grams and their placeholder are taken from the generator n_grams, that
     must be a generator that yields a tuple (placeholder, n-gram). Each n-gram
     must be a tuple of strings.
-    The function can also check if the toke immediately after the replaced
-    n-gram is equal to the placeholder to remove it. This is useful for acronyms
-    because, usually the abbreviation immediately follows the extended acronym.
 
     :param text: the text to search
     :type text: list[str]
@@ -209,6 +206,35 @@ def replace_ngram(text, n_grams):
     return text2
 
 
+def acronyms_abbr_generator(acronyms, prefix_suffix=STOPWORD_PLACEHOLDER):
+    """
+    Generator that yields the acronyms abbreviation and the relative placeholder for replace_ngram
+
+    The acronyms Dataframe must have the format defined by the acronyms.py script.
+    The Dataframe must have two columns 'term' and 'label'.
+    'term' must contain the acronym in the form '<extended acronym> | (<abbreviation>)'
+    'label' is the classification made with fawoc. Only the rows with label equal
+    to 'relevant' or 'keyword' will be considered.
+    The placeholder for each acronym is <prefix_suffix><abbreviation><prefix_suffix>
+
+    :param acronyms: the acronyms to replace in each document. Must have two
+        columns 'term' and 'label'. See above for the format.
+    :type acronyms: pd.DataFrame
+    :param prefix_suffix: prefix and suffix used to create the placeholder
+    :type prefix_suffix: str
+    :return: a generator that yields the placeholder and the acronym
+    :rtype: Generator[tuple[str, tuple[str]], Any, None]
+    """
+    for _, row in acronyms.iterrows():
+        if row['label'] not in ['relevant', 'keyword']:
+            continue
+
+        sp = row['term'].split('|')
+        acronym = sp[1].strip(' ()')
+        sub = f'{prefix_suffix}{acronym}{prefix_suffix}'
+        yield sub, (acronym, )
+
+
 def acronyms_generator(acronyms, prefix_suffix=STOPWORD_PLACEHOLDER):
     """
     Generator that yields acronyms and the relative placeholder for replace_ngram
@@ -219,8 +245,8 @@ def acronyms_generator(acronyms, prefix_suffix=STOPWORD_PLACEHOLDER):
     'label' is the classification made with fawoc. Only the rows with label equal
     to 'relevant' or 'keyword' will be considered.
     The placeholder for each acronym is <prefix_suffix><abbreviation><prefix_suffix>
-    The function yields for each acronym: the extended acronym, the extended
-    acronym with all the word separated by '-' and the abbreviation of the acronym
+    The function yields for each acronym: the extended acronym and the extended
+    acronym with all the word separated by '-'.
     Each acronym is yielded as a tuple of strings.
 
     :param acronyms: the acronyms to replace in each document. Must have two
@@ -242,10 +268,23 @@ def acronyms_generator(acronyms, prefix_suffix=STOPWORD_PLACEHOLDER):
         yield sub, extended
         alt = ('-'.join(extended), )
         yield sub, alt
-        yield sub, (acronym, )
 
 
 def language_specific_regex(text, lang='en'):
+    """
+    Applies some regex specific for a language
+
+    This function marks everything that is a barrier with '---'. This is done
+    because the regex may delete all special character included the ones in the
+    barrier placeholder, but the '-' is always preserved.
+    Remember to change the '---' with the barrier.
+    :param text: text to elaborate
+    :type text: str
+    :param lang: code of the language (e.g. 'en' for english)
+    :type lang: str
+    :return: the elaborated text
+    :rtype: str
+    """
     # The first step in every language is to change punctuations to the stop-word
     # placeholder. The stop-word placeholder can be anything, so we have to change
     # the punctuation with something that will survive the special char removal.
@@ -276,6 +315,24 @@ def language_specific_regex(text, lang='en'):
 
 def regex(text, stopword_placeholder=STOPWORD_PLACEHOLDER, lang='en',
           regex_df=None):
+    """
+    Applies some regex to a text
+
+    This function applies the regex defined in the regex_df.
+    It also applies the language specific regex and some standard regex and it
+    changes the '---' with the barrier.
+    :param text: text to elaborate
+    :type text: str
+    :param stopword_placeholder: string used as placeholder for the stopwords
+        and the barriers
+    :type stopword_placeholder: str
+    :param lang: code of the language (e.g. 'en' for english)
+    :type lang: str
+    :param regex_df: dataframe with the regex to apply
+    :type regex_df: pd.DataFrame
+    :return: the elaborated text
+    :rtype: str
+    """
     # If a regex DataFrame for the specific project is passed,
     # this function will replace the patterns with the corresponding repl
     # parameter
@@ -305,7 +362,7 @@ def regex(text, stopword_placeholder=STOPWORD_PLACEHOLDER, lang='en',
     text = language_specific_regex(text, lang)
     # now we can search for ' --- ' and place the stop-word placeholder
     # the positive look-ahead and look-behind are to preserve the spaces
-    text = re.sub(r'(?<=\s)---(?=\s)', stopword_placeholder, text)
+    text = re.sub(r'---', stopword_placeholder, text)
     # remove any run of hyphens not surrounded by non space
     text = re.sub(r'(\s+-+\s+|(?<=\S)-+\s+|\s+-+(?=\S))|(-{2,})', ' ', text)
 
@@ -365,13 +422,21 @@ def preprocess_item(item, relevant_terms, stopwords, acronyms, language='en',
     :rtype: list[str]
     """
     lem = get_lemmatizer(language)
+    # replace acronym abbreviation - it's done here because we need to search
+    # the abbreviation in case sensitive mode. To mark the barrier, we use '---'
+    # as placeholder because is preserved and substituted with the proper string
+    # by the regex function
+    text = item
+    for pl, abbr in acronyms_abbr_generator(acronyms, '---'):
+        text = re.sub(rf'\b{abbr[0]}\b', pl, item)
+
     # Convert to lowercase
-    text = item.lower()
+    text = text.lower()
     # apply some regex to clean the text
     text = regex(text, placeholder, language, regex_df=regex_df)
     text = text.split(' ')
 
-    # replace acronyms
+    # replace extended acronyms
     text = replace_ngram(text, acronyms_generator(acronyms, relevant_prefix))
 
     text2 = [lem_word for _, lem_word in lem.lemmatize(text)]
@@ -380,9 +445,10 @@ def preprocess_item(item, relevant_terms, stopwords, acronyms, language='en',
     text2 = replace_ngram(text2,
                           relevant_generator(relevant_terms, relevant_prefix))
 
-    for i, word in enumerate(text2):
-        if word in stopwords:
-            text2[i] = placeholder
+    if len(stopwords) != 0:
+        for i, word in enumerate(text2):
+            if word in stopwords:
+                text2[i] = placeholder
 
     text2 = ' '.join(text2)
     return text2
