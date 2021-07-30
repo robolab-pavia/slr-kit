@@ -507,7 +507,10 @@ def save_toml_files(args, results_df, outdir):
         conf.add('beta', row['beta'])
         conf.add('no_below', row['no_below'])
         conf.add('no_above', row['no_above'])
-        conf.add('seed', row['seed'])
+        if row['seed'] is None:
+            conf.add('seed', '')
+        else:
+            conf.add('seed', row['seed'])
         conf.add('no-ngrams', args.no_ngrams)
         conf.add('model', False)
         conf.add('no-relevant', False)
