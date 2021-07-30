@@ -306,9 +306,6 @@ def init_argparser():
                         help='TSV files with the approved acronyms')
     parser.add_argument('--seed', type=int, action=ValidateInt,
                         help='Seed to be used in training. The ga uses seed + 1')
-    parser.add_argument('--result', '-r', metavar='FILENAME',
-                        help='Where to save the training results '
-                             'in CSV format. If "-", stdout is used.')
     parser.add_argument('--placeholder', '-p',
                         default=STOPWORD_PLACEHOLDER,
                         help='Placeholder for barrier word. Also used as a '
