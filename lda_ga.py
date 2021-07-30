@@ -27,8 +27,8 @@ from gensim.models import CoherenceModel, LdaModel
 
 from slrkit_utils.argument_parser import (AppendMultipleFilesAction, ArgParse,
                                           ValidateInt)
-from lda import (PHYSICAL_CPUS, prepare_documents, prepare_acronyms,
-                 prepare_additional_keyword, prepare_topics, output_topics)
+from lda import (PHYSICAL_CPUS, prepare_documents,
+                 prepare_topics, output_topics)
 from utils import STOPWORD_PLACEHOLDER, setup_logger
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
@@ -292,14 +292,6 @@ def init_argparser():
                         default='title', dest='title',
                         help='Column in preproc_file to use as document title. '
                              'If omitted %(default)r is used.')
-    parser.add_argument('--no-ngrams', action='store_true',
-                        help='if set do not use the ngrams')
-    parser.add_argument('--additional-terms', '-T',
-                        action=AppendMultipleFilesAction, nargs='+',
-                        metavar='FILENAME', dest='additional_file',
-                        help='Additional keywords files')
-    parser.add_argument('--acronyms', '-a',
-                        help='TSV files with the approved acronyms')
     parser.add_argument('--seed', type=int, action=ValidateInt,
                         help='Seed to be used in training.')
     parser.add_argument('--placeholder', '-p',
@@ -600,15 +592,10 @@ def lda_ga_optimization(args):
     logger.info('==== lda_ga_grid_search started ====')
 
     relevant_prefix = args.placeholder
-    additional_keyword = prepare_additional_keyword(args)
-    acronyms = prepare_acronyms(args)
-
     docs, titles = prepare_documents(args.preproc_file, args.terms_file,
-                                     not args.no_ngrams, ('keyword', 'relevant'),
+                                     ('keyword', 'relevant'),
                                      args.target_column, args.title,
                                      delimiter=args.delimiter,
-                                     additional_keyword=additional_keyword,
-                                     acronyms=acronyms,
                                      placeholder=args.placeholder,
                                      relevant_prefix=relevant_prefix)
 

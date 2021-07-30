@@ -23,8 +23,7 @@ from gensim.models import CoherenceModel, LdaModel
 
 from slrkit_utils.argument_parser import (AppendMultipleFilesAction, ArgParse,
                                           ValidateInt)
-from lda import (PHYSICAL_CPUS, prepare_documents, prepare_corpus,
-                 prepare_acronyms, prepare_additional_keyword)
+from lda import PHYSICAL_CPUS, prepare_documents, prepare_corpus
 from utils import STOPWORD_PLACEHOLDER, setup_logger
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
@@ -61,14 +60,6 @@ def init_argparser():
                         default='title', dest='title',
                         help='Column in preproc_file to use as document title. '
                              'If omitted %(default)r is used.')
-    parser.add_argument('--no-ngrams', action='store_true',
-                        help='if set do not use the ngrams')
-    parser.add_argument('--additional-terms', '-T',
-                        action=AppendMultipleFilesAction, nargs='+',
-                        metavar='FILENAME', dest='additional_file',
-                        help='Additional keywords files')
-    parser.add_argument('--acronyms', '-a',
-                        help='TSV files with the approved acronyms')
     parser.add_argument('--min-topics', '-m', type=int,
                         default=5, action=ValidateInt,
                         help='Minimum number of topics to retrieve '
@@ -253,9 +244,6 @@ def lda_grid_search(args):
     if args.min_topics > args.max_topics:
         sys.exit('max_topics must be greater than min_topics')
 
-    additional_keyword = prepare_additional_keyword(args)
-    acronyms = prepare_acronyms(args)
-
     topics_range = range(args.min_topics, args.max_topics + args.step_topics,
                          args.step_topics)
     # Alpha parameter
@@ -269,11 +257,8 @@ def lda_grid_search(args):
     no_above_list = [0.5, 0.6, 0.75, 1.0]
     for labels in [('keyword', 'relevant'), ('keyword',)]:
         docs, titles = prepare_documents(preproc_file, terms_file,
-                                         not args.no_ngrams, labels,
-                                         args.target_column, args.title,
+                                         labels, args.target_column, args.title,
                                          delimiter=args.delimiter,
-                                         additional_keyword=additional_keyword,
-                                         acronyms=acronyms,
                                          placeholder=placeholder,
                                          relevant_prefix=relevant_prefix)
 

@@ -5,6 +5,7 @@ LDA Model
 Introduces Gensim's LDA model and demonstrates its use on the NIPS corpus.
 
 """
+import re
 import sys
 # disable warnings if they are not explicitly wanted
 import tomlkit
@@ -62,12 +63,6 @@ def init_argparser():
                         default='title', dest='title',
                         help='Column in preproc_file to use as document title. '
                              'If omitted %(default)r is used.')
-    parser.add_argument('--additional-terms', '-T',
-                        action=AppendMultipleFilesAction, nargs='+',
-                        metavar='FILENAME', dest='additional_file',
-                        help='Additional keywords files')
-    parser.add_argument('--acronyms', '-a',
-                        help='TSV files with the approved acronyms')
     parser.add_argument('--topics', action='store', type=int,
                         default=20, help='Number of topics. If omitted '
                                          '%(default)s is used')
@@ -88,8 +83,6 @@ def init_argparser():
                                           'size, not an absolute number). If '
                                           'omitted %(default)s is used')
     parser.add_argument('--seed', type=int, help='Seed to be used in training')
-    parser.add_argument('--no-ngrams', action='store_true',
-                        help='if set do not use the ngrams')
     parser.add_argument('--model', action='store_true',
                         help='if set, the lda model is saved to directory '
                              '<outdir>/lda_model. The model is saved '
@@ -152,7 +145,20 @@ def check_ngram(doc, idx):
         yield idx[0] in r or idx[1] in r
 
 
-def filter_doc(d, ngram_len, terms):
+def filter_doc(d: str, ngram_len, terms, placeholder, relevant_prefix):
+    additional = []
+    end = False
+    idx = 0
+    d = re.sub(rf'\B{placeholder}\B', ' ', d)
+    while not end:
+        i = d.find(relevant_prefix, idx)
+        if i < 0:
+            end = True
+        else:
+            stop = d.find(relevant_prefix, i+1)
+            additional.append(((i+1, stop), d[i+1:stop]))
+            idx = stop + 1
+
     doc = []
     flag = False
     for n in ngram_len:
@@ -164,6 +170,8 @@ def filter_doc(d, ngram_len, terms):
                 doc.append((idx, t.replace(' ', '_')))
 
         flag = True
+
+    doc.extend(additional)
     doc.sort(key=lambda dd: dd[0])
     return [t[1] for t in doc]
 
@@ -182,58 +190,18 @@ def load_terms(terms_file, labels=('keyword', 'relevant')):
 def generate_filtered_docs_ngrams(terms_file, preproc_file,
                                   target_col='abstract_lem', title_col='title',
                                   delimiter='\t', labels=('keyword', 'relevant'),
-                                  additional=None, acronyms=None,
                                   placeholder=STOPWORD_PLACEHOLDER,
                                   relevant_prefix=STOPWORD_PLACEHOLDER):
     terms = load_ngrams(terms_file, labels)
-    keywords = []
-    if additional is not None:
-        keywords.extend(additional)
-
-    if acronyms is not None:
-        keywords.extend(acronyms)
-
-    for kw in keywords:
-        n = kw.count(' ') + 1
-        try:
-            terms[n].add(kw)
-        except KeyError:
-            # no terms with n words: add this category to include the
-            # additional keyword
-            terms[n] = {kw}
-
     ngram_len = sorted(terms, reverse=True)
-    documents, titles = load_documents(preproc_file, target_col, title_col,
-                                       delimiter, placeholder, relevant_prefix)
+    documents, titles = load_documents(preproc_file, target_col,
+                                       title_col, delimiter)
     with Pool(processes=PHYSICAL_CPUS) as pool:
         docs = pool.starmap(filter_doc, zip(documents, repeat(ngram_len),
-                                            repeat(terms)))
+                                            repeat(terms), repeat(placeholder),
+                                            repeat(relevant_prefix)))
 
     return docs, titles
-
-
-def generate_filtered_docs(terms_file, preproc_file, target_col='abstract_lem',
-                           title_col='title', delimiter='\t',
-                           labels=('keyword', 'relevant'), additional=None,
-                           acronyms=None, placeholder=STOPWORD_PLACEHOLDER,
-                           relevant_prefix=STOPWORD_PLACEHOLDER):
-    if additional is None:
-        additional = set()
-
-    if acronyms is not None:
-        additional |= {acro for acro in acronyms}
-
-    terms = load_terms(terms_file, labels) | additional
-    documents, titles = load_documents(preproc_file, target_col, title_col,
-                                       delimiter, placeholder, relevant_prefix)
-    docs = [d.split(' ') for d in documents]
-
-    good_docs = []
-    for doc in docs:
-        gd = [t for t in doc if t in terms]
-        good_docs.append(gd)
-
-    return good_docs, titles
 
 
 def load_additional_terms(input_file):
@@ -257,10 +225,9 @@ def load_additional_terms(input_file):
     return rel_words_list
 
 
-def prepare_documents(preproc_file, terms_file, ngrams, labels,
+def prepare_documents(preproc_file, terms_file, labels,
                       target_col='abstract_lem', title_col='title',
-                      delimiter='\t', additional_keyword=None,
-                      acronyms=None, placeholder=STOPWORD_PLACEHOLDER,
+                      delimiter='\t', placeholder=STOPWORD_PLACEHOLDER,
                       relevant_prefix=STOPWORD_PLACEHOLDER):
     """
     Elaborates the documents preparing the bag of word representation
@@ -275,14 +242,8 @@ def prepare_documents(preproc_file, terms_file, ngrams, labels,
     :type title_col: str
     :param delimiter: delimiter used in preproc_file
     :type delimiter: str
-    :param ngrams: if True use all the ngrams
-    :type ngrams: bool
     :param labels: use only the terms classified with the labels specified here
     :type labels: tuple[str]
-    :param additional_keyword: additional keyword loaded from file
-    :type additional_keyword: set or None
-    :param acronyms: list of approved acronyms to be considered as keyword
-    :type acronyms: list or None
     :param placeholder: placeholder for stop-words
     :type placeholder: str
     :param relevant_prefix: prefix used to mark relevant terms
@@ -290,25 +251,11 @@ def prepare_documents(preproc_file, terms_file, ngrams, labels,
     :return: the documents as bag of words and the document titles
     :rtype: tuple[list[list[str]], list[str]]
     """
-    if additional_keyword is None:
-        additional_keyword = set()
-    if ngrams:
-        ret = generate_filtered_docs_ngrams(terms_file, preproc_file,
-                                            target_col, title_col, delimiter,
-                                            labels,
-                                            additional=additional_keyword,
-                                            acronyms=acronyms,
-                                            placeholder=placeholder,
-                                            relevant_prefix=relevant_prefix)
-    else:
-        ret = generate_filtered_docs(terms_file, preproc_file, target_col,
-                                     title_col, delimiter, labels,
-                                     additional=additional_keyword,
-                                     acronyms=acronyms, placeholder=placeholder,
-                                     relevant_prefix=relevant_prefix)
-
+    ret = generate_filtered_docs_ngrams(terms_file, preproc_file,
+                                        target_col, title_col, delimiter,
+                                        labels, placeholder=placeholder,
+                                        relevant_prefix=relevant_prefix)
     docs, titles = ret
-
     return docs, titles
 
 
@@ -457,31 +404,11 @@ def prepare_topics(model, docs, titles, dictionary):
     return topics, docs_topics, avg_topic_coherence
 
 
-def filter_placeholders(doc: str, placeholder, relevant_prefix):
-    words = []
-    for word in doc.split(' '):
-        if word == placeholder:
-            continue
-        if word.startswith(relevant_prefix) and word.endswith(relevant_prefix):
-            words.append(word.strip(relevant_prefix))
-        else:
-            words.append(word)
-
-    return ' '.join(words)
-
-
-def load_documents(preproc_file, target_col, title_col, delimiter,
-                   placeholder=STOPWORD_PLACEHOLDER,
-                   relevant_prefix=RELEVANT_PREFIX):
+def load_documents(preproc_file, target_col, title_col, delimiter):
     dataset = pd.read_csv(preproc_file, delimiter=delimiter, encoding='utf-8')
     dataset.fillna('', inplace=True)
-    with Pool(processes=PHYSICAL_CPUS) as pool:
-        documents = pool.starmap(filter_placeholders,
-                                 zip(dataset[target_col].to_list(),
-                                     repeat(placeholder),
-                                     repeat(relevant_prefix)))
-
     titles = dataset[title_col].to_list()
+    documents = dataset[target_col].to_list()
     return documents, titles
 
 
@@ -519,31 +446,6 @@ def output_topics(topics, docs_topics, outdir, file_prefix, use_timestamp=True):
         json.dump(docs_topics, file, indent='\t')
 
 
-def prepare_additional_keyword(args):
-    additional_keyword = set()
-    if args.additional_file is not None:
-        for sfile in args.additional_file:
-            additional_keyword |= load_additional_terms(sfile)
-    return additional_keyword
-
-
-def prepare_acronyms(args):
-    if args.acronyms is not None:
-        acro_df = pd.read_csv(args.acronyms, delimiter='\t', encoding='utf-8')
-        assert_column(args.acronyms, acro_df, ['term', 'label'])
-        acronyms = []
-        for _, row in acro_df.iterrows():
-            if row['label'] not in ['relevant', 'keyword']:
-                continue
-
-            sp = row['term'].split('|')
-            acronyms.append(sp[1].strip(' ()').lower())
-        del acro_df
-        return acronyms
-    else:
-        return None
-
-
 def lda(args):
     terms_file = args.terms_file
     preproc_file = args.preproc_file
@@ -558,15 +460,10 @@ def lda(args):
     else:
         labels = ('keyword', 'relevant')
 
-    additional_keyword = prepare_additional_keyword(args)
-    acronyms = prepare_acronyms(args)
-
     docs, titles = prepare_documents(preproc_file, terms_file,
-                                     not args.no_ngrams, labels,
-                                     args.target_column, args.title,
+                                     labels, args.target_column, args.title,
                                      delimiter=args.delimiter,
-                                     additional_keyword=additional_keyword,
-                                     acronyms=acronyms, placeholder=placeholder,
+                                     placeholder=placeholder,
                                      relevant_prefix=relevant_prefix)
 
     if args.load_model is not None:
