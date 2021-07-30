@@ -328,6 +328,17 @@ def run_lda(args):
 def optimize_lda(args):
     confname = 'optimize_lda.toml'
     config, config_dir, meta = check_project(args, confname)
+    from lda_ga import lda_ga_optimization, init_argparser as lda_ga_argparse
+    script_args = lda_ga_argparse().slrkit_arguments
+    cmd_args = prepare_script_arguments(config, config_dir, confname,
+                                        script_args)
+    os.chdir(args.cwd)
+    lda_ga_optimization(cmd_args)
+
+
+def lda_grid_search_command(args):
+    confname = 'lda_grid_search.toml'
+    config, config_dir, meta = check_project(args, confname)
     from lda_grid_search import lda_grid_search, init_argparser as lda_gs_argparse
     script_args = lda_gs_argparse().slrkit_arguments
     cmd_args = prepare_script_arguments(config, config_dir, confname,
@@ -343,10 +354,6 @@ def optimize_lda(args):
     os.chdir(args.cwd)
 
     lda_grid_search(cmd_args)
-
-
-def lda_grid_search(args):
-    pass
 
 
 def run_fawoc(args):
