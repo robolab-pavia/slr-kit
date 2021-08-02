@@ -637,7 +637,7 @@ def lda_ga_optimization(args):
                   use_timestamp=not args.no_timestamp)
 
     save_toml_files(args, df, outdir)
-    df.to_csv(args.outdir / 'results.csv', sep='\t', index_label='id')
+    df.to_csv(outdir / 'results.csv', sep='\t', index_label='id')
     with pd.option_context('display.width', 80,
                            'display.float_format', '{:,.3f}'.format):
         print(df)
