@@ -21,8 +21,7 @@ import pandas as pd
 from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel, LdaModel
 
-from slrkit_utils.argument_parser import (AppendMultipleFilesAction, ArgParse,
-                                          ValidateInt)
+from slrkit_utils.argument_parser import ArgParse, ValidateInt
 from lda import PHYSICAL_CPUS, prepare_documents, prepare_corpus
 from utils import STOPWORD_PLACEHOLDER, setup_logger
 
@@ -79,9 +78,6 @@ def init_argparser():
     parser.add_argument('--plot-save', action='store_true',
                         help='if set, it saves the plot of the coherence as '
                              '<outdir>/lda_plot.pdf')
-    parser.add_argument('--result', '-r', metavar='FILENAME',
-                        help='Where to save the training results '
-                             'in CSV format. If "-", stdout is used.')
     parser.add_argument('--placeholder', '-p',
                         default=STOPWORD_PLACEHOLDER,
                         help='Placeholder for barrier word. Also used as a '
@@ -225,16 +221,13 @@ def load_additional_terms(input_file):
 
 
 def lda_grid_search(args):
+    logfile = args.logfile
     terms_file = args.terms_file
     preproc_file = args.preproc_file
-    output_dir = args.outdir
-    output_dir.mkdir(exist_ok=True)
-    logfile = args.logfile
-    if args.result is None:
-        now = datetime.now()
-        result_file = f'{now:%Y-%m-%d_%H%M%S}_results.csv'
-    else:
-        result_file = args.result
+    # prepare result directories
+    now = datetime.now()
+    output_dir = args.outdir / f'{now:%Y-%m-%d_%H%M%S}_lda_results'
+    output_dir.mkdir(exist_ok=True, parents=True)
 
     logger = setup_logger('debug_logger', logfile, level=logging.DEBUG)
     logger.info('==== lda_grid_search started ====')
@@ -300,10 +293,7 @@ def lda_grid_search(args):
     results = compute_optimal_model(corpora, topics_range, alpha, beta,
                                     output_dir, logger, seed=args.seed)
 
-    if result_file == '-':
-        results.to_csv(sys.stdout, sep='\t', index=False)
-    else:
-        results.to_csv(result_file, sep='\t', index=False)
+    results.to_csv(output_dir / 'results.csv', sep='\t', index=False)
 
     best = results.loc[results['coherence'].idxmax()]
 
