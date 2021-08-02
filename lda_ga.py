@@ -486,14 +486,6 @@ def save_toml_files(args, results_df, outdir):
         conf.add('outdir', str(outdir))
         conf.add('text-column', args.target_column)
         conf.add('title-column', args.title)
-        if args.additional_file is not None:
-            conf.add('additional-terms', args.additional_file)
-        else:
-            conf.add('additional-terms', [])
-        if args.acronyms is not None:
-            conf.add('acronyms', args.acronyms)
-        else:
-            conf.add('acronyms', '')
         conf.add('topics', row['topics'])
         conf.add('alpha', row['alpha'])
         conf.add('beta', row['beta'])
@@ -503,7 +495,6 @@ def save_toml_files(args, results_df, outdir):
             conf.add('seed', '')
         else:
             conf.add('seed', row['seed'])
-        conf.add('no-ngrams', args.no_ngrams)
         conf.add('model', False)
         conf.add('no-relevant', False)
         u = row['uuid']
