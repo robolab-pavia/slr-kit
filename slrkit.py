@@ -258,28 +258,43 @@ def init_project(slrkit_args):
         sys.exit(msg)
 
 
-def check_project(args, filename, from_project=True):
-    metafile = args.cwd / 'META.toml'
+
+def check_project(cwd):
+    """
+    Checks if the specified path is a valid slrkit project
+
+    It ends the current process with a friendly message in case of errors
+
+    :param cwd: path to the directory to check
+    :type cwd: pathlib.Path
+    :return: the path to the configuration directory and the contents of the
+        META.toml file
+    :rtype: tuple[pathlib.Path, dict]
+    """
+    metafile = cwd / 'META.toml'
     try:
-        meta = toml_load(metafile)
+        meta = dict(toml_load(metafile))
     except FileNotFoundError:
         msg = 'Error: {} is not an slr-kit project, no META.toml found'
-        sys.exit(msg.format(args.cwd.resolve().absolute()))
+        sys.exit(msg.format(cwd.resolve().absolute()))
     try:
-        config_dir = args.cwd / meta['Project']['Config']
+        config_dir = cwd / meta['Project']['Config']
     except KeyError:
-        msg = 'Error: {} is invalid invalid, no "Config" entry found'
+        msg = 'Error: {} is invalid, no "Config" entry found'
         sys.exit(msg.format(metafile.resolve().absolute()))
-    if from_project:
-        config_file = config_dir / filename
-    else:
-        config_file = pathlib.Path(filename)
+
+    return config_dir, meta
+
+
+def load_configfile(filename):
+    config_file = pathlib.Path(filename)
     try:
         config = toml_load(config_file)
     except FileNotFoundError:
         msg = 'Error: file {} not found'
         sys.exit(msg.format(config_file.resolve().absolute()))
-    return config, config_dir, meta
+
+    return config
 
 
 def prepare_script_arguments(config, config_dir, confname, script_args):
@@ -322,7 +337,8 @@ def prepare_script_arguments(config, config_dir, confname, script_args):
 
 def run_preproc(args):
     confname = 'preprocess.toml'
-    config, config_dir, meta = check_project(args, confname)
+    config_dir, meta = check_project(args.cwd)
+    config = load_configfile(config_dir / confname)
     from preprocess import preprocess, init_argparser as preproc_argparse
     script_args = preproc_argparse().slrkit_arguments
     cmd_args = prepare_script_arguments(config, config_dir, confname,
@@ -360,7 +376,8 @@ def run_terms(args):
         msg = 'Unexpected subcommand {!r} for command terms: Aborting'
         sys.exit(msg.format(args.journals_operation))
 
-    config, config_dir, meta = check_project(args, confname)
+    config_dir, meta = check_project(args.cwd)
+    config = load_configfile(config_dir / confname)
     script_args = argparser().slrkit_arguments
     cmd_args = prepare_script_arguments(config, config_dir, confname,
                                         script_args)
@@ -370,12 +387,12 @@ def run_terms(args):
 
 def run_lda(args):
     if args.config is not None:
-        confname = args.config
-        from_project = False
+        confname = pathlib.Path(args.config)
     else:
-        confname = 'lda.toml'
-        from_project = True
-    config, config_dir, meta = check_project(args, confname, from_project)
+        confname = args.cwd / 'lda.toml'
+
+    config_dir, meta = check_project(args.cwd)
+    config = load_configfile(confname)
     from lda import lda, init_argparser as lda_argparse
     script_args = lda_argparse().slrkit_arguments
     cmd_args = prepare_script_arguments(config, config_dir, confname,
@@ -394,7 +411,8 @@ def run_lda(args):
 
 def optimize_lda(args):
     confname = 'optimize_lda.toml'
-    config, config_dir, meta = check_project(args, confname)
+    config_dir, meta = check_project(args.cwd)
+    config = load_configfile(config_dir / confname)
     from lda_ga import lda_ga_optimization, init_argparser as lda_ga_argparse
     script_args = lda_ga_argparse().slrkit_arguments
     cmd_args = prepare_script_arguments(config, config_dir, confname,
@@ -405,7 +423,8 @@ def optimize_lda(args):
 
 def lda_grid_search_command(args):
     confname = 'lda_grid_search.toml'
-    config, config_dir, meta = check_project(args, confname)
+    config_dir, meta = check_project(args.cwd)
+    config = load_configfile(config_dir / confname)
     from lda_grid_search import lda_grid_search, init_argparser as lda_gs_argparse
     script_args = lda_gs_argparse().slrkit_arguments
     cmd_args = prepare_script_arguments(config, config_dir, confname,
@@ -425,7 +444,8 @@ def lda_grid_search_command(args):
 
 def run_fawoc(args):
     confname = ''.join(['fawoc_', args.operation, '.toml'])
-    config, config_dir, meta = check_project(args, confname)
+    config_dir, meta = check_project(args.cwd)
+    config = load_configfile(config_dir / confname)
     from fawoc.fawoc import fawoc_run, init_argparser as fawoc_argparse
     script_args = fawoc_argparse().slrkit_arguments
     cmd_args = prepare_script_arguments(config, config_dir, confname,
@@ -450,7 +470,8 @@ def run_fawoc(args):
 
 def run_import(args):
     confname = 'import.toml'
-    config, config_dir, meta = check_project(args, confname)
+    config_dir, meta = check_project(args.cwd)
+    config = load_configfile(config_dir / confname)
     from import_biblio import import_data, init_argparser as import_argparse
     script_args = import_argparse().slrkit_arguments
     cmd_args = prepare_script_arguments(config, config_dir, confname,
@@ -462,7 +483,8 @@ def run_import(args):
 
 def run_acronyms(args):
     confname = 'acronyms.toml'
-    config, config_dir, meta = check_project(args, confname)
+    config_dir, meta = check_project(args.cwd)
+    config = load_configfile(config_dir / confname)
     from acronyms import acronyms, init_argparser as acro_argparse
     script_args = acro_argparse().slrkit_arguments
     cmd_args = prepare_script_arguments(config, config_dir, confname,
@@ -474,7 +496,8 @@ def run_acronyms(args):
 
 def run_report(args):
     confname = 'report.toml'
-    config, config_dir, meta = check_project(args, confname)
+    config_dir, meta = check_project(args.cwd)
+    config = load_configfile(config_dir / confname)
     from topic_report import report, init_argparser as report_argparse
     script_args = report_argparse().slrkit_arguments
     cmd_args = prepare_script_arguments(config, config_dir, confname,
@@ -497,7 +520,8 @@ def run_journals(args):
         msg = 'Unexpected subcommand {!r} for command journals: Aborting'
         sys.exit(msg.format(args.journals_operation))
 
-    config, config_dir, meta = check_project(args, confname)
+    config_dir, meta = check_project(args.cwd)
+    config = load_configfile(config_dir / confname)
     script_args = argparser().slrkit_arguments
     cmd_args = prepare_script_arguments(config, config_dir, confname,
                                         script_args)
@@ -522,7 +546,8 @@ def init_argparser():
                                       required=True, dest='command')
     # init
     help_str = 'Initialize a slr-kit project'
-    parser_init = subparser.add_parser('init', help=help_str, description=help_str)
+    parser_init = subparser.add_parser('init', help=help_str,
+                                       description=help_str)
     parser_init.add_argument('name', action='store', type=str,
                              help='Name of the project.')
     parser_init.add_argument('--author', '-A', action='store', type=str,
