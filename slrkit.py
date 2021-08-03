@@ -9,22 +9,6 @@ import sys
 import tomlkit
 
 
-class Error(Exception):
-    pass
-
-
-class AddionalInitNotProvvidedError(Error):
-    def __str__(self):
-        return f'Additional initialization code not provvided for {self.args[0]}'
-
-
-class GitError(Error):
-    def __init__(self, msg, gitmsg):
-        super().__init__(msg, gitmsg)
-        self.msg = msg
-        self.gitmsg = gitmsg
-
-
 SLRKIT_DIR = pathlib.Path(__file__).parent
 SCRIPTS = {
     # config_file: module_name
@@ -58,6 +42,22 @@ SCRIPTS = {
                         'depends': ['preprocess', 'terms_generate'],
                         'additional_init': False},
 }
+
+
+class Error(Exception):
+    pass
+
+
+class AddionalInitNotProvvidedError(Error):
+    def __str__(self):
+        return f'Additional initialization code not provvided for {self.args[0]}'
+
+
+class GitError(Error):
+    def __init__(self, msg, gitmsg):
+        super().__init__(msg, gitmsg)
+        self.msg = msg
+        self.gitmsg = gitmsg
 
 
 def _check_is_dir(path):
