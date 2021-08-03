@@ -3,14 +3,26 @@ import importlib
 import os
 import pathlib
 import shutil
+import subprocess as sub
 import sys
 
 import tomlkit
 
 
-class AddionalInitNotProvvidedError(Exception):
+class Error(Exception):
+    pass
+
+
+class AddionalInitNotProvvidedError(Error):
     def __str__(self):
         return f'Additional initialization code not provvided for {self.args[0]}'
+
+
+class GitError(Error):
+    def __init__(self, msg, gitmsg):
+        super().__init__(msg, gitmsg)
+        self.msg = msg
+        self.gitmsg = gitmsg
 
 
 SLRKIT_DIR = pathlib.Path(__file__).parent
@@ -124,7 +136,40 @@ def prepare_configfile(modulename, metafile):
     return conf, args
 
 
+def git_commit_files(commit_msg, files_to_commit, cwd):
+    all_wrong = True
+    for f in files_to_commit:
+        p = sub.run(['git', 'add', f], stdout=sub.PIPE, stderr=sub.PIPE,
+                    encoding='utf-8', cwd=cwd)
+        if p.returncode != 0:
+            print('Error: git add returned error on file', f'{f!r}',
+                  'error message:', p.stdout, file=sys.stderr)
+        else:
+            all_wrong = False
+    if all_wrong:
+        msg = 'all git add operation went wrong'
+        raise GitError(msg, "")
+    p = sub.run(['git', 'status', '--porcelain'],
+                stdout=sub.PIPE, stderr=sub.PIPE, encoding='utf-8', cwd=cwd)
+    if p.returncode != 0:
+        raise GitError('git status returned an error', p.stdout)
+    if p.stdout != '':
+        # git status returned something so we have something to commit
+        p = sub.run(['git', 'commit', '-m', commit_msg],
+                    stdout=sub.PIPE, stderr=sub.PIPE, encoding='utf-8', cwd=cwd)
+        if p.returncode != 0:
+            raise GitError('git commit returned an error', p.stdout)
+    # else: all the added file are up to date and we don't have to commit them
+
+
 def init_project(slrkit_args):
+    # verify git presence
+    try:
+        sub.run(['git', '--version'], stdout=sub.DEVNULL, stderr=sub.DEVNULL)
+    except FileNotFoundError:
+        # no git: abort
+        sys.exit('Error: git not installed')
+
     config_dir, meta, metafile = create_meta(slrkit_args)
 
     try:
@@ -189,6 +234,28 @@ def init_project(slrkit_args):
         metadoc.add(mk, tbl)
     with open(metafile, 'w') as file:
         file.write(tomlkit.dumps(metadoc))
+
+    proc = sub.run(['git', 'init'], stdout=sub.PIPE, stderr=sub.STDOUT,
+                   encoding='utf-8', cwd=slrkit_args.cwd)
+    if proc.returncode != 0:
+        msg = 'Error: running git init: {}'
+        sys.exit(msg.format(proc.stdout))
+
+    with open(slrkit_args.cwd / '.gitignore', 'w') as file:
+        file.write('*.json\n')
+        file.write('*_lda_results\n')
+
+    list_of_files = [f for f in config_dir.glob('*.toml')]
+    list_of_files.extend([metafile, '.gitignore'])
+    try:
+        git_commit_files('Project repository initialized', list_of_files,
+                         slrkit_args.cwd)
+    except GitError as e:
+        msg = 'Error committing files to git: {!r}'.format(e.msg)
+        if e.gitmsg is not None:
+            msg = '{}\n\tGit reported: {!r}'.format(msg, e.gitmsg)
+
+        sys.exit(msg)
 
 
 def check_project(args, filename, from_project=True):
