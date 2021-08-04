@@ -157,8 +157,25 @@ def git_add_files(files_to_commit, repo, must_exists=True):
             repo.index.add([f])
         except FileNotFoundError:
             if must_exists:
+                msg = None
+                # clean the index
+                try:
+                    repo.index.reset()
+                except git.exc.GitCommandError as e:
+                    # this exception is expected and harmless if heads is empty
+                    # (no commits yet) but if heads is not empty then something
+                    # wrong happened
+                    if repo.heads:
+                        msg = 'Error performing the index clean up. ' \
+                              'git reported: {}'.format(e)
+
                 wd = pathlib.Path(repo.working_dir)
-                raise GitError('File {!r} not exists'.format(str(wd / f)), '')
+                err_msg = 'File {!r} not exists'.format(str(wd / f))
+                if msg is not None:
+                    err_msg = '{}\nAlso an another error occurred: ' \
+                              '{}'.format(err_msg, msg)
+
+                raise GitError(err_msg, '')
 
 
 def git_commit(repo, commit_msg):
