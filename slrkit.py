@@ -583,6 +583,65 @@ def run_journals(args):
     script_to_run(cmd_args)
 
 
+def run_record(args):
+    """
+    Records a snapshot of the project using git
+
+    This command uses the to_record function of the slrkit scripts. If a script
+    defines a to_record function with signature:
+        to_record(config: dict[str, Any]) -> list[str]
+    that function is called to collect the list of files to commit.
+    The to_record function is called with the dict with the content of the
+    config file for the script. The to_record must return a list of string with
+    the files to commit. If there is something wrong in the config file, the
+    to_record must raise a ValueError. This exception is catched and its content
+     is used to format the error message for the user.
+    The run_record exits the current process with a friendly error message in
+    case of any error.
+    If the project is not a git repository, it will be git init.
+
+    :param args: cli arguments
+    :type args: Namespace
+    """
+    config_dir, meta = check_project(args.cwd)
+    files_to_record = []
+    if args.message == '':
+        sys.exit('Error: The commit message cannot be the empty string')
+    for k, v in SCRIPTS.items():
+        mod = importlib.import_module(v['module'])
+        config_file = (config_dir / k).with_suffix('.toml')
+        config = load_configfile(config_file)
+        if hasattr(mod, 'to_record') and callable(mod.to_record):
+            try:
+                files_to_record.extend(mod.to_record(config))
+            except ValueError as e:
+                msg = 'Error collecting files to record from {}: {}'
+                sys.exit(msg.format(config_file, e.args[0]))
+    # add the fawoc profiler files
+    profilers = (config_dir / 'log').glob('fawoc_*_profiler.log')
+    files_to_record.extend(str(p) for p in profilers)
+    metafile = args.cwd / 'META.toml'
+    try:
+        repo = git.repo.Repo(args.cwd)
+    except git.exc.InvalidGitRepositoryError:
+        print('Repository not yet initializated. Running git init.')
+        repo = git_init(config_dir, metafile, args.cwd)
+    else:
+        # try to add the files committed during init
+        files = git_filelist_add_init(config_dir, metafile)
+        try:
+            git_add_files(files, repo, must_exists=True)
+        except GitError as e:
+            msg = 'Error adding files to git: {!r}'.format(e.msg)
+            sys.exit(msg)
+
+    git_add_files(files_to_record, repo, must_exists=False)
+    if git_commit(repo, args.message):
+        print('Commit correctly executed')
+    else:
+        print('All the file are up to date, nothing to commit')
+
+
 def init_argparser():
     """
     Initialize the command line parser.
@@ -698,6 +757,15 @@ def init_argparser():
                                                help=help_str,
                                                description=help_str)
     parser_optimize_lda.set_defaults(func=optimize_lda)
+    # record
+    help_str = 'Record a snapshot of the project in the underlying git ' \
+               'repository'
+    parser_record = subparser.add_parser('record', help=help_str,
+                                         description=help_str)
+    parser_record.add_argument('message', help='The commit message to use for '
+                                               'the commit. Cannot be the '
+                                               'empty string.')
+    parser_record.set_defaults(func=run_record)
     # lda_grid_search
     help_str = 'Run an optimization phase for the lda stage in a ' \
                'slr-kit project using a grid search method'
