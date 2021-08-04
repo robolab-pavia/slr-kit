@@ -6,6 +6,21 @@ from RISparser import readris
 from slrkit_utils.argument_parser import ArgParse
 
 
+def to_record(config):
+    """
+    Returns the list of files to record with git
+    :param config: content of the script config file
+    :type config: dict[str, Any]
+    :return: the list of files
+    :rtype: list[str]
+    :raise ValueError: if the config file does not contains the right values
+    """
+    file = config['input_file']
+    if file is None or file == '':
+        raise ValueError("'input_file' is not specified")
+    return [str(file)]
+
+
 def show_columns(df):
     print('Valid columns:')
     for c in df.columns:
