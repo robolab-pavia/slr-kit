@@ -769,10 +769,10 @@ def init_argparser():
     # lda_grid_search
     help_str = 'Run an optimization phase for the lda stage in a ' \
                'slr-kit project using a grid search method'
-    parser_optimize_lda = subparser.add_parser('lda_grid_search',
-                                               help=help_str,
-                                               description=help_str)
-    parser_optimize_lda.set_defaults(func=lda_grid_search_command)
+    parser_lda_grid_search = subparser.add_parser('lda_grid_search',
+                                                  help=help_str,
+                                                  description=help_str)
+    parser_lda_grid_search.set_defaults(func=lda_grid_search_command)
     return parser
 
 
