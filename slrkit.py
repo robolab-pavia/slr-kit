@@ -6,8 +6,8 @@ import shutil
 import subprocess as sub
 import sys
 
+import git
 import tomlkit
-
 
 SLRKIT_DIR = pathlib.Path(__file__).parent
 SCRIPTS = {
@@ -136,40 +136,65 @@ def prepare_configfile(modulename, metafile):
     return conf, args
 
 
-def git_commit_files(commit_msg, files_to_commit, cwd):
-    all_wrong = True
+def git_add_files(files_to_commit, repo, must_exists=True):
+    """
+    Add files to the underlying git repository
+
+    :param files_to_commit: list of files to commit
+    :type files_to_commit: list[str]
+    :param repo: repository object
+    :type repo: git.repo.Repo
+    :param must_exists: if True, each file in the list must exist otherwise
+        an exception is raised
+    :type must_exists: bool
+    :raise GitError: if must_exist is True and one file does not exist
+    """
     for f in files_to_commit:
-        p = sub.run(['git', 'add', f], stdout=sub.PIPE, stderr=sub.PIPE,
-                    encoding='utf-8', cwd=cwd)
-        if p.returncode != 0:
-            print('Error: git add returned error on file', f'{f!r}',
-                  'error message:', p.stdout, file=sys.stderr)
-        else:
-            all_wrong = False
-    if all_wrong:
-        msg = 'all git add operation went wrong'
-        raise GitError(msg, "")
-    p = sub.run(['git', 'status', '--porcelain'],
-                stdout=sub.PIPE, stderr=sub.PIPE, encoding='utf-8', cwd=cwd)
-    if p.returncode != 0:
-        raise GitError('git status returned an error', p.stdout)
-    if p.stdout != '':
-        # git status returned something so we have something to commit
-        p = sub.run(['git', 'commit', '-m', commit_msg],
-                    stdout=sub.PIPE, stderr=sub.PIPE, encoding='utf-8', cwd=cwd)
-        if p.returncode != 0:
-            raise GitError('git commit returned an error', p.stdout)
-    # else: all the added file are up to date and we don't have to commit them
+        try:
+            # git add the file
+            # f is put in a list because add has a strange behaviour with
+            # arguments
+            repo.index.add([f])
+        except FileNotFoundError:
+            if must_exists:
+                wd = pathlib.Path(repo.working_dir)
+                raise GitError('File {!r} not exists'.format(str(wd / f)), '')
+
+
+def git_commit(repo, commit_msg):
+    """
+    Commits files previously added to repository index
+
+    :param repo: repository object
+    :type repo: git.repo.Repo
+    :param commit_msg: commit message
+    :type commit_msg: str
+    :return: True if something was added to the index and the commit is performed
+    """
+    # since index.commit records a commit even if no file is added, we must
+    # check the index if something was really added
+    # this check changes if the repository is new or if something was already
+    # committed
+    can_commit = False
+    if not repo.heads:
+        # heads is empty so nothing was committed to the repository
+        # check if index.entries contains something
+        if repo.index.entries:
+            # something here, we can commit
+            can_commit = True
+    else:
+        # something was committed so we can check the diff from HEAD
+        if repo.index.diff('HEAD'):
+            can_commit = True
+
+    if can_commit:
+        repo.index.commit(message=commit_msg)
+        return True
+    else:  # nothing added so nothing to commit
+        return False
 
 
 def init_project(slrkit_args):
-    # verify git presence
-    try:
-        sub.run(['git', '--version'], stdout=sub.DEVNULL, stderr=sub.DEVNULL)
-    except FileNotFoundError:
-        # no git: abort
-        sys.exit('Error: git not installed')
-
     config_dir, meta, metafile = create_meta(slrkit_args)
 
     try:
@@ -235,28 +260,57 @@ def init_project(slrkit_args):
     with open(metafile, 'w') as file:
         file.write(tomlkit.dumps(metadoc))
 
-    proc = sub.run(['git', 'init'], stdout=sub.PIPE, stderr=sub.STDOUT,
-                   encoding='utf-8', cwd=slrkit_args.cwd)
-    if proc.returncode != 0:
-        msg = 'Error: running git init: {}'
-        sys.exit(msg.format(proc.stdout))
+    git_init(config_dir, metafile, slrkit_args.cwd)
 
-    with open(slrkit_args.cwd / '.gitignore', 'w') as file:
+
+def git_filelist_add_init(config_dir, metafile):
+    """
+    Returns the list of files committed during the init of the git repository
+
+    :param config_dir: path to the configuration directory
+    :type config_dir: pathlib.Path
+    :param metafile: path to the META.toml file
+    :type metafile: pathlib.Path
+    :return: the list of files
+    :rtype: list[str]
+    """
+    list_of_files = [str(f) for f in config_dir.glob('*.toml')]
+    list_of_files.extend([str(metafile), '.gitignore'])
+    return list_of_files
+
+
+def git_init(config_dir, metafile, cwd):
+    """
+    Initializes a git repository in the project and commits the first files
+
+    It creates a .gitignore file and commits the META.toml and all the toml
+    files in the configuration directory
+    It ends the current process in case of error and prints a friendly error
+    message
+
+    :param config_dir: path to the configuration directory
+    :type config_dir: pathlib.Path
+    :param metafile: path to the META.toml
+    :type metafile: pathlib.Path
+    :param cwd: path to the project
+    :type cwd: pathlib.Path
+    :return: the repository object
+    :rtype: git.repo.Repo
+    """
+    repo = git.repo.Repo.init(cwd)
+    with open(cwd / '.gitignore', 'a') as file:
         file.write('*.json\n')
         file.write('*_lda_results\n')
 
-    list_of_files = [f for f in config_dir.glob('*.toml')]
-    list_of_files.extend([metafile, '.gitignore'])
+    list_of_files = git_filelist_add_init(config_dir, metafile)
     try:
-        git_commit_files('Project repository initialized', list_of_files,
-                         slrkit_args.cwd)
+        git_add_files(list_of_files, repo)
     except GitError as e:
-        msg = 'Error committing files to git: {!r}'.format(e.msg)
-        if e.gitmsg is not None:
-            msg = '{}\n\tGit reported: {!r}'.format(msg, e.gitmsg)
-
+        msg = 'Error adding files to git: {!r}'.format(e.msg)
         sys.exit(msg)
 
+    git_commit(repo, 'Project repository initialized')
+    return repo
 
 
 def check_project(cwd):
