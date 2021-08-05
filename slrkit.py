@@ -795,6 +795,9 @@ def init_argparser():
 
 def main():
     args = init_argparser().parse_args()
+    # change the cwd path to absolute to be sure that everything works when
+    # using paths or when changing the current dir
+    args.cwd = args.cwd.absolute()
     # execute the command
     args.func(args)
 
