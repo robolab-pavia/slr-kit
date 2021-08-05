@@ -457,12 +457,13 @@ def run_terms(args):
 
 
 def run_lda(args):
+    config_dir, meta = check_project(args.cwd)
     if args.config is not None:
         confname = pathlib.Path(args.config)
+        if not confname.is_absolute():
+            confname = args.cwd / confname
     else:
-        confname = args.cwd / 'lda.toml'
-
-    config_dir, meta = check_project(args.cwd)
+        confname = config_dir / 'lda.toml'
     config = load_configfile(confname)
     from lda import lda, init_argparser as lda_argparse
     script_args = lda_argparse().slrkit_arguments
@@ -757,7 +758,7 @@ def init_argparser():
                                       description=help_str)
     parser_lda.add_argument('--config', '-c',
                             help='Path to the toml file to be used instead of '
-                                 'the project one')
+                                 'the project one.')
     parser_lda.set_defaults(func=run_lda)
     # report
     help_str = 'Run the report creation script in a slr-kit project.'
