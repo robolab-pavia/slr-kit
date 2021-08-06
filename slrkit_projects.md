@@ -139,11 +139,32 @@ The `import.toml` has the following structure:
 
 * `input_file`: path to the bibliographical database to import. **Important:** this field is not pre-filled by the `init` command, the user **must** fill it before running the `import` command. This file is committed to `git` repository by the `record` command;
 * `type`: type of the database to import. Actually the only supported type is `RIS`;
-* `output`: name of the output file. It is pre-filled with `<project-name>_abstract.csv`;
+* `output`: name of the output file. It is pre-filled with `<project-name>_abstracts.csv`;
 * `columns`: comma separed list of columns to import. It is pre-filled with `title,abstract,year`. Additionally, a `citation` column is also imported by default.
 
 ### acronyms
+This commands extracts acronyms from the papers.
+Its output format is suitable to be used with `FAWOC` to classify which acronym is relevant or not.
+
+Usage:
+
+    python3 slrkit.py acronyms
+
 The `acronyms` sub-command uses the `acronyms.toml` configuration file and runs the `acronyms.py` script.
+The output is in `tsv` format and has the following structure (suitable for `FAWOC`):
+* `id`: a progressive identification number;
+* `term`: the acronym in the form `extended-acronym | (abbreviation)`;
+* `label`: the label added by `FAWOC` to the acronym. This field is left blank by the `acronyms` command.
+
+No `fawoc_data` file is produced, so no `count` field is available for `FAWOC`.
+
+After a correct execution, the command changes the `preprocess.toml` file updating its `acronyms` field with the name of the output file.
+
+The `acronyms.toml` has the following structure:
+
+* `datafile`: input file. It is pre-filled with the value `<project-name>_abstracts.csv`;
+* `output`: output file. It is pre-filled with the value `<project-name>_acronyms.csv`;
+* `columns`: name of the column of `datafile` with the text to elaborate. It is prefilled with the value `abstract`.
 
 ### preprocess
 The `preprocess` sub-command uses the `preprocess.toml` configuration file and runs the `preprocess.py` script.
