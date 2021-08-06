@@ -280,19 +280,23 @@ def init_project(slrkit_args):
     git_init(config_dir, metafile, slrkit_args.cwd)
 
 
-def git_filelist_add_init(config_dir, metafile):
+def git_filelist_add_init(config_dir, metafile, wd):
     """
     Returns the list of files committed during the init of the git repository
+
+    All paths are absolute.
 
     :param config_dir: path to the configuration directory
     :type config_dir: pathlib.Path
     :param metafile: path to the META.toml file
     :type metafile: pathlib.Path
+    :param wd: path to the working dir of the repository
+    :type wd: pathlib.Path
     :return: the list of files
     :rtype: list[str]
     """
     list_of_files = [str(f) for f in config_dir.glob('*.toml')]
-    list_of_files.extend([str(metafile), '.gitignore'])
+    list_of_files.extend([str(metafile), str(wd / '.gitignore')])
     return list_of_files
 
 
@@ -319,7 +323,7 @@ def git_init(config_dir, metafile, cwd):
         file.write('*.json\n')
         file.write('*_lda_results\n')
 
-    list_of_files = git_filelist_add_init(config_dir, metafile)
+    list_of_files = git_filelist_add_init(config_dir, metafile, cwd)
     try:
         git_add_files(list_of_files, repo)
     except GitError as e:
@@ -617,14 +621,34 @@ def run_record(args):
     The run_record exits the current process with a friendly error message in
     case of any error.
     If the project is not a git repository, it will be git init.
+    If the command is invoked with the clean flag, then the index is cleaned
+    from all files that are not referenced in the config files anymore.
 
     :param args: cli arguments
     :type args: Namespace
     """
     config_dir, meta = check_project(args.cwd)
-    files_to_record = []
+    metafile = args.cwd / 'META.toml'
+    files = None
     if args.message == '':
         sys.exit('Error: The commit message cannot be the empty string')
+    try:
+        repo = git.repo.Repo(args.cwd)
+    except git.exc.InvalidGitRepositoryError:
+        print('Repository not yet initializated. Running git init.')
+        repo = git_init(config_dir, metafile, args.cwd)
+        init = True
+    else:
+        # try to add the files committed during init
+        files = git_filelist_add_init(config_dir, metafile, args.cwd)
+        init = False
+        try:
+            git_add_files(files, repo, must_exists=True)
+        except GitError as e:
+            msg = 'Error adding files to git: {!r}'.format(e.msg)
+            sys.exit(msg)
+    # prepare the list of files to commit
+    files_to_record = []
     for k, v in SCRIPTS.items():
         mod = importlib.import_module(v['module'])
         config_file = (config_dir / k).with_suffix('.toml')
@@ -635,23 +659,24 @@ def run_record(args):
             except ValueError as e:
                 msg = 'Error collecting files to record from {}: {}'
                 sys.exit(msg.format(config_file, e.args[0]))
+    wd = pathlib.Path(repo.working_dir)
+    # if we have just initialized the repo, there is nothing to clean in the
+    # index
+    if not init and args.clean:
+        # using dicts because they are faster to search
+        init_files = {pathlib.Path(f): None for f in files}
+        # these are the files in the index that can change
+        entries = [e for e in (wd / entry for entry, _ in repo.index.entries)
+                   if e not in init_files]
+        # these are the files actually referred in the toml files
+        files_path = {wd / f: None for f in files_to_record}
+        to_clean = [entry for entry in entries if entry not in files_path]
+        for f in to_clean:
+            repo.index.remove(str(f))
+
     # add the fawoc profiler files
     profilers = (config_dir / 'log').glob('fawoc_*_profiler.log')
     files_to_record.extend(str(p) for p in profilers)
-    metafile = args.cwd / 'META.toml'
-    try:
-        repo = git.repo.Repo(args.cwd)
-    except git.exc.InvalidGitRepositoryError:
-        print('Repository not yet initializated. Running git init.')
-        repo = git_init(config_dir, metafile, args.cwd)
-    else:
-        # try to add the files committed during init
-        files = git_filelist_add_init(config_dir, metafile)
-        try:
-            git_add_files(files, repo, must_exists=True)
-        except GitError as e:
-            msg = 'Error adding files to git: {!r}'.format(e.msg)
-            sys.exit(msg)
 
     git_add_files(files_to_record, repo, must_exists=False)
     if git_commit(repo, args.message):
@@ -783,6 +808,11 @@ def init_argparser():
     parser_record.add_argument('message', help='The commit message to use for '
                                                'the commit. Cannot be the '
                                                'empty string.')
+    parser_record.add_argument('--clean', action='store_true',
+                              help='If set, the command cleans the repository '
+                                   'index from file not referenced in the '
+                                   'config files. These files are left in the '
+                                   'project but they become untracked.')
     parser_record.set_defaults(func=run_record)
     # lda_grid_search
     help_str = 'Run an optimization phase for the lda stage in a ' \
