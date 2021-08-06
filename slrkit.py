@@ -574,6 +574,8 @@ def run_import(args):
     script_args = import_argparse().slrkit_arguments
     cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
                                               script_args)
+    if args.list_columns:
+        cmd_args.columns = '?'
 
     os.chdir(args.cwd)
     import_data(cmd_args)
@@ -752,6 +754,12 @@ def init_argparser():
                'used by slr-kit.'
     parser_import = subparser.add_parser('import', help=help_str,
                                          description=help_str)
+    parser_import.add_argument('--list_columns', action='store_true',
+                               help='If set, the command outputs only the list '
+                                    'of available columns in the input_file '
+                                    'specified in the configuration file. '
+                                    'No other operation are performed and no '
+                                    'data is imported.')
 
     parser_import.set_defaults(func=run_import)
     # journals
