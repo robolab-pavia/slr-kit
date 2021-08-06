@@ -585,11 +585,17 @@ def run_acronyms(args):
     config = load_configfile(config_dir / confname)
     from acronyms import acronyms, init_argparser as acro_argparse
     script_args = acro_argparse().slrkit_arguments
-    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
-                                              script_args)
-
+    cmd_args, _, outputs = prepare_script_arguments(config, config_dir, confname,
+                                                    script_args)
     os.chdir(args.cwd)
     acronyms(cmd_args)
+    preproc_config = load_configfile(config_dir / 'preprocess.toml')
+    # change the preprocess.toml file adding the acronyms output in the acronyms
+    # option
+    preproc_config['acronyms'] = outputs['output']
+    # save the new file
+    with open(config_dir / 'preprocess.toml', 'w') as file:
+        file.write(tomlkit.dumps(preproc_config))
 
 
 def run_report(args):
