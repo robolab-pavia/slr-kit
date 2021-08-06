@@ -572,13 +572,23 @@ def run_import(args):
     config = load_configfile(config_dir / confname)
     from import_biblio import import_data, init_argparser as import_argparse
     script_args = import_argparse().slrkit_arguments
-    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
-                                              script_args)
+    cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
+                                                   script_args)
     if args.list_columns:
         cmd_args.columns = '?'
 
     os.chdir(args.cwd)
     import_data(cmd_args)
+    if not args.list_columns:
+        # change all the toml files that uses the ris file adding the import
+        # input in their ris_file field
+        tomls = ['journals_extract.toml', 'journals_filter.toml', 'report.toml']
+        for f in tomls:
+            config = load_configfile(config_dir / f)
+            config['ris_file'] = inputs['input_file']
+            # save the new file
+            with open(config_dir / f, 'w') as file:
+                file.write(tomlkit.dumps(config))
 
 
 def run_acronyms(args):
@@ -593,7 +603,7 @@ def run_acronyms(args):
     acronyms(cmd_args)
     preproc_config = load_configfile(config_dir / 'preprocess.toml')
     # change the preprocess.toml file adding the acronyms output in the acronyms
-    # option
+    # field
     preproc_config['acronyms'] = outputs['output']
     # save the new file
     with open(config_dir / 'preprocess.toml', 'w') as file:
