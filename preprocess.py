@@ -93,6 +93,30 @@ def get_lemmatizer(lang='en'):
     raise ValueError(f'language {lang!r} not available')
 
 
+def to_record(config):
+    """
+    Returns the list of files to record with git
+    :param config: content of the script config file
+    :type config: dict[str, Any]
+    :return: the list of files
+    :rtype: list[str]
+    :raise ValueError: if the config file does not contains the right values
+    """
+    if not isinstance(config['stop-words'], list):
+        raise ValueError('stop-words is not a list')
+    files = list(config['stop-words'])
+    if not isinstance(config['relevant-term'], list):
+        raise ValueError('relevant-term is not a list')
+    for r in config['relevant-term']:
+        if not isinstance(r, list):
+            raise ValueError('some elements in relevant-term are not lists')
+        if len(r) < 1:
+            continue
+        files.append(r[0])
+
+    return files
+
+
 def init_argparser():
     """Initialize the command line parser."""
     parser = ArgParse()
@@ -544,6 +568,7 @@ def preprocess(args):
                           encoding='utf-8', nrows=args.input_rows)
     dataset.fillna('', inplace=True)
     assert_column(args.datafile, dataset, target_column)
+    # filter the paper using the information from the filter_paper script
     try:
         dataset = dataset[dataset['status'] == 'good'].copy()
     except KeyError:

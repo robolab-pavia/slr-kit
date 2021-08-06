@@ -513,9 +513,9 @@ def main():
             sys.exit(msg.format(args.config))
 
         from slrkit import prepare_script_arguments
-        args = prepare_script_arguments(config, args.config.parent,
-                                        args.config.name,
-                                        parser.slrkit_arguments)
+        args, _, _ = prepare_script_arguments(config, args.config.parent,
+                                              args.config.name,
+                                              parser.slrkit_arguments)
         # handle the outdir parameter
         param = Path(config.get('outdir', Path.cwd()))
         setattr(args, 'outdir', param.resolve())

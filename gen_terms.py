@@ -9,6 +9,23 @@ from slrkit_utils.argument_parser import ArgParse
 from utils import setup_logger, STOPWORD_PLACEHOLDER
 
 
+def to_record(config):
+    """
+    Returns the list of files to record with git
+    :param config: content of the script config file
+    :type config: dict[str, Any]
+    :return: the list of files
+    :rtype: list[str]
+    :raise ValueError: if the config file does not contains the right values
+    """
+    out = config['output']
+    if out is None or out == '':
+        raise ValueError("'output' is not specified")
+
+    fawoc_data = '_'.join([pathlib.Path(out).stem, 'fawoc_data.tsv'])
+    return [str(out), fawoc_data]
+
+
 def init_argparser():
     """Initialize the command line parser."""
     parser = ArgParse()

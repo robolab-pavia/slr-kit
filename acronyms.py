@@ -8,6 +8,22 @@ from schwartz_hearst import extract_abbreviation_definition_pairs
 from utils import setup_logger
 
 
+def to_record(config):
+    """
+    Returns the list of files to record with git
+    :param config: content of the script config file
+    :type config: dict[str, Any]
+    :return: the list of files
+    :rtype: list[str]
+    :raise ValueError: if the config file does not contains the right values
+    """
+    out = config['output']
+    if out is None or out == '':
+        return []
+
+    return [str(out)]
+
+
 def init_argparser():
     """Initialize the command line parser."""
     parser = ArgParse()
@@ -42,6 +58,7 @@ def acronyms(args):
     # na_filter=False avoids NaN if the abstract is missing
     dataset = pd.read_csv(args.datafile, delimiter='\t', na_filter=False,
                           encoding='utf-8')
+    # filter the paper using the information from the filter_paper script
     try:
         dataset = dataset[dataset['status'] == 'good'].copy()
     except KeyError:

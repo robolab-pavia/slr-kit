@@ -3,15 +3,11 @@ import importlib
 import os
 import pathlib
 import shutil
+import subprocess as sub
 import sys
 
+import git
 import tomlkit
-
-
-class AddionalInitNotProvvidedError(Exception):
-    def __str__(self):
-        return f'Additional initialization code not provvided for {self.args[0]}'
-
 
 SLRKIT_DIR = pathlib.Path(__file__).parent
 SCRIPTS = {
@@ -46,6 +42,22 @@ SCRIPTS = {
                         'depends': ['preprocess', 'terms_generate'],
                         'additional_init': False},
 }
+
+
+class Error(Exception):
+    pass
+
+
+class AddionalInitNotProvvidedError(Error):
+    def __str__(self):
+        return f'Additional initialization code not provvided for {self.args[0]}'
+
+
+class GitError(Error):
+    def __init__(self, msg, gitmsg):
+        super().__init__(msg, gitmsg)
+        self.msg = msg
+        self.gitmsg = gitmsg
 
 
 def _check_is_dir(path):
@@ -124,6 +136,81 @@ def prepare_configfile(modulename, metafile):
     return conf, args
 
 
+def git_add_files(files_to_commit, repo, must_exists=True):
+    """
+    Add files to the underlying git repository
+
+    :param files_to_commit: list of files to commit
+    :type files_to_commit: list[str]
+    :param repo: repository object
+    :type repo: git.repo.Repo
+    :param must_exists: if True, each file in the list must exist otherwise
+        an exception is raised
+    :type must_exists: bool
+    :raise GitError: if must_exist is True and one file does not exist
+    """
+    for f in files_to_commit:
+        try:
+            # git add the file
+            # f is put in a list because add has a strange behaviour with
+            # arguments
+            repo.index.add([f])
+        except FileNotFoundError:
+            if must_exists:
+                msg = None
+                # clean the index
+                try:
+                    repo.index.reset()
+                except git.exc.GitCommandError as e:
+                    # this exception is expected and harmless if heads is empty
+                    # (no commits yet) but if heads is not empty then something
+                    # wrong happened
+                    if repo.heads:
+                        msg = 'Error performing the index clean up. ' \
+                              'git reported: {}'.format(e)
+
+                wd = pathlib.Path(repo.working_dir)
+                err_msg = 'File {!r} not exists'.format(str(wd / f))
+                if msg is not None:
+                    err_msg = '{}\nAlso an another error occurred: ' \
+                              '{}'.format(err_msg, msg)
+
+                raise GitError(err_msg, '')
+
+
+def git_commit(repo, commit_msg):
+    """
+    Commits files previously added to repository index
+
+    :param repo: repository object
+    :type repo: git.repo.Repo
+    :param commit_msg: commit message
+    :type commit_msg: str
+    :return: True if something was added to the index and the commit is performed
+    """
+    # since index.commit records a commit even if no file is added, we must
+    # check the index if something was really added
+    # this check changes if the repository is new or if something was already
+    # committed
+    can_commit = False
+    if not repo.heads:
+        # heads is empty so nothing was committed to the repository
+        # check if index.entries contains something
+        if repo.index.entries:
+            # something here, we can commit
+            can_commit = True
+    else:
+        # something was committed so we can check the diff from HEAD
+        if repo.index.diff('HEAD'):
+            can_commit = True
+
+    if can_commit:
+        repo.index.commit(message=commit_msg)
+        return True
+    else:  # nothing added so nothing to commit
+        return False
+
+
 def init_project(slrkit_args):
     config_dir, meta, metafile = create_meta(slrkit_args)
 
@@ -190,32 +277,119 @@ def init_project(slrkit_args):
     with open(metafile, 'w') as file:
         file.write(tomlkit.dumps(metadoc))
 
+    git_init(config_dir, metafile, slrkit_args.cwd)
 
-def check_project(args, filename, from_project=True):
-    metafile = args.cwd / 'META.toml'
+
+def git_filelist_add_init(config_dir, metafile, wd):
+    """
+    Returns the list of files committed during the init of the git repository
+
+    All paths are absolute.
+
+    :param config_dir: path to the configuration directory
+    :type config_dir: pathlib.Path
+    :param metafile: path to the META.toml file
+    :type metafile: pathlib.Path
+    :param wd: path to the working dir of the repository
+    :type wd: pathlib.Path
+    :return: the list of files
+    :rtype: list[str]
+    """
+    list_of_files = [str(f) for f in config_dir.glob('*.toml')]
+    list_of_files.extend([str(metafile), str(wd / '.gitignore')])
+    return list_of_files
+
+
+def git_init(config_dir, metafile, cwd):
+    """
+    Initializes a git repository in the project and commits the first files
+
+    It creates a .gitignore file and commits the META.toml and all the toml
+    files in the configuration directory
+    It ends the current process in case of error and prints a friendly error
+    message
+
+    :param config_dir: path to the configuration directory
+    :type config_dir: pathlib.Path
+    :param metafile: path to the META.toml
+    :type metafile: pathlib.Path
+    :param cwd: path to the project
+    :type cwd: pathlib.Path
+    :return: the repository object
+    :rtype: git.repo.Repo
+    """
+    repo = git.repo.Repo.init(cwd)
+    with open(cwd / '.gitignore', 'a') as file:
+        file.write('*.json\n')
+        file.write('*_lda_results\n')
+
+    list_of_files = git_filelist_add_init(config_dir, metafile, cwd)
     try:
-        meta = toml_load(metafile)
+        git_add_files(list_of_files, repo)
+    except GitError as e:
+        msg = 'Error adding files to git: {!r}'.format(e.msg)
+        sys.exit(msg)
+
+    git_commit(repo, 'Project repository initialized')
+    return repo
+
+
+def check_project(cwd):
+    """
+    Checks if the specified path is a valid slrkit project
+
+    It ends the current process with a friendly message in case of errors
+
+    :param cwd: path to the directory to check
+    :type cwd: pathlib.Path
+    :return: the path to the configuration directory and the contents of the
+        META.toml file
+    :rtype: tuple[pathlib.Path, dict]
+    """
+    metafile = cwd / 'META.toml'
+    try:
+        meta = dict(toml_load(metafile))
     except FileNotFoundError:
         msg = 'Error: {} is not an slr-kit project, no META.toml found'
-        sys.exit(msg.format(args.cwd.resolve().absolute()))
+        sys.exit(msg.format(cwd.resolve().absolute()))
     try:
-        config_dir = args.cwd / meta['Project']['Config']
+        config_dir = cwd / meta['Project']['Config']
     except KeyError:
-        msg = 'Error: {} is invalid invalid, no "Config" entry found'
+        msg = 'Error: {} is invalid, no "Config" entry found'
         sys.exit(msg.format(metafile.resolve().absolute()))
-    if from_project:
-        config_file = config_dir / filename
-    else:
-        config_file = pathlib.Path(filename)
+
+    return config_dir, meta
+
+
+def load_configfile(filename):
+    config_file = pathlib.Path(filename)
     try:
         config = toml_load(config_file)
     except FileNotFoundError:
         msg = 'Error: file {} not found'
         sys.exit(msg.format(config_file.resolve().absolute()))
-    return config, config_dir, meta
+
+    return config
 
 
 def prepare_script_arguments(config, config_dir, confname, script_args):
+    """
+    Prepares the arguments for a script using the content of its config file
+
+    :param config: content of the config file
+    :type config: TOMLDocument
+    :param config_dir: path to the config file directory
+    :type config_dir: pathlib.Path
+    :param confname: name of the config file
+    :type confname: str
+    :param script_args: information about the script arguments
+    :type script_args: dict[str, Any]
+    :return: the Namespace object with the argument and the dicts of input and
+        output arguments. The dict types is {arg_name: arg_value, ...}
+    :rtype: tuple[argparse.Namespace, dict[str, str], dict[str, str]]
+    """
+    inputs = {}
+    outputs = {}
     args = argparse.Namespace()
     for k, v in script_args.items():
         if v.get('non-standard', False):
@@ -250,16 +424,22 @@ def prepare_script_arguments(config, config_dir, confname, script_args):
         else:
             setattr(args, dest, param)
 
-    return args
+        if v.get('input', False):
+            inputs[dest] = getattr(args, dest)
+        if v.get('output', False):
+            outputs[dest] = getattr(args, dest)
+
+    return args, inputs, outputs
 
 
 def run_preproc(args):
     confname = 'preprocess.toml'
-    config, config_dir, meta = check_project(args, confname)
+    config_dir, meta = check_project(args.cwd)
+    config = load_configfile(config_dir / confname)
     from preprocess import preprocess, init_argparser as preproc_argparse
     script_args = preproc_argparse().slrkit_arguments
-    cmd_args = prepare_script_arguments(config, config_dir, confname,
-                                        script_args)
+    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
+                                              script_args)
     # handle the special parameter relevant-terms
     relterms_default = script_args['relevant-term']
     param = config.get('relevant-term', relterms_default['value'])
@@ -293,26 +473,28 @@ def run_terms(args):
         msg = 'Unexpected subcommand {!r} for command terms: Aborting'
         sys.exit(msg.format(args.journals_operation))
 
-    config, config_dir, meta = check_project(args, confname)
+    config_dir, meta = check_project(args.cwd)
+    config = load_configfile(config_dir / confname)
     script_args = argparser().slrkit_arguments
-    cmd_args = prepare_script_arguments(config, config_dir, confname,
-                                        script_args)
+    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
+                                              script_args)
     os.chdir(args.cwd)
     script_to_run(cmd_args)
 
 
 def run_lda(args):
+    config_dir, meta = check_project(args.cwd)
     if args.config is not None:
-        confname = args.config
-        from_project = False
+        confname = pathlib.Path(args.config)
+        if not confname.is_absolute():
+            confname = args.cwd / confname
     else:
-        confname = 'lda.toml'
-        from_project = True
-    config, config_dir, meta = check_project(args, confname, from_project)
+        confname = config_dir / 'lda.toml'
+    config = load_configfile(confname)
     from lda import lda, init_argparser as lda_argparse
     script_args = lda_argparse().slrkit_arguments
-    cmd_args = prepare_script_arguments(config, config_dir, confname,
-                                        script_args)
+    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
+                                              script_args)
     # handle the outdir parameter
     outdir_default = script_args['outdir']
     param = config.get('outdir', outdir_default['value'])
@@ -327,22 +509,24 @@ def run_lda(args):
 
 def optimize_lda(args):
     confname = 'optimize_lda.toml'
-    config, config_dir, meta = check_project(args, confname)
+    config_dir, meta = check_project(args.cwd)
+    config = load_configfile(config_dir / confname)
     from lda_ga import lda_ga_optimization, init_argparser as lda_ga_argparse
     script_args = lda_ga_argparse().slrkit_arguments
-    cmd_args = prepare_script_arguments(config, config_dir, confname,
-                                        script_args)
+    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
+                                              script_args)
     os.chdir(args.cwd)
     lda_ga_optimization(cmd_args)
 
 
 def lda_grid_search_command(args):
     confname = 'lda_grid_search.toml'
-    config, config_dir, meta = check_project(args, confname)
+    config_dir, meta = check_project(args.cwd)
+    config = load_configfile(config_dir / confname)
     from lda_grid_search import lda_grid_search, init_argparser as lda_gs_argparse
     script_args = lda_gs_argparse().slrkit_arguments
-    cmd_args = prepare_script_arguments(config, config_dir, confname,
-                                        script_args)
+    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
+                                              script_args)
     # handle the outdir and result parameter
     outdir_default = script_args['outdir']
     param = config.get('outdir', outdir_default['value'])
@@ -358,11 +542,12 @@ def lda_grid_search_command(args):
 
 def run_fawoc(args):
     confname = ''.join(['fawoc_', args.operation, '.toml'])
-    config, config_dir, meta = check_project(args, confname)
+    config_dir, meta = check_project(args.cwd)
+    config = load_configfile(config_dir / confname)
     from fawoc.fawoc import fawoc_run, init_argparser as fawoc_argparse
     script_args = fawoc_argparse().slrkit_arguments
-    cmd_args = prepare_script_arguments(config, config_dir, confname,
-                                        script_args)
+    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
+                                              script_args)
     # command line overrides
     if args.input is not None:
         setattr(cmd_args, 'input', args.input)
@@ -383,11 +568,12 @@ def run_fawoc(args):
 
 def run_import(args):
     confname = 'import.toml'
-    config, config_dir, meta = check_project(args, confname)
+    config_dir, meta = check_project(args.cwd)
+    config = load_configfile(config_dir / confname)
     from import_biblio import import_data, init_argparser as import_argparse
     script_args = import_argparse().slrkit_arguments
-    cmd_args = prepare_script_arguments(config, config_dir, confname,
-                                        script_args)
+    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
+                                              script_args)
 
     os.chdir(args.cwd)
     import_data(cmd_args)
@@ -395,23 +581,31 @@ def run_import(args):
 
 def run_acronyms(args):
     confname = 'acronyms.toml'
-    config, config_dir, meta = check_project(args, confname)
+    config_dir, meta = check_project(args.cwd)
+    config = load_configfile(config_dir / confname)
     from acronyms import acronyms, init_argparser as acro_argparse
     script_args = acro_argparse().slrkit_arguments
-    cmd_args = prepare_script_arguments(config, config_dir, confname,
-                                        script_args)
-
+    cmd_args, _, outputs = prepare_script_arguments(config, config_dir, confname,
+                                                    script_args)
     os.chdir(args.cwd)
     acronyms(cmd_args)
+    preproc_config = load_configfile(config_dir / 'preprocess.toml')
+    # change the preprocess.toml file adding the acronyms output in the acronyms
+    # option
+    preproc_config['acronyms'] = outputs['output']
+    # save the new file
+    with open(config_dir / 'preprocess.toml', 'w') as file:
+        file.write(tomlkit.dumps(preproc_config))
 
 
 def run_report(args):
     confname = 'report.toml'
-    config, config_dir, meta = check_project(args, confname)
+    config_dir, meta = check_project(args.cwd)
+    config = load_configfile(config_dir / confname)
     from topic_report import report, init_argparser as report_argparse
     script_args = report_argparse().slrkit_arguments
-    cmd_args = prepare_script_arguments(config, config_dir, confname,
-                                        script_args)
+    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
+                                              script_args)
     os.chdir(args.cwd)
     setattr(cmd_args, 'json_file', args.json_file)
     report(cmd_args)
@@ -430,12 +624,98 @@ def run_journals(args):
         msg = 'Unexpected subcommand {!r} for command journals: Aborting'
         sys.exit(msg.format(args.journals_operation))
 
-    config, config_dir, meta = check_project(args, confname)
+    config_dir, meta = check_project(args.cwd)
+    config = load_configfile(config_dir / confname)
     script_args = argparser().slrkit_arguments
-    cmd_args = prepare_script_arguments(config, config_dir, confname,
-                                        script_args)
+    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
+                                              script_args)
     os.chdir(args.cwd)
     script_to_run(cmd_args)
+
+
+def run_record(args):
+    """
+    Records a snapshot of the project using git
+
+    This command uses the to_record function of the slrkit scripts. If a script
+    defines a to_record function with signature:
+        to_record(config: dict[str, Any]) -> list[str]
+    that function is called to collect the list of files to commit.
+    The to_record function is called with the dict with the content of the
+    config file for the script. The to_record must return a list of string with
+    the files to commit. If there is something wrong in the config file, the
+    to_record must raise a ValueError. This exception is catched and its content
+     is used to format the error message for the user.
+    The run_record exits the current process with a friendly error message in
+    case of any error.
+    If the project is not a git repository, it will be git init.
+    If the command is invoked with the 'clean' flag, then the index is cleaned
+    from all files that are not referenced in the config files anymore.
+    If the command is invoked with the 'rm' flag, then 'clean' is implied, and
+    the cleaned files are also removed from the filesystem.
+
+    :param args: cli arguments
+    :type args: Namespace
+    """
+    if args.rm:
+        args.clean = True
+
+    config_dir, meta = check_project(args.cwd)
+    metafile = args.cwd / 'META.toml'
+    files = None
+    if args.message == '':
+        sys.exit('Error: The commit message cannot be the empty string')
+    try:
+        repo = git.repo.Repo(args.cwd)
+    except git.exc.InvalidGitRepositoryError:
+        print('Repository not yet initializated. Running git init.')
+        repo = git_init(config_dir, metafile, args.cwd)
+        init = True
+    else:
+        # try to add the files committed during init
+        files = git_filelist_add_init(config_dir, metafile, args.cwd)
+        init = False
+        try:
+            git_add_files(files, repo, must_exists=True)
+        except GitError as e:
+            msg = 'Error adding files to git: {!r}'.format(e.msg)
+            sys.exit(msg)
+    # prepare the list of files to commit
+    files_to_record = []
+    for k, v in SCRIPTS.items():
+        mod = importlib.import_module(v['module'])
+        config_file = (config_dir / k).with_suffix('.toml')
+        config = load_configfile(config_file)
+        if hasattr(mod, 'to_record') and callable(mod.to_record):
+            try:
+                files_to_record.extend(mod.to_record(config))
+            except ValueError as e:
+                msg = 'Error collecting files to record from {}: {}'
+                sys.exit(msg.format(config_file, e.args[0]))
+    wd = pathlib.Path(repo.working_dir)
+    # if we have just initialized the repo, there is nothing to clean in the
+    # index
+    if not init and args.clean:
+        # using dicts because they are faster to search
+        init_files = {pathlib.Path(f): None for f in files}
+        # these are the files in the index that can change
+        entries = [e for e in (wd / entry for entry, _ in repo.index.entries)
+                   if e not in init_files]
+        # these are the files actually referred in the toml files
+        files_path = {wd / f: None for f in files_to_record}
+        to_clean = [entry for entry in entries if entry not in files_path]
+        for f in to_clean:
+            repo.index.remove(str(f), working_tree=args.rm)
+
+    # add the fawoc profiler files
+    profilers = (config_dir / 'log').glob('fawoc_*_profiler.log')
+    files_to_record.extend(str(p) for p in profilers)
+
+    git_add_files(files_to_record, repo, must_exists=False)
+    if git_commit(repo, args.message):
+        print('Commit correctly executed')
+    else:
+        print('All the file are up to date, nothing to commit')
 
 
 def init_argparser():
@@ -455,7 +735,8 @@ def init_argparser():
                                       required=True, dest='command')
     # init
     help_str = 'Initialize a slr-kit project'
-    parser_init = subparser.add_parser('init', help=help_str, description=help_str)
+    parser_init = subparser.add_parser('init', help=help_str,
+                                       description=help_str)
     parser_init.add_argument('name', action='store', type=str,
                              help='Name of the project.')
     parser_init.add_argument('--author', '-A', action='store', type=str,
@@ -535,7 +816,7 @@ def init_argparser():
                                       description=help_str)
     parser_lda.add_argument('--config', '-c',
                             help='Path to the toml file to be used instead of '
-                                 'the project one')
+                                 'the project one.')
     parser_lda.set_defaults(func=run_lda)
     # report
     help_str = 'Run the report creation script in a slr-kit project.'
@@ -552,18 +833,41 @@ def init_argparser():
                                                help=help_str,
                                                description=help_str)
     parser_optimize_lda.set_defaults(func=optimize_lda)
+    # record
+    help_str = 'Record a snapshot of the project in the underlying git ' \
+               'repository'
+    parser_record = subparser.add_parser('record', help=help_str,
+                                         description=help_str)
+    parser_record.add_argument('message', help='The commit message to use for '
+                                               'the commit. Cannot be the '
+                                               'empty string.')
+    parser_record.add_argument('--clean', action='store_true',
+                               help='If set, the command cleans the repository '
+                                    'index from file not referenced in the '
+                                    'config files. These files are left in the '
+                                    'project but they become untracked.')
+    parser_record.add_argument('--rm', action='store_true',
+                               help='If set, the command cleans the project '
+                                    'removing files not referenced in the '
+                                    'config files. This flag remove these '
+                                    'files from the repository index and from '
+                                    'the filesystem. Use with caution.')
+    parser_record.set_defaults(func=run_record)
     # lda_grid_search
     help_str = 'Run an optimization phase for the lda stage in a ' \
                'slr-kit project using a grid search method'
-    parser_optimize_lda = subparser.add_parser('lda_grid_search',
-                                               help=help_str,
-                                               description=help_str)
-    parser_optimize_lda.set_defaults(func=lda_grid_search_command)
+    parser_lda_grid_search = subparser.add_parser('lda_grid_search',
+                                                  help=help_str,
+                                                  description=help_str)
+    parser_lda_grid_search.set_defaults(func=lda_grid_search_command)
     return parser
 
 
 def main():
     args = init_argparser().parse_args()
+    # change the cwd path to absolute to be sure that everything works when
+    # using paths or when changing the current dir
+    args.cwd = args.cwd.absolute()
     # execute the command
     args.func(args)
 

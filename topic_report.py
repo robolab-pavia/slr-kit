@@ -1,4 +1,3 @@
-import argparse
 import collections
 import datetime
 import json
@@ -46,7 +45,7 @@ def init_argparser():
     Initialize the command line parser.
 
     :return: the command line parser
-    :rtype: argparse.ArgumentParser
+    :rtype: ArgParse
     """
     parser = ArgParse()
     parser.add_argument('ris_file', type=str, suggest_suffix='.ris',
