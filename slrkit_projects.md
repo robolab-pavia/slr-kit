@@ -123,6 +123,7 @@ A first commit is recorded with:
 
 ### import
 This command imports a bibliographical database into the project, converting it to the `¢sv` format used by all the scripts.
+The output of this command will be called the *abstracts* file in the rest of this document.
 
 Usage:
 
@@ -147,6 +148,7 @@ The `import.toml` has the following structure:
 ### acronyms
 This commands extracts acronyms from the papers.
 Its output format is suitable to be used with `FAWOC` to classify which acronym is relevant or not.
+The output of this command will be called the *acronyms* file in the rest of this document.
 
 Usage:
 
@@ -154,6 +156,7 @@ Usage:
 
 The `acronyms` sub-command uses the `acronyms.toml` configuration file and runs the `acronyms.py` script.
 The output is in `tsv` format and has the following structure (suitable for `FAWOC`):
+
 * `id`: a progressive identification number;
 * `term`: the acronym in the form `extended-acronym | (abbreviation)`;
 * `label`: the label added by `FAWOC` to the acronym. This field is left blank by the `acronyms` command.
@@ -167,6 +170,49 @@ The `acronyms.toml` has the following structure:
 * `datafile`: input file. It is pre-filled with the value `<project-name>_abstracts.csv`;
 * `output`: output file. It is pre-filled with the value `<project-name>_acronyms.csv`;
 * `columns`: name of the column of `datafile` with the text to elaborate. It is prefilled with the value `abstract`.
+
+### journals
+This command allows the user to retrieve a list of journals and classify them in order to filter out the not relevant ones and the papers published on them.
+
+This command accepts two sub-commands:
+
+* `extract`: extracts the list of journals from the bibliographical database;
+* `filter`: uses the manual classification of the list of journals to filter out the papers published on the not relevant journals.
+
+Usage:
+
+    python3 slrkit.py journals {extract, filter}
+
+#### journals extract
+The `extract` sub-command produces a list in the format used by `FAWOC`.
+The structure is the following:
+
+* `id`: a progressive identification number;
+* `term`: the name of the journal;
+* `label`: the label added by `FAWOC` to the jpurnal. This field is left blank by the `extract` sub-command.
+
+It produces also the `fawoc_data.tsv` file with the count of how many papers are published in a journal.
+
+The `extract` sub-command uses the `journals_extract.toml` configuration file and runs the `journal_lister.py` script.
+The `journals_extract.toml` file has the following structure:
+
+* `ris_file`: name of the bibliographical database. It is pre-filled with `<project-name>.ris` and is updated by the `import` command;
+* `outfile`: name of the output file. It is pre-filled with `<project-name>_journals.csv`.
+
+
+#### journals filter
+The `filter` sub-command filters the papers using the manual classification of the list of journals.
+It adds the `status` column to the *abstracts* file.
+This column will have the value `good` for the papers published in a journal classified with `relevant` or the `keyword` label.
+All the papers from journals not classified as `relevant` or `keyword` will be marked with the `rejected` value in the `status` column.
+
+The `filter` sub-command uses the `journals_filter.toml` configuration file and runs the `filter_paper.py` script.
+The `journals_filter.toml` file has the following structure:
+
+* `ris_file`: name of the bibliographical database. It is pre-filled with `<project-name>.ris` and is updated by the `import` command;
+* `abstract_file`: name of the *abstract* file. It is pre-filled with `<project-name>_abstracts.csv`;
+* `journal_file`: name of the journal list file produced by `journal extract`. It is pre-filled with `<project-name>_journals.csv`.
+
 
 ### preprocess
 The `preprocess` sub-command uses the `preprocess.toml` configuration file and runs the `preprocess.py` script.
