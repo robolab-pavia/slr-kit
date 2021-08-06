@@ -621,12 +621,17 @@ def run_record(args):
     The run_record exits the current process with a friendly error message in
     case of any error.
     If the project is not a git repository, it will be git init.
-    If the command is invoked with the clean flag, then the index is cleaned
+    If the command is invoked with the 'clean' flag, then the index is cleaned
     from all files that are not referenced in the config files anymore.
+    If the command is invoked with the 'rm' flag, then 'clean' is implied, and
+    the cleaned files are also removed from the filesystem.
 
     :param args: cli arguments
     :type args: Namespace
     """
+    if args.rm:
+        args.clean = True
+
     config_dir, meta = check_project(args.cwd)
     metafile = args.cwd / 'META.toml'
     files = None
@@ -672,7 +677,7 @@ def run_record(args):
         files_path = {wd / f: None for f in files_to_record}
         to_clean = [entry for entry in entries if entry not in files_path]
         for f in to_clean:
-            repo.index.remove(str(f))
+            repo.index.remove(str(f), working_tree=args.rm)
 
     # add the fawoc profiler files
     profilers = (config_dir / 'log').glob('fawoc_*_profiler.log')
@@ -809,10 +814,16 @@ def init_argparser():
                                                'the commit. Cannot be the '
                                                'empty string.')
     parser_record.add_argument('--clean', action='store_true',
-                              help='If set, the command cleans the repository '
-                                   'index from file not referenced in the '
-                                   'config files. These files are left in the '
-                                   'project but they become untracked.')
+                               help='If set, the command cleans the repository '
+                                    'index from file not referenced in the '
+                                    'config files. These files are left in the '
+                                    'project but they become untracked.')
+    parser_record.add_argument('--rm', action='store_true',
+                               help='If set, the command cleans the project '
+                                    'removing files not referenced in the '
+                                    'config files. This flag remove these '
+                                    'files from the repository index and from '
+                                    'the filesystem. Use with caution.')
     parser_record.set_defaults(func=run_record)
     # lda_grid_search
     help_str = 'Run an optimization phase for the lda stage in a ' \
