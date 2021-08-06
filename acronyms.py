@@ -58,6 +58,7 @@ def acronyms(args):
     # na_filter=False avoids NaN if the abstract is missing
     dataset = pd.read_csv(args.datafile, delimiter='\t', na_filter=False,
                           encoding='utf-8')
+    # filter the paper using the information from the filter_paper script
     try:
         dataset = dataset[dataset['status'] == 'good'].copy()
     except KeyError:

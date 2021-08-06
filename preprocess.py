@@ -568,6 +568,7 @@ def preprocess(args):
                           encoding='utf-8', nrows=args.input_rows)
     dataset.fillna('', inplace=True)
     assert_column(args.datafile, dataset, target_column)
+    # filter the paper using the information from the filter_paper script
     try:
         dataset = dataset[dataset['status'] == 'good'].copy()
     except KeyError:
