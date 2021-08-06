@@ -135,6 +135,8 @@ All the selected columns are imported from the input file.
 The citation count for each paper is also retrived and imported as the column `citation`.
 If the option `--list_columns` is set, the command outputs only the list of available columns of the input file specified in the configuration file and no data is imported.
 
+After a correct execution, the command changes `journals_extract.toml`, `journals_filter.toml` and `report.toml` files updating their `ris_file` field with the name of the input file.
+
 The `import.toml` has the following structure:
 
 * `input_file`: path to the bibliographical database to import. **Important:** this field is not pre-filled by the `init` command, the user **must** fill it before running the `import` command. This file is committed to `git` repository by the `record` command;
