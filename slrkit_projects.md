@@ -53,6 +53,7 @@ The default name for this directory is `slrkit.conf` but a different name may be
 This directory contains all the configuration files used by the project.
 The configuration files must be TOML v. 1.0.0 files.
 Information about each file can be found in the documentation of each `slrkit` subcommand.
+Each relative path included in the configuration files are considered to be relative to the project root directory.
 The configuration directory contains also a `log` directory that contains all the log files produced during the project.
 All the scripts that write a log use the `slr-kit.log` log file saved in the log directory.
 
@@ -121,7 +122,25 @@ A first commit is recorded with:
 * the provvided `.gitignore`.
 
 ### import
-The `import` sub-command uses the `import_biblio.toml` configuration file and runs the `import_biblio.py` script.
+This command imports a bibliographical database into the project, converting it to the `¢sv` format used by all the scripts.
+
+Usage:
+
+    python3 slrkit.py import [--list_columns]
+
+The `import` sub-command uses the `import.toml` configuration file and runs the `import_biblio.py` script.
+It imports the database in a `csv` usable by the other commands.
+To each paper is assigned a progressive identification number in the column `id`.
+All the selected columns are imported from the input file.
+The citation count for each paper is also retrived and imported as the column `citation`.
+If the option `--list_columns` is set, the command outputs only the list of available columns of the input file specified in the configuration file and no data is imported.
+
+The `import.toml` has the following structure:
+
+* `input_file`: path to the bibliographical database to import. **Important:** this field is not pre-filled by the `init` command, the user **must** fill it before running the `import` command. This file is committed to `git` repository by the `record` command;
+* `type`: type of the database to import. Actually the only supported type is `RIS`;
+* `output`: name of the output file. It is pre-filled with `<project-name>_abstract.csv`;
+* `columns`: comma separed list of columns to import. It is pre-filled with `title,abstract,year`. Additionally, a `citation` column is also imported by default.
 
 ### acronyms
 The `acronyms` sub-command uses the `acronyms.toml` configuration file and runs the `acronyms.py` script.
