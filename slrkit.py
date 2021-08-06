@@ -373,6 +373,23 @@ def load_configfile(filename):
 
 
 def prepare_script_arguments(config, config_dir, confname, script_args):
+    """
+    Prepares the arguments for a script using the content of its config file
+
+    :param config: content of the config file
+    :type config: TOMLDocument
+    :param config_dir: path to the config file directory
+    :type config_dir: pathlib.Path
+    :param confname: name of the config file
+    :type confname: str
+    :param script_args: information about the script arguments
+    :type script_args: dict[str, Any]
+    :return: the Namespace object with the argument and the dicts of input and
+        output arguments. The dict types is {arg_name: arg_value, ...}
+    :rtype: tuple[argparse.Namespace, dict[str, str], dict[str, str]]
+    """
+    inputs = {}
+    outputs = {}
     args = argparse.Namespace()
     for k, v in script_args.items():
         if v.get('non-standard', False):
@@ -407,7 +424,12 @@ def prepare_script_arguments(config, config_dir, confname, script_args):
         else:
             setattr(args, dest, param)
 
-    return args
+        if v.get('input', False):
+            inputs[dest] = getattr(args, dest)
+        if v.get('output', False):
+            outputs[dest] = getattr(args, dest)
+
+    return args, inputs, outputs
 
 
 def run_preproc(args):
@@ -416,8 +438,8 @@ def run_preproc(args):
     config = load_configfile(config_dir / confname)
     from preprocess import preprocess, init_argparser as preproc_argparse
     script_args = preproc_argparse().slrkit_arguments
-    cmd_args = prepare_script_arguments(config, config_dir, confname,
-                                        script_args)
+    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
+                                              script_args)
     # handle the special parameter relevant-terms
     relterms_default = script_args['relevant-term']
     param = config.get('relevant-term', relterms_default['value'])
@@ -454,8 +476,8 @@ def run_terms(args):
     config_dir, meta = check_project(args.cwd)
     config = load_configfile(config_dir / confname)
     script_args = argparser().slrkit_arguments
-    cmd_args = prepare_script_arguments(config, config_dir, confname,
-                                        script_args)
+    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
+                                              script_args)
     os.chdir(args.cwd)
     script_to_run(cmd_args)
 
@@ -471,8 +493,8 @@ def run_lda(args):
     config = load_configfile(confname)
     from lda import lda, init_argparser as lda_argparse
     script_args = lda_argparse().slrkit_arguments
-    cmd_args = prepare_script_arguments(config, config_dir, confname,
-                                        script_args)
+    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
+                                              script_args)
     # handle the outdir parameter
     outdir_default = script_args['outdir']
     param = config.get('outdir', outdir_default['value'])
@@ -491,8 +513,8 @@ def optimize_lda(args):
     config = load_configfile(config_dir / confname)
     from lda_ga import lda_ga_optimization, init_argparser as lda_ga_argparse
     script_args = lda_ga_argparse().slrkit_arguments
-    cmd_args = prepare_script_arguments(config, config_dir, confname,
-                                        script_args)
+    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
+                                              script_args)
     os.chdir(args.cwd)
     lda_ga_optimization(cmd_args)
 
@@ -503,8 +525,8 @@ def lda_grid_search_command(args):
     config = load_configfile(config_dir / confname)
     from lda_grid_search import lda_grid_search, init_argparser as lda_gs_argparse
     script_args = lda_gs_argparse().slrkit_arguments
-    cmd_args = prepare_script_arguments(config, config_dir, confname,
-                                        script_args)
+    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
+                                              script_args)
     # handle the outdir and result parameter
     outdir_default = script_args['outdir']
     param = config.get('outdir', outdir_default['value'])
@@ -524,8 +546,8 @@ def run_fawoc(args):
     config = load_configfile(config_dir / confname)
     from fawoc.fawoc import fawoc_run, init_argparser as fawoc_argparse
     script_args = fawoc_argparse().slrkit_arguments
-    cmd_args = prepare_script_arguments(config, config_dir, confname,
-                                        script_args)
+    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
+                                              script_args)
     # command line overrides
     if args.input is not None:
         setattr(cmd_args, 'input', args.input)
@@ -550,8 +572,8 @@ def run_import(args):
     config = load_configfile(config_dir / confname)
     from import_biblio import import_data, init_argparser as import_argparse
     script_args = import_argparse().slrkit_arguments
-    cmd_args = prepare_script_arguments(config, config_dir, confname,
-                                        script_args)
+    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
+                                              script_args)
 
     os.chdir(args.cwd)
     import_data(cmd_args)
@@ -563,8 +585,8 @@ def run_acronyms(args):
     config = load_configfile(config_dir / confname)
     from acronyms import acronyms, init_argparser as acro_argparse
     script_args = acro_argparse().slrkit_arguments
-    cmd_args = prepare_script_arguments(config, config_dir, confname,
-                                        script_args)
+    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
+                                              script_args)
 
     os.chdir(args.cwd)
     acronyms(cmd_args)
@@ -576,8 +598,8 @@ def run_report(args):
     config = load_configfile(config_dir / confname)
     from topic_report import report, init_argparser as report_argparse
     script_args = report_argparse().slrkit_arguments
-    cmd_args = prepare_script_arguments(config, config_dir, confname,
-                                        script_args)
+    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
+                                              script_args)
     os.chdir(args.cwd)
     setattr(cmd_args, 'json_file', args.json_file)
     report(cmd_args)
@@ -599,8 +621,8 @@ def run_journals(args):
     config_dir, meta = check_project(args.cwd)
     config = load_configfile(config_dir / confname)
     script_args = argparser().slrkit_arguments
-    cmd_args = prepare_script_arguments(config, config_dir, confname,
-                                        script_args)
+    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
+                                              script_args)
     os.chdir(args.cwd)
     script_to_run(cmd_args)
 
