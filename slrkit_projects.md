@@ -302,13 +302,61 @@ It has the following structure:
 * `column`: column of the input file with the text to elaborate. Pre-filled with `abstract_lem`;
 * `delimiter`: field delimiter used by the input file. Pre-filled with `\t`.
 
+### fawoc
+The `fawoc` command runs `FAWOC` on a list produced by the previous commands.
+This command accepts three sub-commands:
+
+* `terms`: run `FAWOC` on the *terms* file;
+* `journals`: run `FAWOC` on the *journals* file;
+* `acronyms`: run `FAWOC` on the *acronyms* file.
+
+Usage:
+
+    python3 slrkit.py fawoc [--input LABEL] [--width WIDTH]
+
+the optional arguments are passed to `FAWOC` and override the corresponding values in the configuration file:
+
+* `--input`: label to review;
+* `--width`: width of the `FAWOC` windows, in number of columns.
+
+If the `fawoc` command is invoked without a sub-command, the `terms` sub-command is run.
+Each sub-command writes to its own profiler file, in the `log` directory of the project.
+
+#### fawoc terms
+
+The `fawoc terms` sub-command allows the user to classify the *terms* file.
+This command uses the `fawoc_terms.toml` configuration file that has the following structure:
+
+* `datafile`: file to classify. Pre-filled with `<project-name>_terms.csv`;
+* `input`: label to review;
+* `dry-run`: if `true`, `FAWOC` don't write anything on the `datafile` on exit;
+* `no-auto-save`: if `true`, no auto saving;
+* `no-profile`: if `true`, no data is written to the profiler file;
+* `width`: width of the `FAWOC` windows in columns.
+
+The profiler file for this sub-command is `fawoc_terms_profiler.log` in the `log` directory of the project.
+
+#### fawoc journals
+
+The `fawoc journals` sub-command allows the user to classify the *journals* file.
+This command uses the `fawoc_journals.toml` configuration file.
+Its structure is the same of the `fawoc_terms.toml`.
+The only difference is that the `datafile` field is pre-filled with `<project-name>_journals.csv`.
+
+The profiler file for this sub-command is `fawoc_journals_profiler.log` in the `log` directory of the project.
+
+#### fawoc acronyms
+
+The `fawoc acronyms` sub-command allows the user to classify the *acronyms* file.
+This command uses the `fawoc_acronyms.toml` configuration file.
+Its structure is the same of the `fawoc_terms.toml`.
+The only difference is that the `datafile` field is pre-filled with `<project-name>_acronyms.csv`.
+
+The profiler file for this sub-command is `fawoc_acronyms_profiler.log` in the `log` directory of the project.
+
 ### lda
 The `lda` sub-command uses the `lda.toml` configuration file and runs the `lda.py` script.
 
 ### lda_grid_search
 The `lda_grid_search` sub-command uses the `lda_grid_search.toml` configuration file and runs the `lda_grid_search.py` script.
 
-### fawoc
-The `fawoc` sub-command uses the `fawoc.toml` configuration file and runs the `fawoc` tool.
-The profiler file is saved in the `log` directory inside the configuration directory.
-The profiler is called `fawoc_profiler.log`.
