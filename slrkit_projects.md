@@ -218,7 +218,39 @@ The `acronyms.toml` has the following structure:
 
 
 ### preprocess
-The `preprocess` sub-command uses the `preprocess.toml` configuration file and runs the `preprocess.py` script.
+The `preprocess` sub-command prepares the documents for the following elaborations.
+If the input file (the *abstract* file) contains the `status` column created by the `journals filter` command, the `preprocess` command uses that column value to filter out the paper pubblished in the rejected journals.
+It also filters the stop-words using the list of words providded by the user.
+No default list of stop-words is used, the user **must** provvide his own lists.
+
+This command also uses the *acronyms* file to search and mark the acronyms as relevant words.
+Only the acronyms with the `relevant` or the `keyword` label are considered.
+
+The `preprocess` command, also mark as relevant all the terms provvided by the user in the relevant terms lists.
+The user can also choose how the command marks this terms.
+The input of this command is the *abstract* file.
+The output of this command is the *abstract* file without the paper discarded because pubblished in rejected journals.
+To this file is also added a new column with the text of each paper preprocessed.
+More information can be found in the preprocess.py section of the [README.md](README.md) 
+
+The `preprocess` sub-command uses the `preprocess.toml` configuration file.
+This file has the following structure:
+
+* `datafile`: the name of the *abstract* file that will be used as input. This field is pre-filled with `<project-name>_abstracts.csv`;
+* `output`: output file name. This field is pre-filled with `<project-name>_preproc.csv`;
+* `placeholder`: placeholder used to mark the barriers (the stop-words and the punctuaction). This character is also used as prefix and suffix for the placeholder for the relevant terms and the acronyms. It is prefilled with the character `@`;
+* `stop-words`: lists of stop-words provvided by the user. No other lists are used, so the user shall provvide its own;
+* `relevant-term`: lists of relevant terms. This field is particular. Each element must be a list of at least one item and at most two items. The first item is the name of a list of relevant terms. The second one, if present, is the marker that the user want to be used for all the terms in this list. All the terms will be marked with `<placeholder><marker><placeholder>`. If the marker is ommitted than the command replaces every term using the placeholder, all the words of the term separed with `_` character and then another placeholder;
+* `acronyms`: name of the *acronyms* file. If the `acronyms` command is run before, it is pre-filled with `<project-name>_acronyms.csv`;
+* `target-column`: name of the column used for the document text. It is pre-filled with `abstract`;
+* `output-column`: name of the column that is added to the output, containing the preprocessed text. It is pre-filled with `abstract_lem`;
+* `input-delimiter`: input file field delimiter. It is pre-filled with `\t`;
+* `output-delimiter`: input file field delimiter. It is pre-filled with `\t`;
+* `rows`: number of rows of the input file to process. If empty, all the rows are used;
+* `language`: language of text. Must be a ISO 639-1 two-letter code. Pre-filled with `en`;
+* `regex`: csv file with some dataset specific regex substitutions that has to be applied to the text.
+
+The output of this command will be called the *preprocess* file in the rest of this document.
 
 ### gen_terms
 The `gen_terms` sub-command uses the `gen_terms.toml` configuration file and runs the `gen_terms.py` script.
