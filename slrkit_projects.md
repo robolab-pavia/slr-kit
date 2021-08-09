@@ -355,7 +355,45 @@ The only difference is that the `datafile` field is pre-filled with `<project-na
 The profiler file for this sub-command is `fawoc_acronyms_profiler.log` in the `log` directory of the project.
 
 ### lda
-The `lda` sub-command uses the `lda.toml` configuration file and runs the `lda.py` script.
+The `lda` command trains an LDA model and outputs the extracted topics and the association between topics and documents.
+
+Usage:
+
+    python3 slrkit.py lda [--config CONFIG]
+
+The `--config` optional argument allows the user to specify a different configuration file than the default one.
+This command runs the `lda.py` script.
+
+The `lda` sub-command uses, by default, the `lda.toml` configuration file that has the following structure:
+
+* `preproc_file`: name of the *preprocess* file. Pre-filled with `<project-name>_preproc.csv`;
+* `terms_file`: name of the *terms* file. Pre-filled with `<project-name>_terms.csv`;
+* `outdir`: path to the directory where to save the results. Pre-filled with the path to project directory;
+* `text-column`: column of the *preprocess* file to elaborate. Pre-filled with `abstract_lem`;
+* `title-column`: column in the *preprocess* file to use as document title. Pre-filled with `title`;
+* `topics`: number of topic to extract. Pre-filled with `20`;
+* `alpha`: alpha parameter of LDA. Pre-filled with `auto`;
+* `beta`: beta parameter of LDA. Pre-filled with `auto`;
+* `no_below`: keep tokens which are contained in at least this number of documents. Pre-filled with `20`;
+* `no_above`: keep tokens which are contained in no more than this fraction of documents (fraction of total corpus size, not an absolute number). Pre-filled with `0.5`;
+* `seed`: seed to be use in trainig;
+* `model`: if `true` the lda model is saved to directory `<outdir>/lda_model`. The model is saved with name "model";
+* `no-relevant`: if set, use only the term labelled as `keyword` in the *terms* file;
+* `load-model`: path to a directory where a previously trained model is saved. Inside this directory the model named "model" is searched. the loaded model is used with the dataset file to generate the topics and the topic document association;
+* `no_timestamp`: if `true`, no timestamp is added to the output file names;
+* `placeholder`: placeholder for the barriers. Pre-filled with `@`;
+* `delimiter`: field delimiter used in the *preprocess* file. Pre-filled with `\t`.
+
+**IMPORTANT:**
+
+there are some issues on the reproducibility of the LDA training.
+Setting the `seed` value is not enough to guarantee the reproducibilty of the experiment.
+It is also necessary to set the environment variable `PYTHONHASHSEED` to `0`.
+The following command sets the variable for a single run in a Linux shell:
+
+    PYTHONHASHSEED=0 python3 slrkit.py lda
+
+More information on the `PYTHONHASHSEED` variable can be found [here](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED).
 
 ### lda_grid_search
 The `lda_grid_search` sub-command uses the `lda_grid_search.toml` configuration file and runs the `lda_grid_search.py` script.
