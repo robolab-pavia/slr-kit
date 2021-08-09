@@ -100,7 +100,7 @@ Optional arguments:
 ## `preprocess.py`
 
 - ACTION: Performs the preprocessing of the documents to prepare it for further processing.
-- INPUT: The CSV file produced by `ris2csv.py`.
+- INPUT: The CSV file produced by `import_biblio.py` or the one modified by `filter_paper.py`.
 - OUTPUT: A CSV file containing the same columns of the input file, plus a new column containing the preprocessed text.
 
 The preprocessing includes:
@@ -111,16 +111,18 @@ The preprocessing includes:
 - Mark selected n-grams as relevant
 - Acronyms substitution
 - Remove special characters and digits
+- Regex based substitutions
 - Lemmatisation
 
-The stop words are read from one or more optional files.
+All the rows in the input file with 'rejected' as the `status` field are discarded and not elaborated.
+The stop words are read **only** from one or more optional files.
 These words are replaced, in the output, with a placeholder (called stopword placeholder) that is recognized in the term extraction phase.
 The default stopword placeholder is the '@' character.
 
 The user can also specify files containing lists of relevant n-grams.
-For each specified file, the user can specify a particular placeholder that will be used as replacement text for each term in that list.
-That text will be surrounded with the stopword placeholder.
-If the user do not specify a placeholder for a list of terms, then a different approach is used.
+For each specified file, the user can specify a particular marker that will be used as replacement text for each term in that list.
+That marker will be surrounded with the stopword placeholder.
+If the user do not specify a marker for a list of terms, then a different approach is used.
 Each term will be replaced with a placeholder composed by, the stopword placeholder, the words composing the term separated with '_' and finally another stopword placeholder.
 This kind of placeholders can be used by the subsequent phases to recognize the term without losing the meaning of the n-gram.
 
@@ -137,10 +139,23 @@ The file must have two columns 'term' and 'label':
 * 'label' is the classification made with fawoc. Only the rows with label equal to 'relevant' or 'keyword' will be considered.
 
 For each considered row in the TSV file, the program searches for:
+
 1. the abbreviation of the acronym;
 2. the extended acronym;
 3. the extended acronym with all the spaces substituted with '-'.
-The program replaces each recognized acronym with `<stopword placeholder><acronym><stopword placeholder>`.
+
+The first search is case-sensitive, while the other two are not. 
+The program replaces each recognized acronym with the marker `<stopword placeholder><acronym abbreviation><stopword placeholder>`.
+
+The `preprocess.py` script can apply some specific regex and substitutions.
+Using the `--regex` option, the user can pass to script a csv file containing the instructions to apply these substitutions.
+
+The file accepted by the `--regex` option has the following structure:
+
+* `pattern`: the pattern to search in the text. Can be a `python3` regex pattern or a string to be searched verbatim;
+* `repl`: the string that substitutes the `pattern`. The actual text substituted is `__<repl-content>__`;
+* `regexBoolean`: if `true` the `pattern` is treated as a regular expression. If `false` the `pattern` is searched verbatim.
+
 
 Positional arguments:
 - `datafile` input CSV data file
@@ -158,6 +173,7 @@ optional arguments:
 * `--output-delimiter OUTPUT_DELIMITER` Delimiter used in output file. Default '\t'
 * `--rows | -R INPUT_ROWS` Select maximum number of samples
 * `--language | -l LANGUAGE` language of text. Must be a ISO 639-1 two-letter code. Default: 'en'
+* `--regex REGEX` regex .csv for specific substitutions
 
 ### Example of usage
 
