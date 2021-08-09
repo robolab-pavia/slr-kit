@@ -163,9 +163,10 @@ The structure is the following:
 
 * `id`: a progressive identification number;
 * `term`: the name of the journal;
-* `label`: the label added by `FAWOC` to the jpurnal. This field is left blank by the `extract` sub-command.
+* `label`: the label added by `FAWOC` to the journal. This field is left blank by the `extract` sub-command;
+* `count`: the number of papers pubblished in the journal.
 
-It produces also the `fawoc_data.tsv` file with the count of how many papers are published in a journal.
+`FAWOC` will move the count field in the `fawoc_data.tsv` file.
 
 The `extract` sub-command uses the `journals_extract.toml` configuration file and runs the `journal_lister.py` script.
 The `journals_extract.toml` file has the following structure:
