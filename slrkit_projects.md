@@ -222,6 +222,11 @@ The `acronyms.toml` has the following structure:
 
 ### preprocess
 The `preprocess` sub-command prepares the documents for the following elaborations.
+
+Usage:
+
+    python3 slrkit.py preprocess
+
 If the input file (the *abstract* file) contains the `status` column created by the `journals filter` command, the `preprocess` command uses that column value to filter out the paper pubblished in the rejected journals.
 It also filters the stop-words using the list of words providded by the user.
 No default list of stop-words is used, the user **must** provvide his own lists.
@@ -261,6 +266,10 @@ This command allows the user to generate and handle lists of terms.
 This command accepts one sub-command:
 
 * `generate`: generate a list of terms that have to be classified.
+
+Usage:
+
+    python3 slrkit.py terms {generate}
 
 If the `terms` command is invoked without a sub-command, the `generate` sub-command is run.
 
