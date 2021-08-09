@@ -157,6 +157,8 @@ Usage:
 
     python3 slrkit.py journals {extract, filter}
 
+If the `journals` command is invoked without a sub-command, the `extract` sub-command is run.
+
 #### journals extract
 The `extract` sub-command produces a list in the format used by `FAWOC`.
 The structure is the following:
@@ -253,8 +255,43 @@ This file has the following structure:
 
 The output of this command will be called the *preprocess* file in the rest of this document.
 
-### gen_terms
-The `gen_terms` sub-command uses the `gen_terms.toml` configuration file and runs the `gen_terms.py` script.
+### terms
+This command allows the user to generate and handle lists of terms.
+
+This command accepts one sub-command:
+
+* `generate`: generate a list of terms that have to be classified.
+
+If the `terms` command is invoked without a sub-command, the `generate` sub-command is run.
+
+#### terms generate
+The `generate` sub-command generates a list of terms from the documents in the *preprocess* file.
+This command runs the `gen_terms.py` script.
+The format of this list is the one used by `FAWOC`. The structure is the following:
+
+* `id`: a progressive identification number;
+* `term`: the n-gram;
+* `label`: the label added by `FAWOC` to the n-gram. This field is left blank by the `terms generate` command.
+
+This command produces also the `fawoc_data.tsv` file, with the following structure:
+
+* `id`: the identification number of the term;
+* `term`: the term;
+* `count`: the number of occurrences of the term.
+
+The output of this command will be called the *terms* file in the rest of this document.
+
+The `terms generate` sub-command uses the `terms_generate.toml` configuration file.
+It has the following structure:
+
+* `datafile`: name of the input file (the *preprocess* file). It is pre-filled with `project-name>_preproc.csv`;
+* `output`: name of the output file. It is prefilled with `<project-name>_terms.csv`;
+* `stdout`: if `true` the command also print the output to the standard output;
+* `n-grams`: maximum size of an n-gram. All the n-gram with lengths from one word to this number of words are generated. By default, this field is filled with `4`;
+* `min-frequency`: minimum number of occurrences of an n-gram. All the n-gram with less occurrences than this value are discarded. Pre-filled with `5`;
+* `placeholder`: placeholder used to mark the barriers in the `preprocess` stage. All the n-grams containg this character or containing words that start and end with this character are discarded. It is prefilled with the character `@`;
+* `column`: column of the input file with the text to elaborate. Pre-filled with `abstract_lem`;
+* `delimiter`: field delimiter used by the input file. Pre-filled with `\t`.
 
 ### lda
 The `lda` sub-command uses the `lda.toml` configuration file and runs the `lda.py` script.
