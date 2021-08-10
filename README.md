@@ -705,11 +705,17 @@ evaluate_clusters.py pckmeans_clusters.csv ground_truth.json
 
 ## `topic_report.py`
 
-- ACTION: Generate reports for various stats regarding topics and papers. The reports will be based on 2 templates, if they won't be found in the repository
-    of this script, it will authomatically copy them from the directory `report_templates` into the script parent directory.
-- INPUT: the RIS file containing data for all papers and the json docs file containing results from LDA.
-- OUTPUT: A directory named report<current timestamp>, containing a graph in png format and 3 tables in tex format.
-    Also a latex and a markdown template saved inside the directory, with the latter being already filled.
+- ACTION: Generate reports for various statistics regarding topics and papers. The reports will be based on 2 templates, if they are not found in the working directory of this script, they will be automatically copied from the directory `report_templates`.
+- INPUT: the RIS file containing data for all papers and the lda json file with the topics assigned to each document. This file is usually called `lda_docs-topics_<date>_<time>.json`.
+- OUTPUT: A directory named `report<timestamp>`, containing a figure in png format called `reportyear.png` and a `table` directory with three tex files containing tables in tex format. Also, a latex and a markdown reports are saved inside the directory, with names `report_template.tex` and `report.md`.
+
+This script prepares reports with some statistics about the analyzed documents.
+The statistics are:
+
+* number of paper classified in each topic, pubblicated in each considered year. Since the `lda.py` script calculate, for each paper, the probabilities that the paper is about a certain topic, this statistic is calculated as a real number;
+* a plot of the statistic above;
+* the number of paper pubblished in each journal for each topic. This statistic is a real number for the same reason of the one above;
+* the number of paper pubblished in each journal in each considered year;
 
 ### Arguments
 
@@ -720,14 +726,14 @@ Positional:
 
 Optional:
 
-- `--dir DIR, -d DIR`: path to the directory where output will be saved.
-- `--minyear YEAR, -m YEAR`: minimum year that will be used in the reports. If missing, the minimum year found in the data is used;
-- `--maxyear YEAR, -M YEAR`: maximum year that will be used in the reports. If missing, the maximum year found in the data is used.
+- `--dir | -d DIR`: path to the directory where output will be saved.
+- `--minyear | -m YEAR`: minimum year that will be used in the reports. If missing, the minimum year found in the data is used;
+- `--maxyear | -M YEAR`: maximum year that will be used in the reports. If missing, the maximum year found in the data is used.
 
 ### Example of usage
 
 ```
-topic_report.py dsm.ris dsm_docs.json
+topic_report.py dsm.ris lda_docs-topics_2021-07-14_101211.json
 ```
 
 ## report_templates
