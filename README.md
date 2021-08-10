@@ -82,7 +82,9 @@ import_biblio --columns title,abstract dataset.ris > dataset_abstracts.csv
 
 Uses the algorithm presented in A. Schwartz and M. Hearst, "A Simple Algorithm for Identifying Abbreviations Definitions in Biomedical Text", Biocomputing, 2003.
 
-The script assumes that the abstracts are contained in a column named `abstract`. A different column can be specified usign a command liine option. It also requires a column named `id`.
+The script assumes that the abstracts are contained in a column named `abstract`.
+A different column can be specified usign a command liine option. It also requires a column named `id`.
+All the rows in the input file with 'rejected' as the `status` field (if present) are discarded and not elaborated.
 The output is a TSV file with the columns `id`, `term` and `label`.
 This is the format used by FAWOC.
 The `id` is a number that univocally identifies an acronym.
@@ -114,7 +116,7 @@ The preprocessing includes:
 - Regex based substitutions
 - Lemmatisation
 
-All the rows in the input file with 'rejected' as the `status` field are discarded and not elaborated.
+All the rows in the input file with 'rejected' as the `status` field (if present) are discarded and not elaborated.
 The stop words are read **only** from one or more optional files.
 These words are replaced, in the output, with a placeholder (called stopword placeholder) that is recognized in the term extraction phase.
 The default stopword placeholder is the '@' character.
@@ -705,7 +707,7 @@ evaluate_clusters.py pckmeans_clusters.csv ground_truth.json
 
 ## `topic_report.py`
 
-- ACTION: Generate reports for various statistics regarding topics and papers. The reports will be based on 2 templates, if they are not found in the working directory of this script, they will be automatically copied from the directory `report_templates`.
+- ACTION: Generates reports for various statistics regarding topics and papers. The reports will be based on 2 templates, if they are not found in the working directory of this script, they will be automatically copied from the directory `report_templates`.
 - INPUT: the RIS file containing data for all papers and the lda json file with the topics assigned to each document. This file is usually called `lda_docs-topics_<date>_<time>.json`.
 - OUTPUT: A directory named `report<timestamp>`, containing a figure in png format called `reportyear.png` and a `table` directory with three tex files containing tables in tex format. Also, a latex and a markdown reports are saved inside the directory, with names `report_template.tex` and `report.md`.
 
@@ -747,3 +749,39 @@ The report will contain:
 - A graph about Topic-Year evolution
 - A table containing data about the Journals that published the papers, and their topics distribution
 - A table containing data about the Journals that published the papers, and the publication year distribution
+
+## `journal_lister.py`
+
+- ACTION: Generates a list of the journals where the analyzed papers was pubblished.
+- INPUT: the RIS file containing the bibliographical data of the papers.
+- OUTPUT: A list of journals in the format used by `FAWOC`.
+
+This command produces a list suitable to be classified with `FAWOC` in order to filter the journals that are not relevant for the analysis.
+
+The output file has the following format:
+
+* `id`: a progressive identification number;
+* `term`: the name of the journal;
+* `label`: the label added by `FAWOC` to the journal. This field is left blank;
+* `count`: the number of papers pubblished in the journal.
+
+### Arguments:
+- `ris_file` path to the ris file
+- `outfile`: path to csv output file
+
+## `filter_paper.py`
+
+- ACTION: Modify the file produced by the `import_biblio.py` adding a field used to papers from the journals considered not relevant.
+- INPUT: the bibliographical database, the file with the abstract (the output of `import_biblio.py`) and the list of journals (produced by `journal_lister.py`) with the journals classified.
+- OUTPUT: The file with the abstracts with a field that tells if a paper must be considered or not.
+
+This command uses the classified list of journals to filters the papers.
+The output file has a new column `status` added.
+This field contains the value `good` for all the papers pubblished in journals classified as `relevant` or `keyword`.
+All the other papers are marked with the `rejected` value.
+This field is used by `preprocess.py` and `acronyms.py` to exclude the papers marked as `rejected`.
+
+### Arguments:
+* `ris_file`       path to the ris file 
+* `abstract_file`  path to the file with the abstracts of the papers 
+* `journal_file`   path to the file with the classified journals
