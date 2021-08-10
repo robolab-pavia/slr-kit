@@ -30,10 +30,10 @@ In all the stages, mark NOT-RELEVANT words if needed.
 
 - probably stage 1 could be made automatic
 
-# SLR-KIT projects
+# SLR-KIT projects and slrkit command
 The `slrkit.py` application helps to manage all the stages of an SLR project.
 A project is a collection of file created with the SLR-KIT script that refers to an initial set of document that has to be analyzed.
-For more information see the [slrkit projects documentation](slrkit_projects.md).
+For more information see the [slrkit command documentation](slrkit.md).
 
 # Available scripts and programs
 
