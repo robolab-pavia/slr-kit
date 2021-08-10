@@ -459,7 +459,7 @@ def collect_results(queue):
         results.append(queue.get())
 
     df = pd.DataFrame(results)
-    df.sort_values(by=['coherence'], ascending=False, inplace=True)
+    df.sort_values(by='coherence', ascending=False, inplace=True)
     df.reset_index(drop=True, inplace=True)
     return df
 
