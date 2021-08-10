@@ -292,8 +292,9 @@ def lda_grid_search(args):
                                                    * len(topics_range)))
     results = compute_optimal_model(corpora, topics_range, alpha, beta,
                                     output_dir, logger, seed=args.seed)
-
-    results.to_csv(output_dir / 'results.csv', sep='\t', index=False)
+    results.sort_values(by='coherence', ascending=False, inplace=True)
+    results.reset_index(inplace=True, drop=True)
+    results.to_csv(output_dir / 'results.csv', sep='\t', index_label='id')
 
     best = results.loc[results['coherence'].idxmax()]
 
