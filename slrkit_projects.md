@@ -11,7 +11,7 @@ All of these files, are generated from a set of documents that the user wishes t
 A project is also a `git` repository.
 The `slrkit` command initializes this repository when the project is first created and helps to track only the meaningful files.
 
-### Anathomy of a project
+### Anatomy of a project
 An SLR-KIT project is a directory that contains all the files related to an analysis.
 This directory must contain also a `META.toml` file and a project configuration directory.
 
@@ -39,11 +39,11 @@ The allowed keys and their meaning are described in the following table:
 | Key    | Description                                    | Type   |
 |--------|------------------------------------------------|:------:|
 | URL    | URL of the site used to retrieve the documents | string |
-| Query  | Query string usedto retrieve the documents     | string |
+| Query  | Query string used to retrieve the documents     | string |
 | Date   | Date on which the documents were retrieved     | string |
 | Origin | Description of the origin of the documents     | string |
 
-The `Origin` key is meant to be used when the documents are retrieved without the help of a bibligraphical search engine.
+The `Origin` key is meant to be used when the documents are retrieved without the help of a bibliographical search engine.
 In this case the `URL` and `Query` keys shall be left empty.
 
 #### The project configuration directory
@@ -52,7 +52,7 @@ Its name is saved in the `META.toml` file in the `Project.Config` key.
 The default name for this directory is `slrkit.conf` but a different name may be used.
 This directory contains all the configuration files used by the project.
 The configuration files must be TOML v. 1.0.0 files.
-Information about each file can be found in the documentation of each `slrkit` subcommand.
+Information about each file can be found in the documentation of each `slrkit` sub-command.
 Each relative path included in the configuration files are considered to be relative to the project root directory.
 The configuration directory contains also a `log` directory that contains all the log files produced during the project.
 All the scripts that write a log use the `slr-kit.log` log file saved in the log directory.
@@ -69,15 +69,15 @@ Usage:
 The sub-commands are:
 * [`init`](#init): initialize a slr-kit project
 * [`import`](#import): import a bibliographic database converting to the csv format used by slr-kit.
-* [`journals`](#journals): subcommand to extract and filter a list of journals. Requires a subcommand.
+* [`journals`](#journals): sub-command to extract and filter a list of journals. Requires a sub-command.
 * [`acronyms`](#acronyms): extract acronyms from texts.
 * [`preprocess`](#preprocess): run the preprocess stage in a slr-kit project
-* [`terms`](#terms): subcommand to extract and handle lists of terms in a slr-kit project. Requires a sub-command
+* [`terms`](#terms): sub-command to extract and handle lists of terms in a slr-kit project. Requires a sub-command
 * [`fawoc`](#fawoc): run fawoc in a slr-kit project.
-* [`lda`](#lda): run the lda stage in a slr-kit project
+* [`lda`](#lda): run the lda stage in a slr-kit project.
 * [`report`](#report): run the report creation script in a slr-kit project.
-* [`optimize_lda`](#optimize_lda): run an optimization phase for the lda stage in aslr-kit project, using a GA.
-* [`record`](#record): record a snapshot of the project in the underlying git repository
+* [`optimize_lda`](#optimize_lda): run an optimization phase for the lda stage in a slr-kit project, using a GA.
+* [`record`](#record): record a snapshot of the project in the underlying git repository.
 * [`lda_grid_search`](#lda_grid_search): run an optimization phase for the lda stage in a slr-kit project using a grid search method.
 
 Each command operates on the directory from which the `slrkit` command is run.
@@ -112,17 +112,17 @@ All the other fields are left untouched.
 The configuration files are updated.
 If one or more option are missing, they are filled with the default value.
 The other information are not changed.
-The original `toml` files are backuped in the configuration directory before any modification.
+The original `toml` files are backupped in the configuration directory before any modification.
 The backups have the same name of the original files with the extension `.bak`.
 If the user gives the `--no-backup` option, no backup is performed.
 
 The `init` sub-command also initializes the `git` repository of the project.
-A `.gitignore` file is provvided with some useful patterns.
+A `.gitignore` file is provided with some useful patterns.
 A first commit is recorded with:
 
 * the `META.toml` file;
 * all the configuration files;
-* the provvided `.gitignore`.
+* the provided `.gitignore`.
 
 ### import
 This command imports a bibliographical database into the project, converting it to the `¢sv` format used by all the scripts.
@@ -136,7 +136,7 @@ The `import` sub-command uses the `import.toml` configuration file and runs the 
 It imports the database in a `csv` usable by the other commands.
 To each paper is assigned a progressive identification number in the column `id`.
 All the selected columns are imported from the input file.
-The citation count for each paper is also retrived and imported as the column `citation`.
+The citation count for each paper is also retrieved and imported as the column `citation`.
 If the option `--list_columns` is set, the command outputs only the list of available columns of the input file specified in the configuration file and no data is imported.
 
 After a correct execution, the command changes `journals_extract.toml`, `journals_filter.toml` and `report.toml` files updating their `ris_file` field with the name of the input file.
@@ -146,7 +146,7 @@ The `import.toml` has the following structure:
 * `input_file`: path to the bibliographical database to import. **Important:** this field is not pre-filled by the `init` command, the user **must** fill it before running the `import` command. This file is committed to `git` repository by the `record` command;
 * `type`: type of the database to import. Actually the only supported type is `RIS`;
 * `output`: name of the output file. It is pre-filled with `<project-name>_abstracts.csv`;
-* `columns`: comma separed list of columns to import. It is pre-filled with `title,abstract,year`. Additionally, a `citation` column is also imported by default.
+* `columns`: comma separated list of columns to import. It is pre-filled with `title,abstract,year`. Additionally, a `citation` column is also imported by default.
 
 ### journals
 This command allows the user to retrieve a list of journals and classify them in order to filter out the not relevant ones and the papers published on them.
@@ -169,7 +169,7 @@ The structure is the following:
 * `id`: a progressive identification number;
 * `term`: the name of the journal;
 * `label`: the label added by `FAWOC` to the journal. This field is left blank by the `extract` sub-command;
-* `count`: the number of papers pubblished in the journal.
+* `count`: the number of papers published in the journal.
 
 `FAWOC` will move the count field in the `fawoc_data.tsv` file.
 
@@ -196,7 +196,7 @@ The `journals_filter.toml` file has the following structure:
 ### acronyms
 This commands extracts acronyms from the papers.
 Its output format is suitable to be used with `FAWOC` to classify which acronym is relevant or not.
-If the input file (the *abstract* file) contains the `status` column created by the `journals filter` command, the `acronyms` command uses that column value to filter out the paper pubblished in the rejected journals.
+If the input file (the *abstract* file) contains the `status` column created by the `journals filter` command, the `acronyms` command uses that column value to filter out the paper published in the rejected journals.
 The output of this command will be called the *acronyms* file in the rest of this document.
 
 Usage:
@@ -220,7 +220,7 @@ The `acronyms.toml` has the following structure:
 
 * `datafile`: input file. It is pre-filled with the value `<project-name>_abstracts.csv`;
 * `output`: output file. It is pre-filled with the value `<project-name>_acronyms.csv`;
-* `columns`: name of the column of `datafile` with the text to elaborate. It is prefilled with the value `abstract`.
+* `columns`: name of the column of `datafile` with the text to elaborate. It is pre-filled with the value `abstract`.
 
 
 ### preprocess
@@ -230,17 +230,17 @@ Usage:
 
     python3 slrkit.py preprocess
 
-If the input file (the *abstract* file) contains the `status` column created by the `journals filter` command, the `preprocess` command uses that column value to filter out the paper pubblished in the rejected journals.
-It also filters the stop-words using the list of words providded by the user.
-No default list of stop-words is used, the user **must** provvide his own lists.
+If the input file (the *abstract* file) contains the `status` column created by the `journals filter` command, the `preprocess` command uses that column value to filter out the paper published in the rejected journals.
+It also filters the stop-words using the list of words provided by the user.
+No default list of stop-words is used, the user **must** provide his own lists.
 
 This command also uses the *acronyms* file to search and mark the acronyms as relevant words.
 Only the acronyms with the `relevant` or the `keyword` label are considered.
 
-The `preprocess` command, also mark as relevant all the terms provvided by the user in the relevant terms lists.
+The `preprocess` command, also mark as relevant all the terms provided by the user in the relevant terms lists.
 The user can also choose how the command marks this terms.
 The input of this command is the *abstract* file.
-The output of this command is the *abstract* file without the paper discarded because pubblished in rejected journals.
+The output of this command is the *abstract* file without the paper discarded because published in rejected journals.
 To this file is also added a new column with the text of each paper preprocessed.
 More information can be found in the preprocess.py section of the [README.md](README.md) 
 
@@ -249,9 +249,9 @@ This file has the following structure:
 
 * `datafile`: the name of the *abstract* file that will be used as input. This field is pre-filled with `<project-name>_abstracts.csv`;
 * `output`: output file name. This field is pre-filled with `<project-name>_preproc.csv`;
-* `placeholder`: placeholder used to mark the barriers (the stop-words and the punctuaction). This character is also used as prefix and suffix for the placeholder for the relevant terms and the acronyms. It is prefilled with the character `@`;
-* `stop-words`: lists of stop-words provvided by the user. No other lists are used, so the user shall provvide its own;
-* `relevant-term`: lists of relevant terms. This field is particular. Each element must be a list of at least one item and at most two items. The first item is the name of a list of relevant terms. The second one, if present, is the marker that the user want to be used for all the terms in this list. All the terms will be marked with `<placeholder><marker><placeholder>`. If the marker is ommitted than the command replaces every term using the placeholder, all the words of the term separed with `_` character and then another placeholder;
+* `placeholder`: placeholder used to mark the barriers (the stop-words and the punctuation). This character is also used as prefix and suffix for the placeholder for the relevant terms and the acronyms. It is pre-filled with the character `@`;
+* `stop-words`: lists of stop-words provided by the user. No other lists are used, so the user shall provide its own;
+* `relevant-term`: lists of relevant terms. This field is particular. Each element must be a list of at least one item and at most two items. The first item is the name of a list of relevant terms. The second one, if present, is the marker that the user want to be used for all the terms in this list. All the terms will be marked with `<placeholder><marker><placeholder>`. If the marker is omitted than the command replaces every term using the placeholder, all the words of the term separated with `_` character and then another placeholder;
 * `acronyms`: name of the *acronyms* file. If the `acronyms` command is run before, it is pre-filled with `<project-name>_acronyms.csv`;
 * `target-column`: name of the column used for the document text. It is pre-filled with `abstract`;
 * `output-column`: name of the column that is added to the output, containing the preprocessed text. It is pre-filled with `abstract_lem`;
@@ -297,11 +297,11 @@ The `terms generate` sub-command uses the `terms_generate.toml` configuration fi
 It has the following structure:
 
 * `datafile`: name of the input file (the *preprocess* file). It is pre-filled with `project-name>_preproc.csv`;
-* `output`: name of the output file. It is prefilled with `<project-name>_terms.csv`;
+* `output`: name of the output file. It is pre-filled with `<project-name>_terms.csv`;
 * `stdout`: if `true` the command also print the output to the standard output;
 * `n-grams`: maximum size of an n-gram. All the n-gram with lengths from one word to this number of words are generated. By default, this field is filled with `4`;
 * `min-frequency`: minimum number of occurrences of an n-gram. All the n-gram with less occurrences than this value are discarded. Pre-filled with `5`;
-* `placeholder`: placeholder used to mark the barriers in the `preprocess` stage. All the n-grams containg this character or containing words that start and end with this character are discarded. It is prefilled with the character `@`;
+* `placeholder`: placeholder used to mark the barriers in the `preprocess` stage. All the n-grams containing this character or containing words that start and end with this character are discarded. It is pre-filled with the character `@`;
 * `column`: column of the input file with the text to elaborate. Pre-filled with `abstract_lem`;
 * `delimiter`: field delimiter used by the input file. Pre-filled with `\t`.
 
@@ -379,7 +379,7 @@ The `lda` sub-command uses, by default, the `lda.toml` configuration file that h
 * `beta`: beta parameter of LDA. Pre-filled with `auto`;
 * `no_below`: keep tokens which are contained in at least this number of documents. Pre-filled with `20`;
 * `no_above`: keep tokens which are contained in no more than this fraction of documents (fraction of total corpus size, not an absolute number). Pre-filled with `0.5`;
-* `seed`: seed to be use in trainig;
+* `seed`: seed to be use in training;
 * `model`: if `true` the lda model is saved to directory `<outdir>/lda_model`. The model is saved with name "model";
 * `no-relevant`: if set, use only the term labelled as `keyword` in the *terms* file;
 * `load-model`: path to a directory where a previously trained model is saved. Inside this directory the model named "model" is searched. the loaded model is used with the dataset file to generate the topics and the topic document association;
@@ -390,7 +390,7 @@ The `lda` sub-command uses, by default, the `lda.toml` configuration file that h
 **IMPORTANT:**
 
 there are some issues on the reproducibility of the LDA training.
-Setting the `seed` value is not enough to guarantee the reproducibilty of the experiment.
+Setting the `seed` value is not enough to guarantee the reproducibility of the experiment.
 It is also necessary to set the environment variable `PYTHONHASHSEED` to `0`.
 The following command sets the variable for a single run in a Linux shell:
 
@@ -408,12 +408,12 @@ Usage:
 
     python3 slrkit.py report json_file
 
-with `json_file` the path to the json file with the documents-topics association produced by the `lda` command (or the `lda.py` script).
-This json file is usually called `lda_docs-topics_<date>_<time>.json`.
+with `json_file` the path to the JSON file with the documents-topics association produced by the `lda` command (or the `lda.py` script).
+This JSON file is usually called `lda_docs-topics_<date>_<time>.json`.
 
 The command uses the `report.toml` configuration file that has the following structure:
 
-* `ris_file`: name of the ris file of the bibliographical database. It is prefilled with `<project-name>.ris` and modified by the `import` command with the name of the file used as its input;
+* `ris_file`: name of the ris file of the bibliographical database. It is pre-filled with `<project-name>.ris` and modified by the `import` command with the name of the file used as its input;
 * `dir`: output directory where the templates and the reports are saved. If empty, the current directory is used;
 * `minyear`: minimum year to consider. If empty, the minimum year found in the data is used;
 * `maxyear`: maximum year to consider. If empty, the maximum year found in the data is used.
@@ -447,7 +447,7 @@ The `optimize_lda` sub-command uses the `optimize_lda.toml` configuration file t
 * `outdir`: path to the directory where to save the results. Pre-filled with the path to project directory;
 * `text-column`: column of the *preprocess* file to elaborate. Pre-filled with `abstract_lem`;
 * `title-column`: column in the *preprocess* file to use as document title. Pre-filled with `title`;
-* `seed`: seed to be use in trainig;
+* `seed`: seed to be use in training;
 * `placeholder`: placeholder for the barriers. Pre-filled with `@`;
 * `delimiter`: field delimiter used in the *preprocess* file. Pre-filled with `\t`.
 * `no_timestamp`: if `true`, no timestamp is added to the output file names;
@@ -470,7 +470,7 @@ The `ga_params` file has the following structure:
   * `component_mutation`: probability of mutation of each individual component;
   * `mate`: probability of crossover (also called mating);
   * `no_filter`: probability that a new individual is created with no term filter (no_above = no_below = 1);
-* `mutate`: this section contains the parameters of the gaussian distributions used by the mutation for each parameter:
+* `mutate`: this section contains the parameters of the Gaussian distributions used by the mutation for each parameter:
   * `topics.mu` and `topics.sigma` are the mean value and the standard deviation for the topics parameter;
   * `alpha_val.mu` and `alpha_val.sigma` are the mean value and the standard deviation for the value of the alpha parameter;
   * `beta.mu` and `beta.sigma` are the mean value and the standard deviation for the beta parameter;
@@ -498,14 +498,14 @@ It also outputs a tsv file in `<outdir>/<date>_<time>_lda_results/results.csv` w
 * `num_docs`: number of document;
 * `num_not_empty`: number of documents not empty after filtering.
 
-The script, also outputs the extracted topics and the topics-documents aasociation produced by the best model.
+The script, also outputs the extracted topics and the topics-documents association produced by the best model.
 The topics are output in `<outdir>/lda_terms-topics_<date>_<time>.json` and the topics assigned
 to each document in `<outdir>/lda_docs-topics_<date>_<time>.json`.
 
 **IMPORTANT:**
 
 there are some issues on the reproducibility of the LDA training.
-Setting the `seed` option (see below) is not enough to guarantee the reproducibilty of the experiment.
+Setting the `seed` option (see below) is not enough to guarantee the reproducibility of the experiment.
 It is also necessary to set the environment variable `PYTHONHASHSEED` to `0`.
 The following command sets the variable for a single run in a Linux shell:
 
@@ -516,7 +516,7 @@ More information on the `PYTHONHASHSEED` variable can be found [here](https://do
 
 ### record
 The `record` command creates a commit in the git repository of the project.
-This commit reocrds all the data and the configuration of the project.
+This commit records all the data and the configuration of the project.
 
 Usage:
 
@@ -526,15 +526,15 @@ The `message` argument is the commit message to use for the commit.
 It cannot be the empty string.
 The optional arguments are:
 
-* `--clean`: this flag tells the command to clean the repository index from file not referenced in the config files. These files are left in the project, but they become untracked;
-* `--rm`: this flag tells the command to clean the project removing files not referenced in the config files. This flag remove these files from the repository index and from the filesystem. *Use with caution.*
+* `--clean`: this flag tells the command to clean the repository index from file not referenced in the configuration files. These files are left in the project, but they become untracked;
+* `--rm`: this flag tells the command to clean the project removing files not referenced in the configuration files. This flag remove these files from the repository index and from the file-system. *Use with caution.*
 
 The command records the following files:
 
 1. the modifications made to the `META.toml` file;
 2. all the modified configuration file;
 3. all the modifications made to the `.gitignore` file;
-4. the bibliographic database used as imput of the import file;
+4. the bibliographic database used as input of the import file;
 5. the *journals* file;
 6. the *acronyms* file;
 7. the stop-words lists used by the `preprocess` command, if any;
@@ -564,7 +564,7 @@ The message of the exception is used by the `record` command to create the error
 The `lda_grid_search` command performs a grid search on the LDA model parameters and outputs all the trained models.
 
 The command searches the best combination (in terms of coherence) of number of topics, alpha, beta, no-below and no-above parameters.
-It searches all the possibile combinations of parameters, discarding all the cases that results with all the documents empty.
+It searches all the possible combinations of parameters, discarding all the cases that results with all the documents empty.
 
 This command uses the `lda_grid_search.toml` configuration file that has the following format:
 
@@ -577,7 +577,7 @@ This command uses the `lda_grid_search.toml` configuration file that has the fol
 * `min-topics`: minimum number of topics to test. Pre-filled with 5;
 * `max-topics`: maximum number of topics to test. Pre-filled with 20;
 * `step-topics`: step used to create the grid of topics values. Pre-filled with 1;
-* `seed`: seed to be use in trainig;
+* `seed`: seed to be use in training;
 * `plot-show`: if `true`, a plot of the coherence is shown;
 * `plot-save`: if `true` the plot of the coherence is saved as `<outdir>/lda_plot.pdf`;
 * `placeholder`: placeholder for the barriers. Pre-filled with `@`;
@@ -591,7 +591,7 @@ The command outputs all the models in `<outdir>/<date>_<time>_lda_results/<UUID>
 It also outputs a tsv file in `<outdir>/<date>_<time>_lda_results/results.csv` with the following format:
 
 * `id`: progressive identification number;
-* `corpus`: descriptor of the copus used. It has the form `(labels, no_below, no_above)`, with labels the list of labels considered when filtering the documents (`relevant` and `keyword` or `keyword` alone). `no_below` and `no_above` have the same meaning as below;
+* `corpus`: descriptor of the corpus used. It has the form `(labels, no_below, no_above)`, with labels the list of labels considered when filtering the documents (`relevant` and `keyword` or `keyword` alone). `no_below` and `no_above` have the same meaning as below;
 * `no_below`: no-below value;
 * `no_above`: no-above value;
 * `topics`: number of topics;
@@ -608,7 +608,7 @@ It also outputs a tsv file in `<outdir>/<date>_<time>_lda_results/results.csv` w
 **IMPORTANT:**
 
 there are some issues on the reproducibility of the LDA training.
-Setting the `seed` option (see below) is not enough to guarantee the reproducibilty of the experiment.
+Setting the `seed` option (see below) is not enough to guarantee the reproducibility of the experiment.
 It is also necessary to set the environment variable `PYTHONHASHSEED` to `0`.
 The following command sets the variable for a single run in a Linux shell:
 
