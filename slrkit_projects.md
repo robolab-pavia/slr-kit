@@ -67,19 +67,18 @@ Usage:
     python3 slrkit.py [-C /path/to/project] sub-command sub-command-arguments ...
 
 The sub-commands are:
-
-* `init`: initialize a slr-kit project
-* `import`: import a bibliographic database converting to the csv format used by slr-kit.
-* `journals`: subcommand to extract and filter a list of journals. Requires a subcommand.
-* `acronyms`: extract acronyms from texts.
-* `preprocess`: run the preprocess stage in a slr-kit project
-* `terms`: subcommand to extract and handle lists of terms in a slr-kit project. Requires a sub-command
-* `fawoc`: run fawoc in a slr-kit project.
-* `lda`: run the lda stage in a slr-kit project
-* `report`: run the report creation script in a slr-kit project.
-* `optimize_lda`: run an optimization phase for the lda stage in aslr-kit project, using a GA.
-* `record`: record a snapshot of the project in the underlying git repository
-* `lda_grid_search`: run an optimization phase for the lda stage in a slr-kit project using a grid search method.
+* [`init`](#init): initialize a slr-kit project
+* [`import`](#import): import a bibliographic database converting to the csv format used by slr-kit.
+* [`journals`](#journals): subcommand to extract and filter a list of journals. Requires a subcommand.
+* [`acronyms`](#acronyms): extract acronyms from texts.
+* [`preprocess`](#preprocess): run the preprocess stage in a slr-kit project
+* [`terms`](#terms): subcommand to extract and handle lists of terms in a slr-kit project. Requires a sub-command
+* [`fawoc`](#fawoc): run fawoc in a slr-kit project.
+* [`lda`](#lda): run the lda stage in a slr-kit project
+* [`report`](#report): run the report creation script in a slr-kit project.
+* [`optimize_lda`](#optimize_lda): run an optimization phase for the lda stage in aslr-kit project, using a GA.
+* [`record`](#record): record a snapshot of the project in the underlying git repository
+* [`lda_grid_search`](#lda_grid_search): run an optimization phase for the lda stage in a slr-kit project using a grid search method.
 
 Each command operates on the directory from which the `slrkit` command is run.
 The `-C` option allows to change the current directory to the one specified.
@@ -400,7 +399,7 @@ The following command sets the variable for a single run in a Linux shell:
 Also using a saved model requires the use of the same seed used for training and the `PYTHONHASHSEED` to 0.
 More information on the `PYTHONHASHSEED` variable can be found [here](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED).
 
-## report
+### report
 
 The `report` command produces some reports with statistics about the paper analyzed by the `lda` command.
 This command runs the `topic_report.py` script.
@@ -432,7 +431,7 @@ The command creates a directory named `report<timestamp>` containing:
 
 For information about the statistics reported, refer to the `topic_report.py` documentation in the [README](README.md) file.
 
-## optimize_lda
+### optimize_lda
 
 The `optimize_lda` command runs the `lda_ga.py` script to find the best combination of parameters for an LDA model.
 
@@ -514,3 +513,9 @@ The following command sets the variable for a single run in a Linux shell:
 
 Also using a saved model requires the use of the same seed used for training and the `PYTHONHASHSEED` to 0.
 More information on the `PYTHONHASHSEED` variable can be found [here](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED).
+
+### record
+TODO
+
+### lda_grid_search
+TODO
