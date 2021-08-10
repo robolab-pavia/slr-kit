@@ -193,15 +193,37 @@ preprocess.py --relevant-term relevant_terms.txt -r other_relevant.txt PLACEHOLD
 - INPUT: The TSV file produced by `preprocess.py` (it works on the column `abstract_lem`).
 - OUTPUT: A TSV file containing the list of terms, and a TSV with their frequency.
 
+This script extracts the terms from the file produced by the `preprocess.py` script.
+It uses the placeholder character to skip all the n-grams that contains the placeholder.
+The script also skips all the terms that contains tokens that starts and ends with the placeholder.
+This kind of tokens are produced by `preprocess.py` to mark the acronyms and the relevant terms.
+
+The format of the output file is the one used by `FAWOC`. The structure is the following:
+
+* `id`: a progressive identification number;
+* `term`: the n-gram;
+* `label`: the label added by `FAWOC` to the n-gram. This field is left blank by the `gen_terms.py` script.
+
+This command produces also the `fawoc_data.tsv` file, with the following structure:
+
+* `id`: the identification number of the term;
+* `term`: the term;
+* `count`: the number of occurrences of the term.
+
+This file is used by `FAWOC` to show the number of occurrences of each term.
 ### Arguments:
 
 - `inputfile`: name of the TSV produced by `preprocess.py`;
 - `outputfile`: name of the output file. This name is also used to create the name of the file with the term frequencies.
   For instance, if `outputfile` is `filename.tsv`, the frequencies file will be named `filename_fawoc_data.tsv`.
   This file is create in the same directory of `outputfile`;
-- `--stdout|-s`: also print on stdout the output file;
-- `--n-grams|-n N`: maximum size of n-grams. The script will output all the 1-grams, ... N-grams;
-- `--min-frequency|-m N`: minimum frequency of the n-grams. All the n-grams with a frequency lower than `N` are not output.
+- `--stdout | -s`: also print on stdout the output file;
+- `--n-grams | -n N`: maximum size of n-grams. The script will output all the 1-grams, ... N-grams;
+- `--min-frequency |-m N`: minimum frequency of the n-grams. All the n-grams with a frequency lower than `N` are not output.
+- `--placeholder | -p PLACEHOLDER`: placeholder for barrier word. Also used as a prefix for the relevant words. Default: '@'
+- `--column | -c COLUMN`: column in datafile to process. If omitted 'abstract_lem' is used.
+- `--delimiter DELIMITER`: delimiter used in datafile. Default '\t'
+- `--logfile LOGFILE`: log file name. If omitted 'slr-kit.log' is used
 
 ### Example of usage
 
