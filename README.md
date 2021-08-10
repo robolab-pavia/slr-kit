@@ -341,11 +341,30 @@ supervised_clustering.py ground_truth.json > pckmeans_clusters.csv
 
 - ACTION: Train an LDA model and outputs the extracted topics and the association between topics and documents.
 - INPUT: The TSV file produced by `preprocess.py` (it works on the column `abstract_lem`) and the terms TSV file classified with FAWOC.
-- OPTIONAL INPUT: One or more files with additional keyword and acronyms.
 - OUTPUT: A JSON file with the description of extracted topics and a JSON file with the association between topics and documents.
+
+The script uses the terms classified with `FAWOC` to classify the documents in the file produced by `preprocess.py`.
+It filters all the placeholder tokens in the preprocess file and filters all the terms not classified as `relevant` or `keyword` in the terms list.
+The script also considers as `relevant` all the token that starts and ends with the placeholder characters (the script strips the placeholder characters and uses the rest of the token).
+These tokens are used by `preprocess.py` to mark the additional relevant terms and the acronyms.
+
+For more information and references about LDA, check the [Gensim LDA library page](https://radimrehurek.com/gensim/models/ldamodel.html).
 
 This script outputs the topics in `<outdir>/lda_terms-topics_<date>_<time>.json` and the topics assigned
 to each document in `<outdir>/lda_docs-topics_<date>_<time>.json`.
+
+**IMPORTANT:**
+
+there are some issues on the reproducibility of the LDA training.
+Setting the `seed` option (see below) is not enough to guarantee the reproducibilty of the experiment.
+It is also necessary to set the environment variable `PYTHONHASHSEED` to `0`.
+The following command sets the variable for a single run in a Linux shell:
+
+    PYTHONHASHSEED=0 python3 lda.py ...
+
+Also using a saved model requires the use of the same seed used for training and the `PYTHONHASHSEED` to 0.
+More information on the `PYTHONHASHSEED` variable can be found [here](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED).
+
 ### Arguments:
 
 Positional:
@@ -356,19 +375,17 @@ Positional:
 
 Optional:
 
-- `--additional-terms FILENAME [FILENAME ...], -T FILENAME [FILENAME ...]`
-                      Additional keywords files
-- ` --acronyms ACRONYMS, -a ACRONYMS` TSV files with the approved acronyms
+- `--text-column | -t TARGET_COLUMN`: Column in preproc_file to process. If omitted 'abstract_lem' is used.
+- `--title-column TITLE`: Column in preproc_file to use as document title. If omitted 'title' is used.
 - `--topics TOPICS`       Number of topics. If omitted 20 is used
 - `--alpha ALPHA`         alpha parameter of LDA. If omitted "auto" is used
 - `--beta BETA`           beta parameter of LDA. If omitted "auto" is used
-- `--no_below NO_BELOW   Keep tokens which are contained in at least this number of documents. If
+- `--no_below NO_BELOW`   Keep tokens which are contained in at least this number of documents. If
                       omitted 20 is used
 - `--no_above NO_ABOVE`   Keep tokens which are contained in no more than this fraction of documents
                       (fraction of total corpus size, not an absolute number). If omitted 0.5 is
                       used
 - `--seed SEED`           Seed to be used in training
-- `--ngrams`              if set use all the ngrams
 - `--model`               if set, the lda model is saved to directory `<outdir>/lda_model`. The model is
                       saved with name "model".
 - `--no-relevant`        if set, use only the term labelled as keyword
@@ -376,14 +393,234 @@ Optional:
                       Path to a directory where a previously trained model is saved. Inside this
                       directory the model named "model" is searched. the loaded model is used with
                       the dataset file to generate the topics and the topic document association
+- `--no_timestamp`    if set, no timestamp is added to the topics file names
 - `--placeholder PLACEHOLDER, -p PLACEHOLDER`
                         Placeholder for barrier word. Also used as a prefix for the relevant words. 
                         Default: "@"
+- `--config | -c CONFIG`
+                        Path to a toml config file like the one used by the slrkit lda command. It overrides **all** the cli arguments.
+
 
 ### Example of usage 
 Extracts topics from dataset `dataset_preproc.csv` using the classified terms in `dataset_terms.csv` and saving the result in `/path/to/outdir`:
 ```
 lda.py dataset_preproc.csv dataset_terms.csv /path/to/outdir
+```
+
+## `lda_ga.py`
+
+- ACTION: Uses a GA to search the best LDA model parameters, outputs all the trained models and the extracted topics and the association between topics and documents produced by the best model.
+- INPUT: The TSV file produced by `preprocess.py` (it works on the column `abstract_lem`), the terms TSV file classified with FAWOC and a toml file with the parameter used by the GA.
+- OUTPUT: All the trained models in a format suitable to be used with the `lda.py` script and a tsv file that summarize all the results. Also outputs the extracted topics and the association between topics and documents produced by the best model.
+
+The script uses the terms classified with `FAWOC` to classify the documents in the file produced by `preprocess.py` in the same way that the `lda.py` scripts does.
+
+The script searches the best combination (in terms of coherence) of number of topics, alpha, beta, no-below and no-above parameters.
+Each combination of parameters (a.k.a. individual) is represented as
+
+    (topics, alpha_val, beta, no_above, no_below, alpha_type)
+
+Each parameter has the following meaning:
+
+* `topics`: number of topics. It is an integer number;
+* `alpha_val`: value of the alpha parameter. It is a floating point number;
+* `beta`: value of the beta parameter. It is a floating point number;
+* `no_above`: value of the no-above parameter. It is a floating point number;
+* `no_below`: value of the no-below parameter. It is an integer number;
+* `alpha_type`: this integer number tells if the alpha parameter must have the value of `alpha_val` or if one of the string values must be used. The allowed value are:
+  * `0`: use the `alpha_val`;
+  * `1`: use the string `symmetrical`;
+  * `-1`: use the string `asymmetrical`;
+
+It uses a GA algorithm (the mu+lambda genetic algorithm) to find the best model.
+The mu+lambda GA starts with an initial population.
+Then creates *lambda* new individuals (a.k.a. solutions) by replication, mutation or crossover (only one of this operation is applied to a single individual).
+From the initial population plus the new *lambda* individuals the algorithm selects *mu* individuals that "survive" to the next generation.
+This procedure is repeated *num-generation* times.
+The selection procedure is a tournament where a fixed number of individuals are randomly choosen to partecipate in the tournament.
+The individual in the tournament with the best coherence is selected to pass to the next generation.
+The tournament is applied *mu* times in order to select the *mu* individuals of the next generation.
+The GA uses a gaussian mutaion.
+This means that if an individual must be mutated, then the mutation randomly selects which parameters have to be mutated.
+For each selected parameter, a random number is choosen from a gaussian distribution and it is added to the parameter.
+Each parameter has his own gaussian distribution.
+The crossover randomly selects a set of parameters that the two individuals have to exchange.
+More information and references about the mu+lambda GA can be found [here](https://deap.readthedocs.io/en/master/api/algo.html#deap.algorithms.eaMuPlusLambda).
+
+All the parameter of the GA are taken from a [TOML version 1.0.0](https://toml.io/en/v1.0.0) file.
+The format of this file is the following:
+* `limits`: this section contains the ranges of the parameter;
+  * `min_topics`: minimum number of topics;
+  * `max_topics`: maximum number of topics;
+  * `max_no_below`: maximum value of the no-below parameter. The minimum is always 1. A value of -1 means a tenth of the number of documents;
+  * `min_no_above`: minimum value of the no-above parameter. The maximum is always 1.
+* `algorithm`: this section contains the parameters used by the GA:
+  * `mu`: number of individuals that will pass each generation;
+  * `lambda`: number of individuals that are generated at each generation;
+  * `initial`: size of the initial population;
+  * `generations`: number of generation;
+  * `tournament_size`: number of individuals randomly selected for the selection tournament.
+* `probabilities`: this section contains the probabilities used by the script:
+  * `mutate`: probability of mutation;
+  * `component_mutation`: probability of mutation of each individual component;
+  * `mate`: probability of crossover (also called mating);
+  * `no_filter`: probability that a new individual is created with no term filter (no_above = no_below = 1);
+* `mutate`: this section contains the parameters of the gaussian distributions used by the mutation for each parameter:
+  * `topics.mu` and `topics.sigma` are the mean value and the standard deviation for the topics parameter;
+  * `alpha_val.mu` and `alpha_val.sigma` are the mean value and the standard deviation for the value of the alpha parameter;
+  * `beta.mu` and `beta.sigma` are the mean value and the standard deviation for the beta parameter;
+  * `no_above.mu` and `no_above.sigma` are the mean value and the standard deviation for the no_above parameter;
+  * `no_below.mu` and `no_below.sigma` are the mean value and the standard deviation for the no_below parameter;
+  * `alpha_type.mu` and `alpha_type.sigma` are the mean value and the standard deviation for the type of the alpha parameter.
+
+An example of this file can be found in the `ga_param.toml` file.
+
+To each trained model it is assigned an UUID.
+The script outputs all the models in `<outdir>/<date>_<time>_lda_results/<UUID>`.
+For each trained model is it produced a `toml` file with all the parameter already set to use the corresponding model with the `lda.py` script.
+These `toml` files are saved in `<outdir>/<date>_<time>_lda_results/<UUID>.toml`, and can be loaded in the `lda.py` script using its `--config` option.
+It also outputs a tsv file in `<outdir>/<date>_<time>_lda_results/results.csv` with the following format:
+
+* `id`: progressive identification number;
+* `topics`: number of topics;
+* `alpha`: alpha value;
+* `beta`: beta value;
+* `no_below`: no-below value;
+* `no_above`: no-above value;
+* `coherence`: coherence score of the model;
+* `times`: time spent evaluating this model;
+* `seed`: seed used;
+* `uuid`: UUID of the model;
+* `num_docs`: number of document;
+* `num_not_empty`: number of documents not empty after filtering.
+
+The script, also outputs the extracted topics and the topics-documents aasociation produced by the best model.
+The topics are output in `<outdir>/lda_terms-topics_<date>_<time>.json` and the topics assigned
+to each document in `<outdir>/lda_docs-topics_<date>_<time>.json`.
+
+**IMPORTANT:**
+
+there are some issues on the reproducibility of the LDA training.
+Setting the `seed` option (see below) is not enough to guarantee the reproducibilty of the experiment.
+It is also necessary to set the environment variable `PYTHONHASHSEED` to `0`.
+The following command sets the variable for a single run in a Linux shell:
+
+    PYTHONHASHSEED=0 python3 lda_ga.py ...
+
+Also using a saved model requires the use of the same seed used for training and the `PYTHONHASHSEED` to 0.
+More information on the `PYTHONHASHSEED` variable can be found [here](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED).
+
+### Arguments:
+
+Positional:
+
+- `preproc_file` path to the preprocess file with the text to elaborate.
+- `terms_file` path to the file with the classified terms.
+- `outdir` path to the directory where to save the results. If omitted, the current directory is used.
+
+Optional:
+
+optional arguments:
+* `--text-column | -t TARGET_COLUMN`
+  Column in preproc_file to process. If omitted 'abstract_lem' is used.
+* `--title-column TITLE`  Column in preproc_file to use as document title. If omitted 'title' is used.
+* `--seed SEED`           Seed to be used in training
+* `--placeholder | -p PLACEHOLDER`
+  Placeholder for barrier word. Also used as a prefix for the relevant words. Default: '@'
+* `--delimiter DELIMITER`
+  Delimiter used in preproc_file. Default '\t'
+* `--no_timestamp`    if set, no timestamp is added to the topics file names
+* `--logfile LOGFILE`     log file name. If omitted 'slr-kit.log' is used
+
+### Example of usage
+```
+lda_ga.py dataset_preproc.csv dataset_terms.csv ga_param.toml /path/to/outdir
+```
+
+## `lda_grid_search.py`
+
+- ACTION: Performs a grid search on the LDA model parameters and outputs all the trained models.
+- INPUT: The TSV file produced by `preprocess.py` (it works on the column `abstract_lem`) and the terms TSV file classified with FAWOC.
+- OUTPUT: All the trained models in a format suitable to be used with the `lda.py` script and a tsv file that summarize all the results.
+
+The script uses the terms classified with `FAWOC` to classify the documents in the file produced by `preprocess.py` in the same way that the `lda.py` scripts does.
+
+The script searches the best combination (in terms of coherence) of number of topics, alpha, beta, no-below and no-above parameters.
+It searches all the possibile combinations of parameters, discarding all the cases that results with all the documents empty.
+The grid is set up with the following criteria:
+
+| parameter        | values                                                                                        | notes                                                                    |
+|------------------|-----------------------------------------------------------------------------------------------|--------------------------------------------------------------------------|
+| number of topics | from min to max specified on the command line<br>with step also specified on the command line |                                                                          |
+| alpha            | from 0.1 to 1 with step 0.1<br>also values 'symmetrical' and 'asymmetrical'                   |                                                                          |
+| beta             | from 0.1 to 1 with step 0.1<br>also value 'auto'                                              |                                                                          |
+| no-below         | values 1, 20, 40, 100 and a tenth of the documents                                            | the values that are greater then the number<br>of document are discarded |
+| no-above         | values 0.5, 0.6, 0.75, 1.0                                                                    |                                                                          |
+
+To each model it is assigned an UUID.
+The script outputs all the models in `<outdir>/<date>_<time>_lda_results/<UUID>`.
+It also outputs a tsv file in `<outdir>/<date>_<time>_lda_results/results.csv` with the following format:
+
+* `id`: progressive identification number;
+* `corpus`: descriptor of the copus used. It has the form `(labels, no_below, no_above)`, with labels the list of labels considered when filtering the documents (`relevant` and `keyword` or `keyword` alone). `no_below` and `no_above` have the same meaning as below;
+* `no_below`: no-below value;
+* `no_above`: no-above value;
+* `topics`: number of topics;
+* `alpha`: alpha value;
+* `beta`: beta value;
+* `coherence`: coherence score of the model;
+* `times`: time spent evaluating this model;
+* `seed`: seed used;
+* `uuid`: UUID of the model;
+* `num_docs`: number of document;
+* `num_not_empty`: number of documents not empty after filtering.
+
+**IMPORTANT:**
+
+there are some issues on the reproducibility of the LDA training.
+Setting the `seed` option (see below) is not enough to guarantee the reproducibilty of the experiment.
+It is also necessary to set the environment variable `PYTHONHASHSEED` to `0`.
+The following command sets the variable for a single run in a Linux shell:
+
+    PYTHONHASHSEED=0 python3 lda_grid_search.py ...
+
+Also using a saved model requires the use of the same seed used for training and the `PYTHONHASHSEED` to 0.
+More information on the `PYTHONHASHSEED` variable can be found [here](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED).
+
+### Arguments:
+
+Positional:
+
+- `preproc_file` path to the preprocess file with the text to elaborate.
+- `terms_file` path to the file with the classified terms.
+- `outdir` path to the directory where to save the results. If omitted, the current directory is used.
+
+Optional:
+
+optional arguments:
+* `--text-column | -t TARGET_COLUMN`
+Column in preproc_file to process. If omitted 'abstract_lem' is used.
+* `--title-column TITLE`  Column in preproc_file to use as document title. If omitted 'title' is used.
+* `--min-topics | -m MIN_TOPICS`
+Minimum number of topics to retrieve (default: 5)
+* `--max-topics | -M MAX_TOPICS`
+Maximum number of topics to retrieve (default: 20)
+* `--step-topics | -s STEP_TOPICS`
+Step in range(min,max,step) for topics retrieving (default: 1)
+* `--seed SEED`           Seed to be used in training
+* `--plot-show`           if set, it plots the coherence
+* `--plot-save`           if set, it saves the plot of the coherence as `<outdir>/lda_plot.pdf`
+* `--placeholder | -p PLACEHOLDER`
+Placeholder for barrier word. Also used as a prefix for the relevant words. Default: '@'
+* `--delimiter DELIMITER`
+Delimiter used in preproc_file. Default '\t'
+* `--logfile LOGFILE`     log file name. If omitted 'slr-kit.log' is used
+
+### Example of usage
+Performs a grid search from 10 to 30 topics with a step of 2 topics using the documents in `dataset_preproc.csv` and using the classified terms in `dataset_terms.csv`.
+Save the result in `/path/to/outdir`:
+```
+lda_grid_search.py dataset_preproc.csv dataset_terms.csv /path/to/outdir --min-topics 10 --max-topics 30 --step-topics 2
 ```
 # Additional scripts
 
