@@ -357,6 +357,7 @@ def evaluate(ind: LdaIndividual):
     result['no_below'] = no_below
     result['uuid'] = u
     result['seed'] = _seed
+    result['num_docs'] = len(_corpus)
     start = timer()
     dictionary = Dictionary(_corpus)
     # Filter out words that occur less than no_above documents, or more than
@@ -368,6 +369,7 @@ def evaluate(ind: LdaIndividual):
         c_v = -float('inf')
         result['coherence'] = c_v
         result['time'] = 0
+        result['num_not_empty'] = 0
         _queue.put(result)
         return (c_v,)
 
@@ -379,6 +381,7 @@ def evaluate(ind: LdaIndividual):
             not_empty_bows.append(bow)
             not_empty_docs.append(c)
 
+    result['num_not_empty'] = len(not_empty_bows)
     model = LdaModel(not_empty_bows, num_topics=n_topics,
                      id2word=dictionary, chunksize=len(not_empty_bows),
                      passes=10, random_state=_seed,
