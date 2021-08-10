@@ -100,8 +100,12 @@ This command also creates the configuration directory.
 This directory is populated with all the configuration files handled by the `slrkit` command.
 The file format is [TOML version 1.0.0](https://toml.io/en/v1.0.0).
 The name of each file is the name of the `slrkit` sub-command (e.g. `preprocess.toml` is the configuration file for the `slrkit preprocess` command) and it contains a key for each parameter of the corresponding script.
-Refer to the documentation of each script for additional information about the configuration parameters.
+Refer to the documentation of each script and command for additional information about the configuration parameters.
 In each file some comments explain each parameter, and the output file name of each script are suggested with some good default names.
+
+The `init` command also copies the `ga_param.toml` file to the configuration directory with the name `optimize_lda_ga_params.toml`.
+This file is used by the `optimize_lda` command for the parameters used in the optimization.
+See the documentation of the `optimize_lda` command for more information.
 
 This command can be executed on an already initialized project.
 In this case the information in the `META.toml` are updated with the ones given on the command line.
@@ -393,8 +397,88 @@ The following command sets the variable for a single run in a Linux shell:
 
     PYTHONHASHSEED=0 python3 slrkit.py lda
 
+Also using a saved model requires the use of the same seed used for training and the `PYTHONHASHSEED` to 0.
 More information on the `PYTHONHASHSEED` variable can be found [here](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED).
 
-### lda_grid_search
-The `lda_grid_search` sub-command uses the `lda_grid_search.toml` configuration file and runs the `lda_grid_search.py` script.
+## optimize_lda
 
+The `optimize_lda` command runs the `lda_ga.py` script to find the best combination of parameters for an LDA model.
+
+Usage:
+
+    python3 slrkit.py optimize_lda
+
+The `optimize_lda` sub-command uses the `optimize_lda.toml` configuration file that has the following structure:
+
+* `preproc_file`: name of the *preprocess* file. Pre-filled with `<project-name>_preproc.csv`;
+* `terms_file`: name of the *terms* file. Pre-filled with `<project-name>_terms.csv`;
+* `ga_params`: path of the file with the parameters used by the GA. Pre-filled with the absolute path to the `optimize_lda_ga_params.toml` file in the configuration directory;
+* `outdir`: path to the directory where to save the results. Pre-filled with the path to project directory;
+* `text-column`: column of the *preprocess* file to elaborate. Pre-filled with `abstract_lem`;
+* `title-column`: column in the *preprocess* file to use as document title. Pre-filled with `title`;
+* `seed`: seed to be use in trainig;
+* `placeholder`: placeholder for the barriers. Pre-filled with `@`;
+* `delimiter`: field delimiter used in the *preprocess* file. Pre-filled with `\t`.
+* `no_timestamp`: if `true`, no timestamp is added to the output file names;
+
+The `ga_params` file has the following structure:
+
+* `limits`: this section contains the ranges of the parameter;
+  * `min_topics`: minimum number of topics;
+  * `max_topics`: maximum number of topics;
+  * `max_no_below`: maximum value of the no-below parameter. The minimum is always 1. A value of -1 means a tenth of the number of documents;
+  * `min_no_above`: minimum value of the no-above parameter. The maximum is always 1.
+* `algorithm`: this section contains the parameters used by the GA:
+  * `mu`: number of individuals that will pass each generation;
+  * `lambda`: number of individuals that are generated at each generation;
+  * `initial`: size of the initial population;
+  * `generations`: number of generation;
+  * `tournament_size`: number of individuals randomly selected for the selection tournament.
+* `probabilities`: this section contains the probabilities used by the script:
+  * `mutate`: probability of mutation;
+  * `component_mutation`: probability of mutation of each individual component;
+  * `mate`: probability of crossover (also called mating);
+  * `no_filter`: probability that a new individual is created with no term filter (no_above = no_below = 1);
+* `mutate`: this section contains the parameters of the gaussian distributions used by the mutation for each parameter:
+  * `topics.mu` and `topics.sigma` are the mean value and the standard deviation for the topics parameter;
+  * `alpha_val.mu` and `alpha_val.sigma` are the mean value and the standard deviation for the value of the alpha parameter;
+  * `beta.mu` and `beta.sigma` are the mean value and the standard deviation for the beta parameter;
+  * `no_above.mu` and `no_above.sigma` are the mean value and the standard deviation for the no_above parameter;
+  * `no_below.mu` and `no_below.sigma` are the mean value and the standard deviation for the no_below parameter;
+  * `alpha_type.mu` and `alpha_type.sigma` are the mean value and the standard deviation for the type of the alpha parameter.
+
+Refer to the documentation of the `lda_ga.py` script in [README.md](README.md) for more information about the behaviour of the script and the GA parameters.
+
+The script outputs all the trained models in `<outdir>/<date>_<time>_lda_results/<UUID>`.
+For each trained model is it produced a `toml` file with all the parameter already set to use the corresponding model with the `lda.py` script or the `lda` command.
+These `toml` files are saved in `<outdir>/<date>_<time>_lda_results/<UUID>.toml`, and can be loaded in the `lda.py` script or the `lda` command using its `--config` option.
+It also outputs a tsv file in `<outdir>/<date>_<time>_lda_results/results.csv` with the following format:
+
+* `id`: progressive identification number;
+* `topics`: number of topics;
+* `alpha`: alpha value;
+* `beta`: beta value;
+* `no_below`: no-below value;
+* `no_above`: no-above value;
+* `coherence`: coherence score of the model;
+* `times`: time spent evaluating this model;
+* `seed`: seed used;
+* `uuid`: UUID of the model;
+* `num_docs`: number of document;
+* `num_not_empty`: number of documents not empty after filtering.
+
+The script, also outputs the extracted topics and the topics-documents aasociation produced by the best model.
+The topics are output in `<outdir>/lda_terms-topics_<date>_<time>.json` and the topics assigned
+to each document in `<outdir>/lda_docs-topics_<date>_<time>.json`.
+
+**IMPORTANT:**
+
+there are some issues on the reproducibility of the LDA training.
+Setting the `seed` option (see below) is not enough to guarantee the reproducibilty of the experiment.
+It is also necessary to set the environment variable `PYTHONHASHSEED` to `0`.
+The following command sets the variable for a single run in a Linux shell:
+
+    PYTHONHASHSEED=0 python3 slrkit.py optimize_lda
+
+Also using a saved model requires the use of the same seed used for training and the `PYTHONHASHSEED` to 0.
+More information on the `PYTHONHASHSEED` variable can be found [here](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED).
