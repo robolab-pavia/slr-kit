@@ -560,4 +560,59 @@ If there is something wrong in the configuration data, the function must raise a
 The message of the exception is used by the `record` command to create the error message to show to the user.
 
 ### lda_grid_search
-TODO
+
+The `lda_grid_search` command performs a grid search on the LDA model parameters and outputs all the trained models.
+
+The command searches the best combination (in terms of coherence) of number of topics, alpha, beta, no-below and no-above parameters.
+It searches all the possibile combinations of parameters, discarding all the cases that results with all the documents empty.
+
+This command uses the `lda_grid_search.toml` configuration file that has the following format:
+
+
+* `preproc_file`: name of the *preprocess* file. Pre-filled with `<project-name>_preproc.csv`;
+* `terms_file`: name of the *terms* file. Pre-filled with `<project-name>_terms.csv`;
+* `outdir`: path to the directory where to save the results. Pre-filled with the path to project directory;
+* `text-column`: column of the *preprocess* file to elaborate. Pre-filled with `abstract_lem`;
+* `title-column`: column in the *preprocess* file to use as document title. Pre-filled with `title`;
+* `min-topics`: minimum number of topics to test. Pre-filled with 5;
+* `max-topics`: maximum number of topics to test. Pre-filled with 20;
+* `step-topics`: step used to create the grid of topics values. Pre-filled with 1;
+* `seed`: seed to be use in trainig;
+* `plot-show`: if `true`, a plot of the coherence is shown;
+* `plot-save`: if `true` the plot of the coherence is saved as `<outdir>/lda_plot.pdf`;
+* `placeholder`: placeholder for the barriers. Pre-filled with `@`;
+* `delimiter`: field delimiter used in the *preprocess* file. Pre-filled with `\t`.
+
+The command runs the `lda_grid_search.py` script.
+Refer to its documentation in the [README](README.md) for the criteria used to set up the grid of parameters.
+
+To each trained model it is assigned an UUID.
+The command outputs all the models in `<outdir>/<date>_<time>_lda_results/<UUID>`.
+It also outputs a tsv file in `<outdir>/<date>_<time>_lda_results/results.csv` with the following format:
+
+* `id`: progressive identification number;
+* `corpus`: descriptor of the copus used. It has the form `(labels, no_below, no_above)`, with labels the list of labels considered when filtering the documents (`relevant` and `keyword` or `keyword` alone). `no_below` and `no_above` have the same meaning as below;
+* `no_below`: no-below value;
+* `no_above`: no-above value;
+* `topics`: number of topics;
+* `alpha`: alpha value;
+* `beta`: beta value;
+* `coherence`: coherence score of the model;
+* `times`: time spent evaluating this model;
+* `seed`: seed used;
+* `uuid`: UUID of the model;
+* `num_docs`: number of document;
+* `num_not_empty`: number of documents not empty after filtering.
+
+
+**IMPORTANT:**
+
+there are some issues on the reproducibility of the LDA training.
+Setting the `seed` option (see below) is not enough to guarantee the reproducibilty of the experiment.
+It is also necessary to set the environment variable `PYTHONHASHSEED` to `0`.
+The following command sets the variable for a single run in a Linux shell:
+
+    PYTHONHASHSEED=0 python3 lda_grid_search
+
+Also using a saved model requires the use of the same seed used for training and the `PYTHONHASHSEED` to 0.
+More information on the `PYTHONHASHSEED` variable can be found [here](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED).
