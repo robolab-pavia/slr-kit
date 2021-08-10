@@ -515,7 +515,49 @@ Also using a saved model requires the use of the same seed used for training and
 More information on the `PYTHONHASHSEED` variable can be found [here](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED).
 
 ### record
-TODO
+The `record` command creates a commit in the git repository of the project.
+This commit reocrds all the data and the configuration of the project.
+
+Usage:
+
+    python3 slrkit.py record [--clean] [--rm] message
+
+The `message` argument is the commit message to use for the commit.
+It cannot be the empty string.
+The optional arguments are:
+
+* `--clean`: this flag tells the command to clean the repository index from file not referenced in the config files. These files are left in the project, but they become untracked;
+* `--rm`: this flag tells the command to clean the project removing files not referenced in the config files. This flag remove these files from the repository index and from the filesystem. *Use with caution.*
+
+The command records the following files:
+
+1. the modifications made to the `META.toml` file;
+2. all the modified configuration file;
+3. all the modifications made to the `.gitignore` file;
+4. the bibliographic database used as imput of the import file;
+5. the *journals* file;
+6. the *acronyms* file;
+7. the stop-words lists used by the `preprocess` command, if any;
+8. the relevant terms lists used by the `preprocess` command, if any;
+9. the *terms* file, with the corresponding `fawoc_data.tsv` file;
+10. all the profiler files created by the `fawoc` sub-commands.
+
+The names of the files listed from 4 to 10 are taken from the configuration files of the commands that generates/uses them.
+These files are committed only if they exist in the project at the moment the `report` command is run.
+If one of these files is deleted, or its name is not referenced anymore in the configuration files, the `record` command does not remove the file from the repository unless the `--clean` flag is set.
+With the `--rm` flag the `record` command removes and deletes the file that are not referenced anymore in the configuration files.
+**Use this option with caution.**
+
+The `record` command does not use any configuration file.
+
+#### Auto-discovery of the file to record
+
+The `record` command uses the `to_record` function of all the script used by the slrkit command to retrieve the list of file to record.
+The command imports each script and searches for the `to_record` function.
+If present, this function is called with the content of the configuration file of the script as a python dictionary.
+The function must return a list of file names to record.
+If there is something wrong in the configuration data, the function must raise a `ValueError` exception with the reason of the error.
+The message of the exception is used by the `record` command to create the error message to show to the user.
 
 ### lda_grid_search
 TODO
