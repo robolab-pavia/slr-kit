@@ -400,6 +400,38 @@ The following command sets the variable for a single run in a Linux shell:
 Also using a saved model requires the use of the same seed used for training and the `PYTHONHASHSEED` to 0.
 More information on the `PYTHONHASHSEED` variable can be found [here](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED).
 
+## report
+
+The `report` command produces some reports with statistics about the paper analyzed by the `lda` command.
+This command runs the `topic_report.py` script.
+
+Usage:
+
+    python3 slrkit.py report json_file
+
+with `json_file` the path to the json file with the documents-topics association produced by the `lda` command (or the `lda.py` script).
+This json file is usually called `lda_docs-topics_<date>_<time>.json`.
+
+The command uses the `report.toml` configuration file that has the following structure:
+
+* `ris_file`: name of the ris file of the bibliographical database. It is prefilled with `<project-name>.ris` and modified by the `import` command with the name of the file used as its input;
+* `dir`: output directory where the templates and the reports are saved. If empty, the current directory is used;
+* `minyear`: minimum year to consider. If empty, the minimum year found in the data is used;
+* `maxyear`: maximum year to consider. If empty, the maximum year found in the data is used.
+
+On the first run, the command copies the `report_template.md` and `report_template.tex` from the `report_template` directory inside this repository, to the current project.
+These two files are used to create the reports.
+The user can customize the two copied template as he wishes.
+
+The command creates a directory named `report<timestamp>` containing:
+
+* the report (called `report.md`) in markdown format;
+* the report (called `report.tex`) in LaTeX format;
+* a figure in png format (called `reportyear.png`) used by the two reports above;
+* a directory `tables` with some LaTeX files used by the LaTeX report.
+
+For information about the statistics reported, refer to the `topic_report.py` documentation in the [README](README.md) file.
+
 ## optimize_lda
 
 The `optimize_lda` command runs the `lda_ga.py` script to find the best combination of parameters for an LDA model.
