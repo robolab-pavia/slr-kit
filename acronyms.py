@@ -5,7 +5,7 @@ import pandas as pd
 
 from slrkit_utils.argument_parser import ArgParse
 from schwartz_hearst import extract_abbreviation_definition_pairs
-from utils import setup_logger
+from utils import setup_logger, assert_column
 
 
 def to_record(config):
@@ -56,8 +56,15 @@ def acronyms(args):
                                 level=logging.DEBUG)
 
     # na_filter=False avoids NaN if the abstract is missing
-    dataset = pd.read_csv(args.datafile, delimiter='\t', na_filter=False,
-                          encoding='utf-8')
+    try:
+        dataset = pd.read_csv(args.datafile, delimiter='\t', na_filter=False,
+                              encoding='utf-8')
+    except FileNotFoundError:
+        msg = 'Error: datafile {!r} not found'
+        sys.exit(msg.format(args.datafile))
+
+    assert_column(args.datafile, dataset, args.column)
+
     # filter the paper using the information from the filter_paper script
     try:
         dataset = dataset[dataset['status'] == 'good'].copy()

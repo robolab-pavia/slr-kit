@@ -1,5 +1,6 @@
 import pathlib
 import csv
+import sys
 
 from RISparser import readris
 from slrkit_utils.argument_parser import ArgParse
@@ -41,20 +42,25 @@ def ris_reader(ris_path):
     Creates a list with every Journal from the ris file
 
     :param ris_path: Path to the ris file
-    :type ris_path: Path
+    :type ris_path: pathlib.Path
     :return: List of journals
     :rtype: list
     """
     journal_list = []
-    with open(ris_path, 'r', encoding='utf-8') as bibliography_file:
-        entries = readris(bibliography_file)
-        for entry in entries:
-            try:
-                value = entry['secondary_title']
-            except KeyError:
-                value = entry.get('custom3')
+    try:
+        with open(ris_path, 'r', encoding='utf-8') as bibliography_file:
+            entries = readris(bibliography_file)
+            for entry in entries:
+                try:
+                    value = entry['secondary_title']
+                except KeyError:
+                    value = entry.get('custom3')
 
-            journal_list.append(value)
+                journal_list.append(value)
+    except FileNotFoundError:
+        msg = 'Error: file {!r} not found'
+        sys.exit(msg.format(str(ris_path)))
+
     return journal_list
 
 
@@ -65,7 +71,7 @@ def journal2csv(journal_list, csv_path):
     :param journal_list: List of journals
     :type journal_list: list
     :param csv_path: Path to csv output file
-    :type csv_path: Path
+    :type csv_path: pathlib.Path
     """
     journal_no_dup = set(journal_list)
     fieldnames = ['id', 'term', 'label', 'count']

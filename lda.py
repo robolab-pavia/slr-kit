@@ -26,9 +26,8 @@ from gensim.models import LdaModel
 from gensim.models.coherencemodel import CoherenceModel
 from psutil import cpu_count
 
-from slrkit_utils.argument_parser import AppendMultipleFilesAction, ArgParse
-from utils import (substring_index, STOPWORD_PLACEHOLDER, RELEVANT_PREFIX,
-                   assert_column)
+from slrkit_utils.argument_parser import ArgParse
+from utils import substring_index, STOPWORD_PLACEHOLDER, assert_column
 
 PHYSICAL_CPUS = cpu_count(logical=False)
 
@@ -233,9 +232,9 @@ def prepare_documents(preproc_file, terms_file, labels,
     Elaborates the documents preparing the bag of word representation
 
     :param preproc_file: path to the csv file with the lemmatized abstracts
-    :type preproc_file: str
+    :type preproc_file: str or Path
     :param terms_file: path to the csv file with the classified terms
-    :type terms_file: str
+    :type terms_file: str or Path
     :param target_col: name of the column in preproc_file with the document text
     :type target_col: str
     :param title_col: name of the column used as document title
@@ -330,16 +329,25 @@ def train_lda_model(docs, topics=20, alpha='auto', beta='auto', no_above=0.5,
     # filter the empty documents
     bows = [c for c in corpus if c != []]
     # Train LDA model.
-    model = LdaModel(
-        corpus=bows,
-        id2word=id2word,
-        chunksize=len(corpus),
-        alpha=alpha,
-        eta=beta,
-        num_topics=topics,
-        random_state=seed,
-        minimum_probability=0.0
-    )
+    try:
+        model = LdaModel(
+            corpus=bows,
+            id2word=id2word,
+            chunksize=len(corpus),
+            alpha=alpha,
+            eta=beta,
+            num_topics=topics,
+            random_state=seed,
+            minimum_probability=0.0
+        )
+    except ValueError as err:
+        if 'alpha' in err.args[0]:
+            msg = 'Invalid value {!r} for parameter alpha'.format(alpha)
+        elif 'eta' in err.args[0]:
+            msg = 'Invalid value {!r} for parameter beta'.format(beta)
+        else:
+            raise
+        sys.exit(msg)
     return model, dictionary
 
 
@@ -405,7 +413,13 @@ def prepare_topics(model, docs, titles, dictionary):
 
 
 def load_documents(preproc_file, target_col, title_col, delimiter):
-    dataset = pd.read_csv(preproc_file, delimiter=delimiter, encoding='utf-8')
+    try:
+        dataset = pd.read_csv(preproc_file, delimiter=delimiter, encoding='utf-8')
+    except FileNotFoundError as err:
+        msg = 'Error: file {!r} not found'
+        sys.exit(msg.format(err.filename))
+
+    assert_column(str(preproc_file), dataset, [target_col, title_col])
     dataset.fillna('', inplace=True)
     titles = dataset[title_col].to_list()
     documents = dataset[target_col].to_list()
@@ -468,8 +482,13 @@ def lda(args):
 
     if args.load_model is not None:
         lda_path = Path(args.load_model)
-        model = LdaModel.load(str(lda_path / 'model'))
-        dictionary = Dictionary.load(str(lda_path / 'model_dictionary'))
+        try:
+            model = LdaModel.load(str(lda_path / 'model'))
+            dictionary = Dictionary.load(str(lda_path / 'model_dictionary'))
+        except FileNotFoundError as err:
+            msg = 'Error: file {!r} not found'
+            sys.exit(msg.format(err.filename))
+
     else:
         no_below = args.no_below
         no_above = args.no_above
@@ -482,6 +501,7 @@ def lda(args):
             beta = float(args.beta)
         except ValueError:
             beta = args.beta
+
         seed = args.seed
         model, dictionary = train_lda_model(docs, topics, alpha, beta,
                                             no_above, no_below, seed)
