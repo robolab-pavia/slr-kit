@@ -189,8 +189,12 @@ def load_stopwords(input_file):
     :return: the loaded words as a set of string
     :rtype: set[str]
     """
-    with open(input_file, 'r', encoding='utf-8') as f:
-        stop_words_list = f.read().splitlines()
+    try:
+        with open(input_file, 'r', encoding='utf-8') as f:
+            stop_words_list = f.read().splitlines()
+    except FileNotFoundError as err:
+        msg = 'Error: file {!r} not found'
+        sys.exit(msg.format(err.filename))
 
     stop_words_list = {w for w in stop_words_list if w != '' and w[0] != '#'}
     # Creating a list of custom stopwords
@@ -531,8 +535,12 @@ def load_relevant_terms(input_file):
     :return: the loaded terms as a set of tuples of strings
     :rtype: set[tuple[str]]
     """
-    with open(input_file, 'r', encoding='utf-8') as f:
-        rel_words_list = f.read().splitlines()
+    try:
+        with open(input_file, 'r', encoding='utf-8') as f:
+            rel_words_list = f.read().splitlines()
+    except FileNotFoundError as err:
+        msg = 'Error: file {!r} not found'
+        sys.exit(msg.format(err.filename))
 
     rel_words_list = {tuple(w.split(' '))
                       for w in rel_words_list
@@ -564,8 +572,13 @@ def preprocess(args):
     log_start(args, debug_logger, name)
 
     # load the dataset
-    dataset = pd.read_csv(args.datafile, delimiter=args.input_delimiter,
-                          encoding='utf-8', nrows=args.input_rows)
+    try:
+        dataset = pd.read_csv(args.datafile, delimiter=args.input_delimiter,
+                              encoding='utf-8', nrows=args.input_rows)
+    except FileNotFoundError as err:
+        msg = 'Error: file {!r} not found'
+        sys.exit(msg.format(err.filename))
+
     dataset.fillna('', inplace=True)
     assert_column(args.datafile, dataset, target_column)
     # filter the paper using the information from the filter_paper script
@@ -582,7 +595,12 @@ def preprocess(args):
 
     # csvFileName da CLI
     if args.regex is not None:
-        regex_df = pd.read_csv(args.regex, sep=',', quotechar='"')
+        try:
+            regex_df = pd.read_csv(args.regex, sep=',', quotechar='"')
+        except FileNotFoundError as err:
+            msg = 'Error: file {!r} not found'
+            sys.exit(msg.format(err.filename))
+
         regex_df['repl'].fillna('', inplace=True)
     else:
         regex_df = None
@@ -598,7 +616,13 @@ def preprocess(args):
         debug_logger.debug('Stop-words loaded and updated')
 
     if args.acronyms is not None:
-        acronyms = pd.read_csv(args.acronyms, delimiter='\t', encoding='utf-8')
+        try:
+            acronyms = pd.read_csv(args.acronyms, delimiter='\t',
+                                   encoding='utf-8')
+        except FileNotFoundError as err:
+            msg = 'Error: file {!r} not found'
+            sys.exit(msg.format(err.filename))
+
         assert_column(args.acronyms, acronyms, ['term', 'label'])
         debug_logger.debug('Acronyms loaded and updated')
     else:
