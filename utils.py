@@ -70,8 +70,8 @@ def assert_column(infile, dataframe, column_names):
 
     for c in column_names:
         if c not in dataframe:
-            print(f'File "{infile}" must contain the "{c}" column.')
-            sys.exit(1)
+            msg = 'File {!r} must contain the {!r} column.'
+            sys.exit(msg.format(infile, c))
 
 
 def setup_logger(name, log_file,
