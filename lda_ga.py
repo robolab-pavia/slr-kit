@@ -422,8 +422,13 @@ def load_ga_params(ga_params):
     :raise ValueError: if some parameter have the wrong value. The error cause
         is stored in the exception arguments
     """
-    with open(ga_params) as file:
-        params = dict(tomlkit.loads(file.read()))
+    try:
+        with open(ga_params) as file:
+            params = dict(tomlkit.loads(file.read()))
+    except FileNotFoundError as err:
+        msg = 'Error: file {!r} not found'
+        sys.exit(msg.format(err.filename))
+
     default_params_file = Path(__file__).parent / 'ga_param.toml'
     with open(default_params_file) as file:
         defaults = dict(tomlkit.loads(file.read()))
