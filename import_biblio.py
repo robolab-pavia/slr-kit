@@ -28,9 +28,13 @@ def show_columns(df):
 
 
 def ris2csv(args):
-    with open(args.input_file, 'r', encoding='utf-8') as bibliography_file:
-        entries = readris(bibliography_file)
-        risdf = pd.DataFrame(entries)
+    try:
+        with open(args.input_file, 'r', encoding='utf-8') as bibliography_file:
+            entries = readris(bibliography_file)
+            risdf = pd.DataFrame(entries)
+    except FileNotFoundError:
+        msg = 'Error: input file {!r} not found'
+        sys.exit(msg.format(args.input_file))
 
     # The number of citations lies in 'notes' column as element of a list
     # These 3 lines extract that information
@@ -46,8 +50,7 @@ def ris2csv(args):
     # checks that the requested items exist in the RIS file
     for c in cols:
         if c not in risdf:
-            print('Invalid column: "{}".'.format(c))
-            sys.exit(1)
+            sys.exit('Error: invalid column: {!r}.'.format(c))
 
     if args.output is not None:
         output_file = open(args.output, 'w', encoding='utf-8')
