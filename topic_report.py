@@ -4,6 +4,7 @@ import json
 import os
 import pathlib
 import shutil
+import sys
 from itertools import islice
 
 from RISparser import readris
@@ -81,9 +82,6 @@ def prepare_papers(ris_path, json_path):
     :return: the list of dictionaries and the list of topics
     :rtype: tuple[list, list]
     """
-    with open(json_path) as file:
-        papers_with_topics = json.load(file)
-
     papers_from_ris = []
     with open(ris_path, 'r', encoding='utf-8') as bibliography_file:
         entries = readris(bibliography_file)
@@ -92,9 +90,25 @@ def prepare_papers(ris_path, json_path):
                 continue
             papers_from_ris.append(entry)
 
+    with open(json_path) as file:
+        papers_with_topics = json.load(file)
+
+    if not isinstance(papers_with_topics, list):
+        msg = 'Error: wrong format in file {!r}: the main object is not a list'
+        raise ValueError(msg.format(str(json_path)))
+
     good_papers = []
     for paper in papers_from_ris:
-        for paper_data in papers_with_topics:
+        for i, paper_data in enumerate(papers_with_topics):
+            if not isinstance(paper, dict):
+                msg = 'Error: wrong format in file {!r}: the {} object is not a dict'
+                raise ValueError(msg.format(str(json_path), i))
+            for k in ['title', 'topics']:
+                if k not in paper:
+                    msg = 'Error: wrong format in file {!r}: ' \
+                          'the {} object has not the {} key'
+                    raise ValueError(msg.format(str(json_path), i, k))
+
             if paper['title'] == paper_data['title']:
                 topics = paper_data['topics']
                 paper['topics'] = topics
@@ -381,6 +395,19 @@ def prepare_tables(topics_dict, journals_topic, journals_year, dirname,
 
 
 def report(args):
+    ris_path = args.ris_file
+    json_path = args.json_file
+
+    try:
+        papers_list, topics_list = prepare_papers(ris_path, json_path)
+    except FileNotFoundError as err:
+        msg = 'Error: file {!r} not found'
+        sys.exit(msg.format(err.filename))
+    except ValueError as err:
+        # a value error here is because the json file has the wrong format
+        # In the exception there is the already formatted error message
+        sys.exit(err.args[0])
+
     script_dir = pathlib.Path(__file__).parent
     cwd = pathlib.Path.cwd()
     listdir = os.listdir(cwd)
@@ -390,9 +417,6 @@ def report(args):
     if TEX_TEMPLATE not in listdir:
         shutil.copy(templates / TEX_TEMPLATE, cwd)
 
-    ris_path = args.ris_file
-    json_path = args.json_file
-
     if args.dir is not None:
         dirname = cwd / args.dir
     else:
@@ -401,7 +425,8 @@ def report(args):
 
     dirname.mkdir(exist_ok=True)
 
-    papers_list, topics_list = prepare_papers(ris_path, json_path)
+
+
     topics_dict = report_year(papers_list, topics_list)
     plot_years(topics_dict, dirname)
     journals_dict = prepare_journals(papers_list)
