@@ -3,11 +3,14 @@ import importlib
 import os
 import pathlib
 import shutil
-import subprocess as sub
 import sys
 
 import git
 import tomlkit
+
+import pandas as pd
+
+from utils import assert_column
 
 SLRKIT_DIR = pathlib.Path(__file__).parent
 SCRIPTS = {
@@ -488,8 +491,34 @@ def run_lda(args):
         confname = pathlib.Path(args.config)
         if not confname.is_absolute():
             confname = args.cwd / confname
+    elif args.directory is not None:
+        confname = pathlib.Path(args.directory)
+        if not confname.is_absolute():
+            confname = args.cwd / confname
+
+        if args.uuid is not None:
+            confname = (confname / 'toml' / args.uuid).with_suffix('.toml')
+        else:
+            try:
+                df = pd.read_csv(confname / 'results.csv', delimiter='\t',
+                                 index_col='id')
+            except FileNotFoundError as err:
+                msg = 'Error: file {!r} not found'
+                sys.exit(msg.format(err.filename))
+
+            assert_column(str(confname / 'results.csv'), df, ['id', 'uuid'])
+            try:
+                uid = df.at[args.id, 'uuid']
+            except KeyError:
+                msg = 'Error: id {!r} not valid in the {!r} result directory'
+                sys.exit(msg.format(args.id, str(confname / 'results.csv')))
+
+            del df
+            print('Loading model with id', args.id, 'and uuid', uid)
+            confname = (confname / 'toml' / uid).with_suffix('.toml')
     else:
         confname = config_dir / 'lda.toml'
+
     config = load_configfile(confname)
     from lda import lda, init_argparser as lda_argparse
     script_args = lda_argparse().slrkit_arguments
@@ -832,9 +861,28 @@ def init_argparser():
     help_str = 'Run the lda stage in a slr-kit project'
     parser_lda = subparser.add_parser('lda', help=help_str,
                                       description=help_str)
-    parser_lda.add_argument('--config', '-c',
-                            help='Path to the toml file to be used instead of '
-                                 'the project one.')
+    group = parser_lda.add_mutually_exclusive_group()
+    group.add_argument('--config', '-c',
+                       help='Path to the toml file to be usedinstead of the '
+                            'project one.')
+    group.add_argument('--directory', '-d',
+                       help='Path to the directory with the results of the '
+                            'optimization phase.')
+    parser_lda.add_argument('--uuid', '-u',
+                            help='UUID of the model stored in the result '
+                                 'directory. This option is ignored if the '
+                                 '--directory option is not given.')
+    parser_lda.add_argument('--id', default=0, type=int,
+                            help='0-based id of the model stored in the result '
+                                 'directory. The associaction between id and '
+                                 'model is stored in the `results.csv` file of '
+                                 'the result directory. This file is sorted by '
+                                 'coherence so the id 0 is the best model. This'
+                                 ' option is ignored if the --directory option '
+                                 'is not given or the --uuid option is present.'
+                                 ' If both --uuid and this option are missing '
+                                 'and the --directory is present, --id is '
+                                 'assumed with value %(default)r')
     parser_lda.set_defaults(func=run_lda)
     # report
     help_str = 'Run the report creation script in a slr-kit project.'
