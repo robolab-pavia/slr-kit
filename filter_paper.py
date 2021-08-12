@@ -1,4 +1,5 @@
 import pathlib
+import sys
 
 import pandas as pd
 from RISparser import readris
@@ -40,21 +41,25 @@ def ris_reader(ris_path):
         'journal': [],
     }
 
-    with open(ris_path, 'r', encoding='utf-8') as bibliography_file:
-        entries = readris(bibliography_file)
-        for entry in entries:
-            if 'title' not in entry:
-                continue
-            try:
-                journal = entry['secondary_title']
-            except KeyError:
-                journal = entry.get('custom3')
+    try:
+        with open(ris_path, 'r', encoding='utf-8') as bibliography_file:
+            entries = readris(bibliography_file)
+            for entry in entries:
+                if 'title' not in entry:
+                    continue
+                try:
+                    journal = entry['secondary_title']
+                except KeyError:
+                    journal = entry.get('custom3')
 
-            if journal is None:
-                continue
+                if journal is None:
+                    continue
 
-            paper_journal_list['title'].append(entry['title'])
-            paper_journal_list['journal'].append(journal)
+                paper_journal_list['title'].append(entry['title'])
+                paper_journal_list['journal'].append(journal)
+    except FileNotFoundError:
+        msg = 'Error: file {!r} not found'
+        sys.exit(msg.format(str(ris_path)))
 
     return pd.DataFrame(paper_journal_list)
 
@@ -88,8 +93,13 @@ def filter_paper(args):
     journal_path = args.journal_file
 
     paper_journal = ris_reader(ris_path)
-    preproc = pd.read_csv(abstracts_path, delimiter='\t', encoding='utf-8')
-    journals = pd.read_csv(journal_path, delimiter='\t', encoding='utf-8')
+    try:
+        preproc = pd.read_csv(abstracts_path, delimiter='\t', encoding='utf-8')
+        journals = pd.read_csv(journal_path, delimiter='\t', encoding='utf-8')
+    except FileNotFoundError as err:
+        msg = 'Error: file {!r} not found'
+        sys.exit(msg.format(err.filename))
+
     out = append_label(preproc, journals, paper_journal)
     out.to_csv(abstracts_path, sep='\t', index=False)
 
