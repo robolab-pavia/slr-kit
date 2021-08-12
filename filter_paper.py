@@ -4,6 +4,7 @@ import sys
 import pandas as pd
 from RISparser import readris
 from slrkit_utils.argument_parser import ArgParse
+from utils import assert_column
 
 
 def init_argparser():
@@ -100,6 +101,8 @@ def filter_paper(args):
         msg = 'Error: file {!r} not found'
         sys.exit(msg.format(err.filename))
 
+    assert_column(str(abstracts_path), preproc, 'title')
+    assert_column(str(journal_path), journals, ['id', 'term', 'label'])
     out = append_label(preproc, journals, paper_journal)
     out.to_csv(abstracts_path, sep='\t', index=False)
 
