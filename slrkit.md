@@ -362,11 +362,19 @@ The `lda` command trains an LDA model and outputs the extracted topics and the a
 
 Usage:
 
-    python3 slrkit.py lda [--config CONFIG]
+    python3 slrkit.py lda [--config CONFIG | --directory DIRECTORY] [--uuid UUID] [--id ID]
 
-The `--config` optional argument allows the user to specify a different configuration file than the default one.
+Optional arguments:
+
+* `--config | -c CONFIG`: specifies a different configuration file than the default one;
+* `--directory | -d DIRECTORY`: specifies the path to the directory with the results of the optimization phase;
+* `--uuid | -u UUID`: UUID of the model stored in the result directory. This option is ignored if the `--directory` option is not given;
+* `--id ID`: 0-based id of the model stored in the result directory. The associaction between id and model is stored in the `results.csv` file of the result directory. This file is sorted by coherence so the id 0 is the best model. This option is ignored if the `--directory` option is not given or the `--uuid` option is present. If both `--uuid` and this option are missing and the `--directory` is present, `--id` is assumed with value 0.
+
+The `--config` and the `--direcotry` are mutually exclusive.
+The `--directory`, in conjunction with the `--uuid` or the `--id`, allows the user to select one model of a run of the `optimize_lda` command (or the `lda_ga.py` script).
+
 This command runs the `lda.py` script.
-
 The `lda` sub-command uses, by default, the `lda.toml` configuration file that has the following structure:
 
 * `preproc_file`: name of the *preprocess* file. Pre-filled with `<project-name>_preproc.csv`;
