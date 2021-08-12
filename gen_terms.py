@@ -6,7 +6,7 @@ import sys
 import pandas
 
 from slrkit_utils.argument_parser import ArgParse
-from utils import setup_logger, STOPWORD_PLACEHOLDER
+from utils import setup_logger, STOPWORD_PLACEHOLDER, assert_column
 
 
 def to_record(config):
@@ -144,13 +144,15 @@ def gen_terms(args):
     # TODO: write log string with values of the parameters used in the execution
 
     # load the dataset
-    dataset = pandas.read_csv(args.datafile, delimiter=args.delimiter,
-                              encoding='utf-8')
+    try:
+        dataset = pandas.read_csv(args.datafile, delimiter=args.delimiter,
+                                  encoding='utf-8')
+    except FileNotFoundError as err:
+        msg = 'Error: file {!r} not found'
+        sys.exit(msg.format(err.filename))
+
+    assert_column(args.datafile, dataset, target_column)
     dataset.fillna('', inplace=True)
-    if target_column not in dataset:
-        msg = 'File "{}" must contain a column labelled as "{}".'
-        print(msg.format(args.datafile, target_column))
-        sys.exit(1)
 
     msg = 'Dataset loaded {} items'
     debug_logger.debug(msg.format(len(dataset[target_column])))
