@@ -214,7 +214,7 @@ def git_commit(repo, commit_msg):
         return False
 
 
-def init_project(slrkit_args):
+def run_init(slrkit_args):
     config_dir, meta, metafile = create_meta(slrkit_args)
 
     try:
@@ -540,7 +540,7 @@ def run_lda(args):
     lda(cmd_args)
 
 
-def optimize_lda(args):
+def run_optimize_lda(args):
     confname = 'optimize_lda.toml'
     config_dir, meta = check_project(args.cwd)
     config = load_configfile(config_dir / confname)
@@ -552,7 +552,7 @@ def optimize_lda(args):
     lda_ga_optimization(cmd_args)
 
 
-def lda_grid_search_command(args):
+def run_lda_grid_search(args):
     confname = 'lda_grid_search.toml'
     config_dir, meta = check_project(args.cwd)
     config = load_configfile(config_dir / confname)
@@ -769,7 +769,7 @@ def lda_grid_searc_subparser(subparser):
     parser_lda_grid_search = subparser.add_parser('lda_grid_search',
                                                   help=help_str,
                                                   description=help_str)
-    parser_lda_grid_search.set_defaults(func=lda_grid_search_command)
+    parser_lda_grid_search.set_defaults(func=run_lda_grid_search)
 
 
 def record_subparser(subparser):
@@ -800,7 +800,7 @@ def optimize_lda_subparser(subparser):
     parser_optimize_lda = subparser.add_parser('optimize_lda',
                                                help=help_str,
                                                description=help_str)
-    parser_optimize_lda.set_defaults(func=optimize_lda)
+    parser_optimize_lda.set_defaults(func=run_optimize_lda)
 
 
 def report_subparser(subparser):
@@ -932,7 +932,7 @@ def init_subparser(subparser):
                              default='', help='Description of the project')
     parser_init.add_argument('--no-backup', action='store_true',
                              help='Do not save the existing toml files.')
-    parser_init.set_defaults(func=init_project)
+    parser_init.set_defaults(func=run_init)
 
 
 def init_argparser():
