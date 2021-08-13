@@ -81,6 +81,9 @@ def prepare_papers(ris_path, json_path):
     :type json_path: str
     :return: the list of dictionaries and the list of topics
     :rtype: tuple[list, list]
+    :raise FileNotFoundError: if one of the input files is missing
+    :raise ValueError: if the json file has the worng format. args[0] contains a
+        message ready to be shown to the user
     """
     papers_from_ris = []
     with open(ris_path, 'r', encoding='utf-8') as bibliography_file:
@@ -100,11 +103,11 @@ def prepare_papers(ris_path, json_path):
     good_papers = []
     for paper in papers_from_ris:
         for i, paper_data in enumerate(papers_with_topics):
-            if not isinstance(paper, dict):
+            if not isinstance(paper_data, dict):
                 msg = 'Error: wrong format in file {!r}: the {} object is not a dict'
                 raise ValueError(msg.format(str(json_path), i))
             for k in ['title', 'topics']:
-                if k not in paper:
+                if k not in paper_data:
                     msg = 'Error: wrong format in file {!r}: ' \
                           'the {} object has not the {} key'
                     raise ValueError(msg.format(str(json_path), i, k))
