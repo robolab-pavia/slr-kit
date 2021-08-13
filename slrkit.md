@@ -409,15 +409,16 @@ More information on the `PYTHONHASHSEED` variable can be found [here](https://do
 
 ### report
 
-The `report` command produces some reports with statistics about the paper analyzed by the `lda` command.
+The `report` command produces some reports with statistics about the papers analyzed by the `lda` command.
 This command runs the `topic_report.py` script.
 
 Usage:
 
-    python3 slrkit.py report json_file
+    python3 slrkit.py report [--json_file file]
 
-with `json_file` the path to the JSON file with the documents-topics association produced by the `lda` command (or the `lda.py` script).
-This JSON file is usually called `lda_docs-topics_<date>_<time>.json`.
+The command searches all the `lda_docs-topics*.json` file in the current directory and uses the most recent one.
+Files with that name are the ones produced by the `lda` command and contains the association between documents and topics.
+The  `--json_file` option, allows the user to select a different JSON file.
 
 The command uses the `report.toml` configuration file that has the following structure:
 
