@@ -83,6 +83,33 @@ The sub-commands are:
 Each command operates on the directory from which the `slrkit` command is run.
 The `-C` option allows to change the current directory to the one specified.
 
+## Commands workflow
+
+Usually the workflow is the following:
+
+1. initialize a project with the `init` command. Fill the information in the `META.toml` file and save in the project the bibliographical database with the information on the paper. The name of this file must be written in the `import.toml` file in the configuration directory;
+2. import the data in the bibliographical database into a `csv` file with the `import` command;
+3. *(optional)* create a list of the journals that have pubblished the paper with the `journals extract` command. This list can be reviewed and classified to exclude papers from not relevan journals;
+4. *(optional)* review the list of journals with the `fawoc journals` command;
+5. *(optional)* use the classification made in the step above to mark the papers that comes from a discarded journal. This step can be done with the `journals filter` command;
+6. *(optional)* extract a list of acronyms with the `acronyms` command. This list can be rewiwed to find the relevant acronyms;
+7. *(optional)* classify the acronyms with the `fawoc acronyms`;
+8. select the stop-words that have to be filtered from the paper. The stop-words must be stored in one or more file. Their names must be included in the `preprocess.toml` file in the configuration directory;
+9. *(optional)* if there are lists of terms that are surely relevant, these lists must be stored in the project, and their names must be included in the `preprocess.toml` file;
+10. prepare the text for the elaboration with the `preprocess` command;
+11. generate the list of terms with the `terms generate` command;
+  stage 3 (classificazione)
+12. classify the terms with the `fawoc terms` command;
+13. extract the topic and retrieve the document-topic association with the `lda` command;
+14. prepare a report with some statistics about the papers with the `report` command;
+
+Before running any command is highly recommended reviewing its settings file to check if everything is correct.
+
+Optionally the `optimize_lda` (faster) or the `lda_grid_search` (slower) commands can be used to find the best LDA model.
+
+The `record` command is designed to record the meaningful files of the project in a `git` repository.
+Its use is highly recommended.
+
 ### init
 Initialize the current directory as an SLR-KIT project.
 Usage:
@@ -125,7 +152,7 @@ A first commit is recorded with:
 * the provided `.gitignore`.
 
 ### import
-This command imports a bibliographical database into the project, converting it to the `¢sv` format used by all the scripts.
+This command imports a bibliographical database into the project, converting it to the `csv` format used by all the scripts.
 The output of this command will be called the *abstracts* file in the rest of this document.
 
 Usage:
