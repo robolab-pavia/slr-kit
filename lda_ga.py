@@ -25,17 +25,17 @@ if not sys.warnoptions:
 from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel, LdaModel
 
-from slrkit_utils.argument_parser import (AppendMultipleFilesAction, ArgParse,
+from slrkit_utils.argument_parser import (ArgParse,
                                           ValidateInt)
 from lda import (PHYSICAL_CPUS, prepare_documents,
-                 prepare_topics, output_topics)
+                 prepare_topics, output_topics, save_toml_files)
 from utils import STOPWORD_PLACEHOLDER, setup_logger
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
 _corpus: Optional[List[List[str]]] = None
 _seed: Optional[int] = None
 _queue: Optional[Queue] = None
-_outdir: Optional[pathlib.Path] = None
+_modeldir: Optional[pathlib.Path] = None
 
 creator.create('FitnessMax', base.Fitness, weights=(1.0,))
 
@@ -311,12 +311,12 @@ def init_argparser():
     return parser
 
 
-def init_train(corpora, seed, queue, outdir):
-    global _corpus, _seed, _queue, _outdir
+def init_train(corpora, seed, queue, modeldir):
+    global _corpus, _seed, _queue, _modeldir
     _corpus = corpora
     _seed = seed
     _queue = queue
-    _outdir = outdir
+    _modeldir = modeldir
 
 
 def load_additional_terms(input_file):
@@ -341,7 +341,7 @@ def load_additional_terms(input_file):
 
 # topics, alpha, beta, no_above, no_below label
 def evaluate(ind: LdaIndividual):
-    global _corpus, _seed, _queue, _outdir
+    global _corpus, _seed, _queue, _modeldir
     # unpack parameter
     n_topics = ind.topics
     alpha = ind.alpha
@@ -395,7 +395,7 @@ def evaluate(ind: LdaIndividual):
     result['coherence'] = c_v
     result['time'] = stop - start
     _queue.put(result)
-    output_dir = _outdir / u
+    output_dir = _modeldir / u
     output_dir.mkdir(exist_ok=True)
     model.save(str(output_dir / 'model'))
     dictionary.save(str(output_dir / 'model_dictionary'))
@@ -470,47 +470,6 @@ def collect_results(queue):
     df.sort_values(by='coherence', ascending=False, inplace=True)
     df.reset_index(drop=True, inplace=True)
     return df
-
-
-def save_toml_files(args, results_df, outdir):
-    """
-    Saves the toml files that will be used to load the models in lda.py
-
-    The toml file are saved in <outdir>/toml. If this directory not exists, it
-    is created.
-    :param args: cli arguments
-    :type args: argparse.Namespace
-    :param results_df: dataframe with the training results
-    :type results_df: pd.DataFrame
-    :param outdir: path to the directory of the outputs
-    :type outdir: Path
-    """
-    toml_dir = outdir / 'toml'
-    toml_dir.mkdir(exist_ok=True)
-    for _, row in results_df.iterrows():
-        conf = tomlkit.document()
-        conf.add('preproc_file', str(args.preproc_file))
-        conf.add('terms_file', str(args.terms_file))
-        conf.add('outdir', str(outdir))
-        conf.add('text-column', args.target_column)
-        conf.add('title-column', args.title)
-        conf.add('topics', row['topics'])
-        conf.add('alpha', row['alpha'])
-        conf.add('beta', row['beta'])
-        conf.add('no_below', row['no_below'])
-        conf.add('no_above', row['no_above'])
-        if row['seed'] is None:
-            conf.add('seed', '')
-        else:
-            conf.add('seed', row['seed'])
-        conf.add('model', False)
-        conf.add('no-relevant', False)
-        u = row['uuid']
-        conf.add('load-model', str(outdir / 'models' / u))
-        conf.add('placeholder', args.placeholder)
-        conf.add('delimiter', args.delimiter)
-        with open(toml_dir / ''.join([u, '.toml']), 'w') as file:
-            file.write(tomlkit.dumps(conf))
 
 
 def optimization(documents, params, toolbox, queue, args, model_dir):
@@ -626,9 +585,9 @@ def lda_ga_optimization(args):
 
     # prepare result directories
     now = datetime.now()
-    outdir = args.outdir / f'{now:%Y-%m-%d_%H%M%S}_lda_results'
-    outdir.mkdir(exist_ok=True, parents=True)
-    model_dir = outdir / 'models'
+    result_dir = args.outdir / f'{now:%Y-%m-%d_%H%M%S}_lda_results'
+    result_dir.mkdir(exist_ok=True, parents=True)
+    model_dir = result_dir / 'models'
     model_dir.mkdir(exist_ok=True)
 
     q = Queue(estimated_trainings)
@@ -644,8 +603,8 @@ def lda_ga_optimization(args):
     output_topics(topics, docs_topics, args.outdir, 'lda',
                   use_timestamp=not args.no_timestamp)
 
-    save_toml_files(args, df, outdir)
-    df.to_csv(outdir / 'results.csv', sep='\t', index_label='id')
+    save_toml_files(args, df, result_dir)
+    df.to_csv(result_dir / 'results.csv', sep='\t', index_label='id')
     with pd.option_context('display.width', 80,
                            'display.float_format', '{:,.3f}'.format):
         print(df)

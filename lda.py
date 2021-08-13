@@ -460,6 +460,50 @@ def output_topics(topics, docs_topics, outdir, file_prefix, use_timestamp=True):
         json.dump(docs_topics, file, indent='\t')
 
 
+def save_toml_files(args, results_df, result_dir):
+    """
+    Saves the toml files that will be used to load the models in lda.py
+
+    The toml file are saved in <outdir>/toml. If this directory not exists, it
+    is created.
+    :param args: cli arguments.
+        Must have preproc_file, terms_file, outdir as Path. target_colum, title,
+        placeholder, delimiter as str. The meaning of these attributes is the
+        same as the one defined in the init_argparser in this file
+    :type args: argparse.Namespace
+    :param results_df: dataframe with the training results
+    :type results_df: pd.DataFrame
+    :param result_dir: path to the directory of the results
+    :type result_dir: Path
+    """
+    toml_dir = result_dir / 'toml'
+    toml_dir.mkdir(exist_ok=True)
+    for _, row in results_df.iterrows():
+        conf = tomlkit.document()
+        conf.add('preproc_file', str(args.preproc_file))
+        conf.add('terms_file', str(args.terms_file))
+        conf.add('outdir', str(args.outdir))
+        conf.add('text-column', args.target_column)
+        conf.add('title-column', args.title)
+        conf.add('topics', row['topics'])
+        conf.add('alpha', row['alpha'])
+        conf.add('beta', row['beta'])
+        conf.add('no_below', row['no_below'])
+        conf.add('no_above', row['no_above'])
+        if row['seed'] is None:
+            conf.add('seed', '')
+        else:
+            conf.add('seed', row['seed'])
+        conf.add('model', False)
+        conf.add('no-relevant', False)
+        u = row['uuid']
+        conf.add('load-model', str(result_dir / 'models' / u))
+        conf.add('placeholder', args.placeholder)
+        conf.add('delimiter', args.delimiter)
+        with open(toml_dir / ''.join([u, '.toml']), 'w') as file:
+            file.write(tomlkit.dumps(conf))
+
+
 def lda(args):
     terms_file = args.terms_file
     preproc_file = args.preproc_file

@@ -499,19 +499,23 @@ def run_lda(args):
         if args.uuid is not None:
             confname = (confname / 'toml' / args.uuid).with_suffix('.toml')
         else:
+            resfile = confname / 'results.csv'
             try:
-                df = pd.read_csv(confname / 'results.csv', delimiter='\t',
+                df = pd.read_csv(resfile, delimiter='\t',
                                  index_col='id')
             except FileNotFoundError as err:
                 msg = 'Error: file {!r} not found'
                 sys.exit(msg.format(err.filename))
+            except ValueError:
+                msg = 'File {!r} must contain the {!r} column.'
+                sys.exit(msg.format(str(resfile), 'id'))
 
-            assert_column(str(confname / 'results.csv'), df, ['id', 'uuid'])
+            assert_column(str(resfile), df, ['uuid'])
             try:
                 uid = df.at[args.id, 'uuid']
             except KeyError:
                 msg = 'Error: id {!r} not valid in the {!r} result directory'
-                sys.exit(msg.format(args.id, str(confname / 'results.csv')))
+                sys.exit(msg.format(args.id, str(resfile)))
 
             del df
             print('Loading model with id', args.id, 'and uuid', uid)

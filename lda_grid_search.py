@@ -22,7 +22,7 @@ from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel, LdaModel
 
 from slrkit_utils.argument_parser import ArgParse, ValidateInt
-from lda import PHYSICAL_CPUS, prepare_documents, prepare_corpus
+from lda import PHYSICAL_CPUS, prepare_documents, prepare_corpus, save_toml_files
 from utils import STOPWORD_PLACEHOLDER, setup_logger
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
@@ -31,7 +31,7 @@ _corpora: Optional[Dict[Tuple[str], Tuple[List[Tuple[int, int]],
                                           int]]] = None
 _seed: Optional[int] = None
 _logger: Optional[logging.Logger] = None
-_outdir: Optional[pathlib.Path] = None
+_modeldir: Optional[pathlib.Path] = None
 
 
 def init_argparser():
@@ -92,18 +92,18 @@ def init_argparser():
     return parser
 
 
-def init_train(corpora, seed, outdir, logger):
-    global _corpora, _seed, _logger, _outdir
+def init_train(corpora, seed, modeldir, logger):
+    global _corpora, _seed, _logger, _modeldir
     _corpora = corpora
     _seed = seed
     _logger = logger
-    _outdir = outdir
+    _modeldir = modeldir
 
 
 # c_idx is the corpus index, n_topics is the number of topics,
 # a is alpha and _b is beta
 def train(c_idx, n_topics, _a, _b):
-    global _corpora, _seed, _logger, _outdir
+    global _corpora, _seed, _logger, _modeldir
     start = timer()
     corpus, dictionary, texts, n_docs = _corpora[c_idx]
     model = LdaModel(corpus, num_topics=n_topics,
@@ -128,14 +128,14 @@ def train(c_idx, n_topics, _a, _b):
     _logger.debug('{:.4f} {} {} {} {} {} {:.3f}'.format(c_v, uid, c_idx,
                                                         n_topics, alpha,
                                                         beta, stop - start))
-    output_dir = _outdir / uid
+    output_dir = _modeldir / uid
     output_dir.mkdir(exist_ok=True)
     model.save(str(output_dir / 'model'))
     dictionary.save(str(output_dir / 'model_dictionary'))
     return c_idx, n_topics, _a, _b, c_v, stop - start, uid, n_docs, len(corpus)
 
 
-def compute_optimal_model(corpora, topics_range, alpha, beta, outdir, logger,
+def compute_optimal_model(corpora, topics_range, alpha, beta, modeldir, logger,
                           seed=None):
     """
     Train several models iterating over the specified number of topics and performs
@@ -151,8 +151,8 @@ def compute_optimal_model(corpora, topics_range, alpha, beta, outdir, logger,
     :param beta: Beta parameter values to test. Every value accepted by gensim
     is valid.
     :type beta: list[float or str]
-    :param outdir: directory where all the workers write the resulting model
-    :type outdir: pathlib.Path
+    :param modeldir: directory where all the workers write the resulting model
+    :type modeldir: pathlib.Path
     :param logger: logger object that all the workers will use
     :type logger: logging.Logger
     :param seed: random number generator seed
@@ -176,7 +176,7 @@ def compute_optimal_model(corpora, topics_range, alpha, beta, outdir, logger,
     }
     # iterate through all the combinations
     with Pool(processes=PHYSICAL_CPUS, initializer=init_train,
-              initargs=(corpora, seed, outdir, logger)) as pool:
+              initargs=(corpora, seed, modeldir, logger)) as pool:
         results = pool.starmap(train, product(corpora.keys(), topics_range,
                                               alpha, beta))
         # get the coherence score for the given parameters
@@ -224,10 +224,6 @@ def lda_grid_search(args):
     logfile = args.logfile
     terms_file = args.terms_file
     preproc_file = args.preproc_file
-    # prepare result directories
-    now = datetime.now()
-    output_dir = args.outdir / f'{now:%Y-%m-%d_%H%M%S}_lda_results'
-    output_dir.mkdir(exist_ok=True, parents=True)
 
     logger = setup_logger('debug_logger', logfile, level=logging.DEBUG)
     logger.info('==== lda_grid_search started ====')
@@ -290,12 +286,19 @@ def lda_grid_search(args):
                                                    * len(alpha)
                                                    * len(beta)
                                                    * len(topics_range)))
+    # prepare result directories
+    now = datetime.now()
+    result_dir = args.outdir / f'{now:%Y-%m-%d_%H%M%S}_lda_results'
+    result_dir.mkdir(exist_ok=True, parents=True)
+    modeldir = result_dir / 'models'
+    modeldir.mkdir(exist_ok=True, parents=True)
+
     results = compute_optimal_model(corpora, topics_range, alpha, beta,
-                                    output_dir, logger, seed=args.seed)
+                                    modeldir, logger, seed=args.seed)
     results.sort_values(by='coherence', ascending=False, inplace=True)
     results.reset_index(inplace=True, drop=True)
-    results.to_csv(output_dir / 'results.csv', sep='\t', index_label='id')
-
+    results.to_csv(result_dir / 'results.csv', sep='\t', index_label='id')
+    save_toml_files(args, results, result_dir)
     best = results.loc[results['coherence'].idxmax()]
 
     print('Best model:')
@@ -315,7 +318,7 @@ def lda_grid_search(args):
             plt.show()
 
         if args.plot_save:
-            fig_file = output_dir / 'lda_plot.pdf'
+            fig_file = result_dir / 'lda_plot.pdf'
             plt.savefig(str(fig_file), dpi=1000)
 
     logger.info('==== lda_grid_search ended ====')
