@@ -652,7 +652,19 @@ def run_report(args):
     cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
                                               script_args)
     os.chdir(args.cwd)
-    setattr(cmd_args, 'json_file', args.json_file)
+    if args.json_file is not None:
+        setattr(cmd_args, 'json_file', args.json_file)
+    else:
+        # get the list of the docs topics association file created with lda
+        # this list is sorted by modification time, so results_list[0] is the
+        # most recent file
+        results_list = sorted(args.cwd.glob('lda_docs-topics*.json'),
+                              key=lambda p: p.stat().st_mtime, reverse=True)
+        if results_list:
+            setattr(cmd_args, 'json_file', str(results_list[0]))
+        else:
+            sys.exit('No lda_docs-topics json file found. Exiting.')
+
     report(cmd_args)
 
 
@@ -807,9 +819,9 @@ def report_subparser(subparser):
     help_str = 'Run the report creation script in a slr-kit project.'
     parser_report = subparser.add_parser('report', help=help_str,
                                          description=help_str)
-    parser_report.add_argument('json_file', help='Path to the json file '
-                                                 'containing the LDA '
-                                                 'topic-paper results.')
+    parser_report.add_argument('--json_file',
+                               help='Path to the json file containing the LDA '
+                                    'topic-paper results.')
     parser_report.set_defaults(func=run_report)
 
 
