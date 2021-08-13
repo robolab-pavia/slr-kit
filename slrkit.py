@@ -763,105 +763,57 @@ def run_record(args):
         print('All the file are up to date, nothing to commit')
 
 
-def init_argparser():
-    """
-    Initialize the command line parser.
+def lda_grid_searc_subparser(subparser):
+    help_str = 'Run an optimization phase for the lda stage in a ' \
+               'slr-kit project using a grid search method'
+    parser_lda_grid_search = subparser.add_parser('lda_grid_search',
+                                                  help=help_str,
+                                                  description=help_str)
+    parser_lda_grid_search.set_defaults(func=lda_grid_search_command)
 
-    :return: the command line parser
-    :rtype: argparse.ArgumentParser
-    """
-    parser = argparse.ArgumentParser(description='slrkit project handling tool')
-    parser.add_argument('-C', type=_check_is_dir, dest='cwd',
-                        default=pathlib.Path.cwd(), metavar='path',
-                        help='Change directory to %(metavar)r before running '
-                             'the specified command.')
-    # dest is required to avoid a crash when the user inputs no command
-    subparser = parser.add_subparsers(title='slrkit commands',
-                                      required=True, dest='command')
-    # init
-    help_str = 'Initialize a slr-kit project'
-    parser_init = subparser.add_parser('init', help=help_str,
-                                       description=help_str)
-    parser_init.add_argument('name', action='store', type=str,
-                             help='Name of the project.')
-    parser_init.add_argument('--author', '-A', action='store', type=str,
-                             default='', help='Name of the author of the '
-                                              'project')
-    parser_init.add_argument('--description', '-D', action='store', type=str,
-                             default='', help='Description of the project')
-    parser_init.add_argument('--no-backup', action='store_true',
-                             help='Do not save the existing toml files.')
-    parser_init.set_defaults(func=init_project)
-    # import
-    help_str = 'Import a bibliographic database converting to the csv format ' \
-               'used by slr-kit.'
-    parser_import = subparser.add_parser('import', help=help_str,
+
+def record_subparser(subparser):
+    help_str = 'Record a snapshot of the project in the underlying git ' \
+               'repository'
+    parser_record = subparser.add_parser('record', help=help_str,
                                          description=help_str)
-    parser_import.add_argument('--list_columns', action='store_true',
-                               help='If set, the command outputs only the list '
-                                    'of available columns in the input_file '
-                                    'specified in the configuration file. '
-                                    'No other operation are performed and no '
-                                    'data is imported.')
+    parser_record.add_argument('message', help='The commit message to use for '
+                                               'the commit. Cannot be the '
+                                               'empty string.')
+    parser_record.add_argument('--clean', action='store_true',
+                               help='If set, the command cleans the repository '
+                                    'index from file not referenced in the '
+                                    'config files. These files are left in the '
+                                    'project but they become untracked.')
+    parser_record.add_argument('--rm', action='store_true',
+                               help='If set, the command cleans the project '
+                                    'removing files not referenced in the '
+                                    'config files. This flag remove these '
+                                    'files from the repository index and from '
+                                    'the filesystem. Use with caution.')
+    parser_record.set_defaults(func=run_record)
 
-    parser_import.set_defaults(func=run_import)
-    # journals
-    help_str = 'Subcommand to extract and filter a list of journals. ' \
-               'Requires a subcommand.'
-    journals_p = subparser.add_parser('journals', help=help_str,
-                                      description=help_str)
 
-    journals_subp = journals_p.add_subparsers(title='journals commands',
-                                              dest='journals_operation')
-    # journal_lister
-    help_str = 'Prepare a list of journals, suitable to be classified with ' \
-               'fawoc.'
-    journals_subp.add_parser('extract', help=help_str, description=help_str)
-    # filter_paper
-    help_str = 'Filters the abstracts file marking the papers published in ' \
-               'the approved journals as "good".'
-    journals_subp.add_parser('filter', help=help_str, description=help_str)
+def optimize_lda_subparser(subparser):
+    help_str = 'Run an optimization phase for the lda stage in a' \
+               'slr-kit project, using a GA.'
+    parser_optimize_lda = subparser.add_parser('optimize_lda',
+                                               help=help_str,
+                                               description=help_str)
+    parser_optimize_lda.set_defaults(func=optimize_lda)
 
-    journals_p.set_defaults(func=run_journals)
-    # acronyms
-    help_str = 'Extract acronyms from texts.'
-    parser_acronyms = subparser.add_parser('acronyms', help=help_str,
-                                           description=help_str)
 
-    parser_acronyms.set_defaults(func=run_acronyms)
-    # preproc
-    help_str = 'Run the preprocess stage in a slr-kit project'
-    parser_preproc = subparser.add_parser('preprocess', help=help_str,
-                                          description=help_str)
-    parser_preproc.set_defaults(func=run_preproc)
-    # terms
-    help_str = 'Subcommand to extract and handle lists of terms in a slr-kit ' \
-               'project. Requires a sub-command'
-    terms_parser = subparser.add_parser('terms', help=help_str,
-                                        description=help_str)
-    terms_parser.set_defaults(func=run_terms)
-    terms_subp = terms_parser.add_subparsers(title='terms commands',
-                                             dest='terms_operation')
-    # terms_generate
-    help_str = 'Generates a list of terms from documents in a slr-kit project'
-    terms_subp.add_parser('generate', help=help_str, description=help_str)
-    # fawoc
-    help_str = 'Run fawoc in a slr-kit project.'
-    parser_fawoc = subparser.add_parser('fawoc', help=help_str,
-                                        description=help_str)
-    parser_fawoc.add_argument('operation', default='terms', nargs='?',
-                              choices=['terms', 'acronyms', 'journals'],
-                              help='Specifies what the user wants to '
-                                   'classify with fawoc. This argument can be '
-                                   'one of %(choices)r. '
-                                   'Default: %(default)r.')
-    parser_fawoc.add_argument('--input', '-i', metavar='LABEL',
-                              help='Input only the terms classified with the '
-                                   'specified label')
-    parser_fawoc.add_argument('--width', '-w', action='store', type=int,
-                              help='Width of fawoc windows.')
-    parser_fawoc.set_defaults(func=run_fawoc)
-    # lda
+def report_subparser(subparser):
+    help_str = 'Run the report creation script in a slr-kit project.'
+    parser_report = subparser.add_parser('report', help=help_str,
+                                         description=help_str)
+    parser_report.add_argument('json_file', help='Path to the json file '
+                                                 'containing the LDA '
+                                                 'topic-paper results.')
+    parser_report.set_defaults(func=run_report)
+
+
+def lda_subparser(subparser):
     help_str = 'Run the lda stage in a slr-kit project'
     parser_lda = subparser.add_parser('lda', help=help_str,
                                       description=help_str)
@@ -888,48 +840,140 @@ def init_argparser():
                                  'and the --directory is present, --id is '
                                  'assumed with value %(default)r')
     parser_lda.set_defaults(func=run_lda)
+
+
+def fawoc_subparser(subparser):
+    help_str = 'Run fawoc in a slr-kit project.'
+    parser_fawoc = subparser.add_parser('fawoc', help=help_str,
+                                        description=help_str)
+    parser_fawoc.add_argument('operation', default='terms', nargs='?',
+                              choices=['terms', 'acronyms', 'journals'],
+                              help='Specifies what the user wants to '
+                                   'classify with fawoc. This argument can be '
+                                   'one of %(choices)r. '
+                                   'Default: %(default)r.')
+    parser_fawoc.add_argument('--input', '-i', metavar='LABEL',
+                              help='Input only the terms classified with the '
+                                   'specified label')
+    parser_fawoc.add_argument('--width', '-w', action='store', type=int,
+                              help='Width of fawoc windows.')
+    parser_fawoc.set_defaults(func=run_fawoc)
+
+
+def terms_subparser(subparser):
+    help_str = 'Subcommand to extract and handle lists of terms in a slr-kit ' \
+               'project. Requires a sub-command'
+    terms_parser = subparser.add_parser('terms', help=help_str,
+                                        description=help_str)
+    terms_parser.set_defaults(func=run_terms)
+    terms_subp = terms_parser.add_subparsers(title='terms commands',
+                                             dest='terms_operation')
+    # terms_generate
+    help_str = 'Generates a list of terms from documents in a slr-kit project'
+    terms_subp.add_parser('generate', help=help_str, description=help_str)
+
+
+def preproc_subparser(subparser):
+    help_str = 'Run the preprocess stage in a slr-kit project'
+    parser_preproc = subparser.add_parser('preprocess', help=help_str,
+                                          description=help_str)
+    parser_preproc.set_defaults(func=run_preproc)
+
+
+def acronyms_subparser(subparser):
+    help_str = 'Extract acronyms from texts.'
+    parser_acronyms = subparser.add_parser('acronyms', help=help_str,
+                                           description=help_str)
+    parser_acronyms.set_defaults(func=run_acronyms)
+
+
+def journals_subparser(subparser):
+    help_str = 'Subcommand to extract and filter a list of journals. ' \
+               'Requires a subcommand.'
+    journals_p = subparser.add_parser('journals', help=help_str,
+                                      description=help_str)
+    journals_subp = journals_p.add_subparsers(title='journals commands',
+                                              dest='journals_operation')
+    # journal_lister
+    help_str = 'Prepare a list of journals, suitable to be classified with ' \
+               'fawoc.'
+    journals_subp.add_parser('extract', help=help_str, description=help_str)
+    # filter_paper
+    help_str = 'Filters the abstracts file marking the papers published in ' \
+               'the approved journals as "good".'
+    journals_subp.add_parser('filter', help=help_str, description=help_str)
+    journals_p.set_defaults(func=run_journals)
+
+
+def import_subparser(subparser):
+    help_str = 'Import a bibliographic database converting to the csv format ' \
+               'used by slr-kit.'
+    parser_import = subparser.add_parser('import', help=help_str,
+                                         description=help_str)
+    parser_import.add_argument('--list_columns', action='store_true',
+                               help='If set, the command outputs only the list '
+                                    'of available columns in the input_file '
+                                    'specified in the configuration file. '
+                                    'No other operation are performed and no '
+                                    'data is imported.')
+    parser_import.set_defaults(func=run_import)
+
+
+def init_subparser(subparser):
+    help_str = 'Initialize a slr-kit project'
+    parser_init = subparser.add_parser('init', help=help_str,
+                                       description=help_str)
+    parser_init.add_argument('name', action='store', type=str,
+                             help='Name of the project.')
+    parser_init.add_argument('--author', '-A', action='store', type=str,
+                             default='', help='Name of the author of the '
+                                              'project')
+    parser_init.add_argument('--description', '-D', action='store', type=str,
+                             default='', help='Description of the project')
+    parser_init.add_argument('--no-backup', action='store_true',
+                             help='Do not save the existing toml files.')
+    parser_init.set_defaults(func=init_project)
+
+
+def init_argparser():
+    """
+    Initialize the command line parser.
+
+    :return: the command line parser
+    :rtype: argparse.ArgumentParser
+    """
+    parser = argparse.ArgumentParser(description='slrkit project handling tool')
+    parser.add_argument('-C', type=_check_is_dir, dest='cwd',
+                        default=pathlib.Path.cwd(), metavar='path',
+                        help='Change directory to %(metavar)r before running '
+                             'the specified command.')
+    # dest is required to avoid a crash when the user inputs no command
+    subparser = parser.add_subparsers(title='slrkit commands',
+                                      required=True, dest='command')
+    # init
+    init_subparser(subparser)
+    # import
+    import_subparser(subparser)
+    # journals
+    journals_subparser(subparser)
+    # acronyms
+    acronyms_subparser(subparser)
+    # preproc
+    preproc_subparser(subparser)
+    # terms
+    terms_subparser(subparser)
+    # fawoc
+    fawoc_subparser(subparser)
+    # lda
+    lda_subparser(subparser)
     # report
-    help_str = 'Run the report creation script in a slr-kit project.'
-    parser_report = subparser.add_parser('report', help=help_str,
-                                         description=help_str)
-    parser_report.add_argument('json_file', help='Path to the json file '
-                                                 'containing the LDA '
-                                                 'topic-paper results.')
-    parser_report.set_defaults(func=run_report)
+    report_subparser(subparser)
     # optimize_lda
-    help_str = 'Run an optimization phase for the lda stage in a' \
-               'slr-kit project, using a GA.'
-    parser_optimize_lda = subparser.add_parser('optimize_lda',
-                                               help=help_str,
-                                               description=help_str)
-    parser_optimize_lda.set_defaults(func=optimize_lda)
+    optimize_lda_subparser(subparser)
     # record
-    help_str = 'Record a snapshot of the project in the underlying git ' \
-               'repository'
-    parser_record = subparser.add_parser('record', help=help_str,
-                                         description=help_str)
-    parser_record.add_argument('message', help='The commit message to use for '
-                                               'the commit. Cannot be the '
-                                               'empty string.')
-    parser_record.add_argument('--clean', action='store_true',
-                               help='If set, the command cleans the repository '
-                                    'index from file not referenced in the '
-                                    'config files. These files are left in the '
-                                    'project but they become untracked.')
-    parser_record.add_argument('--rm', action='store_true',
-                               help='If set, the command cleans the project '
-                                    'removing files not referenced in the '
-                                    'config files. This flag remove these '
-                                    'files from the repository index and from '
-                                    'the filesystem. Use with caution.')
-    parser_record.set_defaults(func=run_record)
+    record_subparser(subparser)
     # lda_grid_search
-    help_str = 'Run an optimization phase for the lda stage in a ' \
-               'slr-kit project using a grid search method'
-    parser_lda_grid_search = subparser.add_parser('lda_grid_search',
-                                                  help=help_str,
-                                                  description=help_str)
-    parser_lda_grid_search.set_defaults(func=lda_grid_search_command)
+    lda_grid_searc_subparser(subparser)
     return parser
 
 
