@@ -435,14 +435,50 @@ def prepare_script_arguments(config, config_dir, confname, script_args):
     return args, inputs, outputs
 
 
+def check_dependencies(inputs, commandname, cwd):
+    """
+    Checks if the inputs are present and suggest the command to run if they are missing
+
+    This function prints error messages for each input that is missing
+    suggesting the command to run to create it.
+
+    :param inputs: dict of the inputs as returned by prepare_script_arguments
+    :type inputs: dict[str, Any]
+    :param commandname: name of the invoked command
+    :type commandname: str
+    :param cwd: current directory (arg of the -C option)
+    :type cwd: pathlib.Path
+    :return: True if all inputs exists and False otherwise
+    :rtype: bool
+    """
+    must_exit = False
+    for i, (k, v) in enumerate(inputs.items()):
+        p = pathlib.Path(v)
+        if not p.is_absolute():
+            p = cwd / p
+
+        if not p.exists():
+            must_exit = True
+            dep = SCRIPTS[commandname]['depends'][i]
+            dep = ' '.join(dep.split('_'))
+            msg = 'Error: input file {!r} missing. Run the {!r} command to ' \
+                  'create it'
+            print(msg.format(str(p), dep))
+
+    return not must_exit
+
+
 def run_preproc(args):
     confname = 'preprocess.toml'
     config_dir, meta = check_project(args.cwd)
     config = load_configfile(config_dir / confname)
     from preprocess import preprocess, init_argparser as preproc_argparse
     script_args = preproc_argparse().slrkit_arguments
-    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
-                                              script_args)
+    cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
+                                                   script_args)
+    if not check_dependencies(inputs, 'preprocess', args.cwd):
+        sys.exit(1)
+
     # handle the special parameter relevant-terms
     relterms_default = script_args['relevant-term']
     param = config.get('relevant-term', relterms_default['value'])
@@ -479,8 +515,10 @@ def run_terms(args):
     config_dir, meta = check_project(args.cwd)
     config = load_configfile(config_dir / confname)
     script_args = argparser().slrkit_arguments
-    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
-                                              script_args)
+    cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
+                                                   script_args)
+    if not check_dependencies(inputs, 'terms_generate', args.cwd):
+        sys.exit(1)
     os.chdir(args.cwd)
     script_to_run(cmd_args)
 
@@ -526,8 +564,11 @@ def run_lda(args):
     config = load_configfile(confname)
     from lda import lda, init_argparser as lda_argparse
     script_args = lda_argparse().slrkit_arguments
-    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
-                                              script_args)
+    cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
+                                                   script_args)
+    if not check_dependencies(inputs, 'lda', args.cwd):
+        sys.exit(1)
+
     # handle the outdir parameter
     outdir_default = script_args['outdir']
     param = config.get('outdir', outdir_default['value'])
@@ -546,8 +587,10 @@ def run_optimize_lda(args):
     config = load_configfile(config_dir / confname)
     from lda_ga import lda_ga_optimization, init_argparser as lda_ga_argparse
     script_args = lda_ga_argparse().slrkit_arguments
-    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
-                                              script_args)
+    cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
+                                                   script_args)
+    if not check_dependencies(inputs, 'optimize_lda', args.cwd):
+        sys.exit(1)
     os.chdir(args.cwd)
     lda_ga_optimization(cmd_args)
 
@@ -558,8 +601,10 @@ def run_lda_grid_search(args):
     config = load_configfile(config_dir / confname)
     from lda_grid_search import lda_grid_search, init_argparser as lda_gs_argparse
     script_args = lda_gs_argparse().slrkit_arguments
-    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
-                                              script_args)
+    cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
+                                                   script_args)
+    if not check_dependencies(inputs, 'lda_grid_search', args.cwd):
+        sys.exit(1)
     # handle the outdir and result parameter
     outdir_default = script_args['outdir']
     param = config.get('outdir', outdir_default['value'])
@@ -574,13 +619,16 @@ def run_lda_grid_search(args):
 
 
 def run_fawoc(args):
-    confname = ''.join(['fawoc_', args.operation, '.toml'])
+    command_name = '_'.join(['fawoc', args.operation])
+    confname = ''.join([command_name, '.toml'])
     config_dir, meta = check_project(args.cwd)
     config = load_configfile(config_dir / confname)
     from fawoc.fawoc import fawoc_run, init_argparser as fawoc_argparse
     script_args = fawoc_argparse().slrkit_arguments
-    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
-                                              script_args)
+    cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
+                                                   script_args)
+    if not check_dependencies(inputs, command_name, args.cwd):
+        sys.exit(1)
     # command line overrides
     if args.input is not None:
         setattr(cmd_args, 'input', args.input)
@@ -630,8 +678,11 @@ def run_acronyms(args):
     config = load_configfile(config_dir / confname)
     from acronyms import acronyms, init_argparser as acro_argparse
     script_args = acro_argparse().slrkit_arguments
-    cmd_args, _, outputs = prepare_script_arguments(config, config_dir, confname,
-                                                    script_args)
+    cmd_args, inputs, outputs = prepare_script_arguments(config, config_dir, confname,
+                                                         script_args)
+    if not check_dependencies(inputs, 'acronyms', args.cwd):
+        sys.exit(1)
+
     os.chdir(args.cwd)
     acronyms(cmd_args)
     preproc_config = load_configfile(config_dir / 'preprocess.toml')
@@ -663,7 +714,9 @@ def run_report(args):
         if results_list:
             setattr(cmd_args, 'json_file', str(results_list[0]))
         else:
-            sys.exit('No lda_docs-topics json file found. Exiting.')
+            msg = "Error: No lda_docs-topics json file found. " \
+                  "Run the 'lda' command first."
+            sys.exit(msg)
 
     report(cmd_args)
 
@@ -684,8 +737,15 @@ def run_journals(args):
     config_dir, meta = check_project(args.cwd)
     config = load_configfile(config_dir / confname)
     script_args = argparser().slrkit_arguments
-    cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
-                                              script_args)
+    cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
+                                                   script_args)
+    if args.journals_operation == 'filter':
+        ret = check_dependencies(inputs, 'journals_filter', args.cwd)
+        if not ret:
+            print("Remember to run the 'fawoc journals' command to classify",
+                  "the list of journals")
+            sys.exit(1)
+
     os.chdir(args.cwd)
     script_to_run(cmd_args)
 
