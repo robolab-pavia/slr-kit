@@ -1,9 +1,12 @@
+import re
 import sys
 
 import pandas as pd
 from RISparser import readris
 
 from slrkit_utils.argument_parser import ArgParse
+
+RIS_CITATION_REGEX = re.compile(r'Cited [bB]y ?: ?(?P<num>[0-9]+)')
 
 
 def to_record(config):
@@ -25,6 +28,22 @@ def show_columns(df):
     print('Valid columns:')
     for c in df.columns:
         print('   {}'.format(c))
+
+
+def ris_citations(notes):
+    """
+    Extracts the citation count from the notes of one paper
+
+    :param notes: list containing the notes of a paper
+    :type notes: list[str]
+    :return: the citation count
+    :rtype: int
+    """
+    m = RIS_CITATION_REGEX.search(' '.join(notes))
+    if m:
+        return int(m.group('num'))
+    else:
+        return 0
 
 
 def ris2csv(args):
@@ -57,10 +76,8 @@ def ris2csv(args):
             del cu3, sec_t
 
     # The number of citations lies in 'notes' column as element of a list
-    # These 3 lines extract that information
-    citation = pd.DataFrame(risdf['notes'].tolist(), index=risdf.index)[0]
-    citation_number = citation.str.extract(r'((?<=:)\d+)').astype(float)
-    risdf['citations'] = citation_number.astype(float).fillna(0)
+    # The ris_citations extracts that information
+    risdf['citations'] = risdf['notes'].apply(ris_citations)
 
     cols = args.columns.split(',')
     # checks if help was requested
