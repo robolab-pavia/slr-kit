@@ -1,9 +1,12 @@
+import re
 import sys
 
 import pandas as pd
 from RISparser import readris
 
 from slrkit_utils.argument_parser import ArgParse
+
+RIS_CITATION_REGEX = re.compile(r'Cited [bB]y ?: ?(?P<num>[0-9]+)')
 
 
 def to_record(config):
@@ -27,6 +30,22 @@ def show_columns(df):
         print('   {}'.format(c))
 
 
+def ris_citations(notes):
+    """
+    Extracts the citation count from the notes of one paper
+
+    :param notes: list containing the notes of a paper
+    :type notes: list[str]
+    :return: the citation count
+    :rtype: int
+    """
+    m = RIS_CITATION_REGEX.search(' '.join(notes))
+    if m:
+        return int(m.group('num'))
+    else:
+        return 0
+
+
 def ris2csv(args):
     try:
         with open(args.input_file, 'r', encoding='utf-8') as bibliography_file:
@@ -36,11 +55,29 @@ def ris2csv(args):
         msg = 'Error: input file {!r} not found'
         sys.exit(msg.format(args.input_file))
 
+    try:
+        sec_t = risdf['secondary_title']
+    except KeyError:
+        sec_t = None
+
+    try:
+        cu3 = risdf['custom3']
+    except KeyError:
+        cu3 = None
+
+    if sec_t is not None or cu3 is not None:
+        if sec_t is None and cu3 is not None:
+            risdf['journal'] = cu3
+        elif sec_t is not None and cu3 is None:
+            risdf['journal'] = sec_t
+        else:
+            risdf['journal'] = sec_t
+            risdf.loc[sec_t.isna(), 'journal'] = cu3[sec_t.isna()]
+            del cu3, sec_t
+
     # The number of citations lies in 'notes' column as element of a list
-    # These 3 lines extract that information
-    citation = pd.DataFrame(risdf['notes'].tolist(), index=risdf.index)[0]
-    citation_number = citation.str.extract(r'((?<=:)\d+)').astype(float)
-    risdf['citations'] = citation_number.astype(float).fillna(0)
+    # The ris_citations extracts that information
+    risdf['citations'] = risdf['notes'].apply(ris_citations)
 
     cols = args.columns.split(',')
     # checks if help was requested
@@ -50,7 +87,7 @@ def ris2csv(args):
     # checks that the requested items exist in the RIS file
     for c in cols:
         if c not in risdf:
-            sys.exit('Error: invalid column: {!r}.'.format(c))
+            sys.exit('Error: unavailable column: {!r}.'.format(c))
 
     if args.output is not None:
         output_file = open(args.output, 'w', encoding='utf-8')

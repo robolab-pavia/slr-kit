@@ -205,7 +205,7 @@ def report_journal_topics(journals_dict, papers_list):
                 topics = paper['topics']
                 for topic in topics:
                     journal_topic[journal][topic] = (journal_topic[journal].get(topic, 0)
-                                                    + topics[topic])
+                                                     + topics[topic])
 
     return journal_topic
 
@@ -427,8 +427,6 @@ def report(args):
         dirname = cwd / ('report' + timestamp)
 
     dirname.mkdir(exist_ok=True)
-
-
 
     topics_dict = report_year(papers_list, topics_list)
     plot_years(topics_dict, dirname)
