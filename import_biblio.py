@@ -87,7 +87,7 @@ def ris2csv(args):
     # checks that the requested items exist in the RIS file
     for c in cols:
         if c not in risdf:
-            sys.exit('Error: invalid column: {!r}.'.format(c))
+            sys.exit('Error: unavailable column: {!r}.'.format(c))
 
     if args.output is not None:
         output_file = open(args.output, 'w', encoding='utf-8')
