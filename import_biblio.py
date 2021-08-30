@@ -36,6 +36,26 @@ def ris2csv(args):
         msg = 'Error: input file {!r} not found'
         sys.exit(msg.format(args.input_file))
 
+    try:
+        sec_t = risdf['secondary_title']
+    except KeyError:
+        sec_t = None
+
+    try:
+        cu3 = risdf['custom3']
+    except KeyError:
+        cu3 = None
+
+    if sec_t is not None or cu3 is not None:
+        if sec_t is None and cu3 is not None:
+            risdf['journal'] = cu3
+        elif sec_t is not None and cu3 is None:
+            risdf['journal'] = sec_t
+        else:
+            risdf['journal'] = sec_t
+            risdf.loc[sec_t.isna(), 'journal'] = cu3[sec_t.isna()]
+            del cu3, sec_t
+
     # The number of citations lies in 'notes' column as element of a list
     # These 3 lines extract that information
     citation = pd.DataFrame(risdf['notes'].tolist(), index=risdf.index)[0]
