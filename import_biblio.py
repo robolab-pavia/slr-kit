@@ -116,7 +116,7 @@ def init_argparser():
                         help='output CSV file name',
                         suggest_suffix='_abstracts.csv', output=True)
     parser.add_argument('--columns', '-c', metavar='col1,..,coln',
-                        default='title,abstract,year,citations',
+                        default='title,abstract,year,journal,citations',
                         help='list of comma-separated columns to export. If '
                              'absent %(default)r is used. Use \'?\' for the '
                              'list of available columns.')
