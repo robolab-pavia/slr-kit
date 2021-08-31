@@ -1,10 +1,11 @@
+import argparse
 import collections
 import datetime
 import json
+import math
 import os
 import pathlib
 import shutil
-import sys
 from itertools import islice
 
 from RISparser import readris
@@ -46,7 +47,7 @@ def init_argparser():
     Initialize the command line parser.
 
     :return: the command line parser
-    :rtype: ArgParse
+    :rtype: argparse.ArgumentParser
     """
     parser = ArgParse()
     parser.add_argument('ris_file', type=str, suggest_suffix='.ris',
@@ -81,10 +82,10 @@ def prepare_papers(ris_path, json_path):
     :type json_path: str
     :return: the list of dictionaries and the list of topics
     :rtype: tuple[list, list]
-    :raise FileNotFoundError: if one of the input files is missing
-    :raise ValueError: if the json file has the worng format. args[0] contains a
-        message ready to be shown to the user
     """
+    with open(json_path) as file:
+        papers_with_topics = json.load(file)
+
     papers_from_ris = []
     with open(ris_path, 'r', encoding='utf-8') as bibliography_file:
         entries = readris(bibliography_file)
@@ -93,25 +94,9 @@ def prepare_papers(ris_path, json_path):
                 continue
             papers_from_ris.append(entry)
 
-    with open(json_path) as file:
-        papers_with_topics = json.load(file)
-
-    if not isinstance(papers_with_topics, list):
-        msg = 'Error: wrong format in file {!r}: the main object is not a list'
-        raise ValueError(msg.format(str(json_path)))
-
     good_papers = []
     for paper in papers_from_ris:
-        for i, paper_data in enumerate(papers_with_topics):
-            if not isinstance(paper_data, dict):
-                msg = 'Error: wrong format in file {!r}: the {} object is not a dict'
-                raise ValueError(msg.format(str(json_path), i))
-            for k in ['title', 'topics']:
-                if k not in paper_data:
-                    msg = 'Error: wrong format in file {!r}: ' \
-                          'the {} object has not the {} key'
-                    raise ValueError(msg.format(str(json_path), i, k))
-
+        for paper_data in papers_with_topics:
             if paper['title'] == paper_data['title']:
                 topics = paper_data['topics']
                 paper['topics'] = topics
@@ -205,7 +190,7 @@ def report_journal_topics(journals_dict, papers_list):
                 topics = paper['topics']
                 for topic in topics:
                     journal_topic[journal][topic] = (journal_topic[journal].get(topic, 0)
-                                                     + topics[topic])
+                                                    + topics[topic])
 
     return journal_topic
 
@@ -239,7 +224,7 @@ def report_journal_years(papers_list, journals_dict):
     return journal_year, min_year, max_year
 
 
-def plot_years(topics_dict, dirname):
+def plot_years(topics_dict, dirname, plot_size):
     """
     Creates a plot for the number of papers published each year for each topic
 
@@ -249,31 +234,23 @@ def plot_years(topics_dict, dirname):
     :type dirname: Path
     """
 
-    fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
+    rows = math.ceil(len(topics_dict) / plot_size)
 
-    for topic in islice(topics_dict, 10):
-        sorted_dic = sorted(topics_dict[topic].items())
-        x, y = zip(*sorted_dic)
+    fig, ax = plt.subplots(nrows=rows, ncols=1, figsize=(8, 8))
 
-        ax[0].plot(x, y, label='topic ' + str(topic))
-        ax[0].grid(True)
+    for i in range(rows):
+        for topic in islice(topics_dict, i*plot_size, (i+1)*plot_size):
+            sorted_dic = sorted(topics_dict[topic].items())
+            x, y = zip(*sorted_dic)
 
-    for topic in islice(topics_dict, 10, None):
-        sorted_dic = sorted(topics_dict[topic].items())
-        x, y = zip(*sorted_dic)
+            ax[i].plot(x, y, label='topic ' + str(topic))
+            ax[i].grid(True)
 
-        ax[1].plot(x, y, label='topic ' + str(topic))
-        ax[1].grid(True)
-
-    ax[0].set_title('topics yearly graph (1st half)')
-    ax[0].set_xlabel('Year')
-    ax[0].set_ylabel('# of papers (weighted by coherence)')
-    ax[0].legend()
-
-    ax[1].set_xlabel('year')
-    ax[1].set_ylabel('# of papers (weighted by coherence)')
-    ax[1].set_title('topics yearly graph (2nd half)')
-    ax[1].legend()
+    for i in range(rows):
+        ax[i].set_title('topics yearly graph (part {0})'.format(i+1))
+        ax[i].set_xlabel('Year')
+        ax[i].set_ylabel('# of papers (weighted by coherence)')
+        ax[i].legend()
 
     fig.tight_layout()
     plt.savefig(dirname / YEARFIGURE)
@@ -398,19 +375,6 @@ def prepare_tables(topics_dict, journals_topic, journals_year, dirname,
 
 
 def report(args):
-    ris_path = args.ris_file
-    json_path = args.json_file
-
-    try:
-        papers_list, topics_list = prepare_papers(ris_path, json_path)
-    except FileNotFoundError as err:
-        msg = 'Error: file {!r} not found'
-        sys.exit(msg.format(err.filename))
-    except ValueError as err:
-        # a value error here is because the json file has the wrong format
-        # In the exception there is the already formatted error message
-        sys.exit(err.args[0])
-
     script_dir = pathlib.Path(__file__).parent
     cwd = pathlib.Path.cwd()
     listdir = os.listdir(cwd)
@@ -420,6 +384,9 @@ def report(args):
     if TEX_TEMPLATE not in listdir:
         shutil.copy(templates / TEX_TEMPLATE, cwd)
 
+    ris_path = args.ris_file
+    json_path = args.json_file
+
     if args.dir is not None:
         dirname = cwd / args.dir
     else:
@@ -428,8 +395,9 @@ def report(args):
 
     dirname.mkdir(exist_ok=True)
 
+    papers_list, topics_list = prepare_papers(ris_path, json_path)
     topics_dict = report_year(papers_list, topics_list)
-    plot_years(topics_dict, dirname)
+    plot_years(topics_dict, dirname, 10)
     journals_dict = prepare_journals(papers_list)
     journals_year, min_year, max_year = report_journal_years(papers_list,
                                                              journals_dict)
