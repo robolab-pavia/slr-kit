@@ -235,25 +235,38 @@ def plot_years(topics_dict, dirname, plot_size):
     """
 
     rows = math.ceil(len(topics_dict) / plot_size)
-
-    fig, ax = plt.subplots(nrows=rows, ncols=1, figsize=(8, 8))
-
     for i in range(rows):
         for topic in islice(topics_dict, i*plot_size, (i+1)*plot_size):
             sorted_dic = sorted(topics_dict[topic].items())
             x, y = zip(*sorted_dic)
 
-            ax[i].plot(x, y, label='topic ' + str(topic))
-            ax[i].grid(True)
+            plt.plot(x, y, label='topic ' + str(topic))
+            plt.title('topics yearly graph (part {0})'.format(i + 1))
+            plt.xlabel('Year')
+            plt.ylabel('# of papers (weighted by coherence)')
+            plt.grid(True)
+            plt.legend()
+            plt.tight_layout()
+            plt.savefig(dirname / 'reportyear{0}'.format(i+1))
+
+        plt.clf()
+
+    fig, ax = plt.subplots(nrows=rows, ncols=1, figsize=(8, 8))
 
     for i in range(rows):
-        ax[i].set_title('topics yearly graph (part {0})'.format(i+1))
-        ax[i].set_xlabel('Year')
-        ax[i].set_ylabel('# of papers (weighted by coherence)')
-        ax[i].legend()
+        for topic in islice(topics_dict, i * plot_size, (i + 1) * plot_size):
+            sorted_dic = sorted(topics_dict[topic].items())
+            x, y = zip(*sorted_dic)
+            ax[i].plot(x, y, label='topic ' + str(topic))
+            ax[i].grid(True)
+            ax[i].set_title('topics yearly graph (part {0})'.format(i+1))
+            ax[i].set_xlabel('Year')
+            ax[i].set_ylabel('# of papers (weighted by coherence)')
+            ax[i].legend()
 
     fig.tight_layout()
     plt.savefig(dirname / YEARFIGURE)
+    plt.clf()
 
 
 def create_topic_year_list(topics_dict, max_year, min_year):
@@ -397,7 +410,7 @@ def report(args):
 
     papers_list, topics_list = prepare_papers(ris_path, json_path)
     topics_dict = report_year(papers_list, topics_list)
-    plot_years(topics_dict, dirname, 10)
+    plot_years(topics_dict, dirname, 7)
     journals_dict = prepare_journals(papers_list)
     journals_year, min_year, max_year = report_journal_years(papers_list,
                                                              journals_dict)
