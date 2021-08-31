@@ -67,6 +67,8 @@ def init_argparser():
                         help='maximum year to be reported. '
                              'If missing, the maximum year '
                              'in the data is used.')
+    parser.add_argument('--plotsize', '-p', type=int,
+                        help='number of topics to be displayed in each subplot.')
 
     return parser
 
@@ -232,6 +234,8 @@ def plot_years(topics_dict, dirname, plot_size):
     :type topics_dict: dict
     :param dirname: name of the directory where graph will be saved
     :type dirname: Path
+    :param plot_size: number of topics per plot
+    :type plot_size: int
     """
 
     rows = math.ceil(len(topics_dict) / plot_size)
@@ -251,7 +255,7 @@ def plot_years(topics_dict, dirname, plot_size):
 
         plt.clf()
 
-    fig, ax = plt.subplots(nrows=rows, ncols=1, figsize=(8, 8))
+    fig, ax = plt.subplots(nrows=rows, ncols=1, figsize=(8, 4*rows))
 
     for i in range(rows):
         for topic in islice(topics_dict, i * plot_size, (i + 1) * plot_size):
@@ -410,7 +414,13 @@ def report(args):
 
     papers_list, topics_list = prepare_papers(ris_path, json_path)
     topics_dict = report_year(papers_list, topics_list)
-    plot_years(topics_dict, dirname, 7)
+
+    if args.plotsize is not None:
+        plot_size = args.plotsize
+    else:
+        plot_size = 10
+
+    plot_years(topics_dict, dirname, plot_size)
     journals_dict = prepare_journals(papers_list)
     journals_year, min_year, max_year = report_journal_years(papers_list,
                                                              journals_dict)
