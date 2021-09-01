@@ -238,15 +238,13 @@ def acronyms_abbr_generator(acronyms, prefix_suffix=STOPWORD_PLACEHOLDER):
     """
     Generator that yields the acronyms abbreviation and the relative placeholder for replace_ngram
 
-    The acronyms Dataframe must have the format defined by the acronyms.py script.
-    The Dataframe must have two columns 'term' and 'label'.
-    'term' must contain the acronym in the form '<extended acronym> | (<abbreviation>)'
-    'label' is the classification made with fawoc. Only the rows with label equal
-    to 'relevant' or 'keyword' will be considered.
+    The acronyms Dataframe must have the following format:
+    * a column 'acronym' with the extended acronym;
+    * a column 'abbrev' with the acronym abbreviation.
     The placeholder for each acronym is <prefix_suffix><abbreviation><prefix_suffix>
 
     :param acronyms: the acronyms to replace in each document. Must have two
-        columns 'term' and 'label'. See above for the format.
+        columns 'acronym' and 'abbrev'. See above for the format.
     :type acronyms: pd.DataFrame
     :param prefix_suffix: prefix and suffix used to create the placeholder
     :type prefix_suffix: str
@@ -254,31 +252,24 @@ def acronyms_abbr_generator(acronyms, prefix_suffix=STOPWORD_PLACEHOLDER):
     :rtype: Generator[tuple[str, tuple[str]], Any, None]
     """
     for _, row in acronyms.iterrows():
-        if row['label'] not in ['relevant', 'keyword']:
-            continue
-
-        sp = row['term'].split('|')
-        acronym = sp[1].strip(' ()')
-        sub = f'{prefix_suffix}{acronym}{prefix_suffix}'
-        yield sub, (acronym, )
+        sub = f'{prefix_suffix}{row["abbrev"]}{prefix_suffix}'
+        yield sub, (row['abbrev'],)
 
 
 def acronyms_generator(acronyms, prefix_suffix=STOPWORD_PLACEHOLDER):
     """
     Generator that yields acronyms and the relative placeholder for replace_ngram
 
-    The acronyms Dataframe must have the format defined by the acronyms.py script.
-    The Dataframe must have two columns 'term' and 'label'.
-    'term' must contain the acronym in the form '<extended acronym> | (<abbreviation>)'
-    'label' is the classification made with fawoc. Only the rows with label equal
-    to 'relevant' or 'keyword' will be considered.
+    The acronyms Dataframe must have the following format:
+    * a column 'acronym' with the extended acronym;
+    * a column 'abbrev' with the acronym abbreviation.
     The placeholder for each acronym is <prefix_suffix><abbreviation><prefix_suffix>
     The function yields for each acronym: the extended acronym and the extended
     acronym with all the word separated by '-'.
     Each acronym is yielded as a tuple of strings.
 
     :param acronyms: the acronyms to replace in each document. Must have two
-        columns 'term' and 'label'. See above for the format.
+        columns 'acronym' and 'abbrev'. See above for the format.
     :type acronyms: pd.DataFrame
     :param prefix_suffix: prefix and suffix used to create the placeholder
     :type prefix_suffix: str
@@ -286,15 +277,10 @@ def acronyms_generator(acronyms, prefix_suffix=STOPWORD_PLACEHOLDER):
     :rtype: Generator[tuple[str, tuple[str]], Any, None]
     """
     for _, row in acronyms.iterrows():
-        if row['label'] not in ['relevant', 'keyword']:
-            continue
-
-        sp = row['term'].split('|')
-        acronym = sp[1].strip(' ()').lower()
-        extended = tuple(sp[0].strip().lower().split())
-        sub = f'{prefix_suffix}{acronym}{prefix_suffix}'
+        extended = tuple(row['acronym'].split())
+        sub = f'{prefix_suffix}{row["abbrev"]}{prefix_suffix}'
         yield sub, extended
-        alt = ('-'.join(extended), )
+        alt = ('-'.join(extended),)
         yield sub, alt
 
 
@@ -549,6 +535,65 @@ def load_relevant_terms(input_file):
     return rel_words_list
 
 
+def prepare_acronyms(acronym):
+    """
+    Prepares a row of the acronym dataframe
+
+    This function is intended to be used with the apply function of the
+    dataframe of the acronyms loaded from file. The apply function must be
+    called on the 'term' column.
+    This function expects that the term column has the same format used by the
+    acronyms.py script, that is '<extended acronym> | (abbreviation>)'
+    This function returns a series with the lowercase extended acronym (with
+    index 'acronym'), the abbreviation (with index 'abbrev') and the number of
+    word of the extended acronym (with index 'n_word').
+
+    :param acronym: one acronym loaded from the acronyms file
+    :type acronym: str
+    :return: a series with the decomposed acronym (see above)
+    :rtype: pd.Series
+    """
+    sp = acronym.split('|')
+    sp = [s.strip(' ()') for s in sp]
+    n_word = sp[0].count(' ') + 1
+    return pd.Series(data=[sp[0].lower(), sp[1], n_word],
+                     index=['acronym', 'abbrev', 'n_word'])
+
+
+def load_acronyms(file):
+    """
+    Load a file with the acronyms
+
+    The file must have the following columns:
+    * 'term' with the acronym in the form '<extended acronym> | (<abbreviation>);
+    * 'label' with the classification made with FAWOC. Only the row with
+    'relevant' or 'keyword' are used.
+    The result dataframe will have a column 'acronym' with the extended acronym
+    lowercase and a column 'abbrev' with the acronym abbreviation.
+    The rows will be sorted in descending order of the number of words of the
+    extended acronym.
+    :param file: the file to read
+    :type file: str
+    :return: the dataframe with the selected acronyms
+    :rtype: pd.DataFrame
+    """
+    if file is not None:
+        try:
+            acronyms = pd.read_csv(file, delimiter='\t',
+                                   encoding='utf-8')
+        except FileNotFoundError as err:
+            msg = 'Error: file {!r} not found'
+            sys.exit(msg.format(err.filename))
+
+        assert_column(file, acronyms, ['term', 'label'])
+        acronyms = acronyms.loc[acronyms['label'].isin(['relevant', 'keyword'])]
+        acronyms = acronyms['term'].apply(prepare_acronyms)
+        acronyms.sort_values(by='n_word', ascending=False, inplace=True)
+    else:
+        acronyms = pd.DataFrame(columns=['acronym', 'abbrev', 'n_word'])
+    return acronyms
+
+
 def preprocess(args):
     # download wordnet
     try:
@@ -615,18 +660,9 @@ def preprocess(args):
 
         debug_logger.debug('Stop-words loaded and updated')
 
-    if args.acronyms is not None:
-        try:
-            acronyms = pd.read_csv(args.acronyms, delimiter='\t',
-                                   encoding='utf-8')
-        except FileNotFoundError as err:
-            msg = 'Error: file {!r} not found'
-            sys.exit(msg.format(err.filename))
-
-        assert_column(args.acronyms, acronyms, ['term', 'label'])
+    acronyms = load_acronyms(args.acronyms)
+    if len(acronyms) != 0:
         debug_logger.debug('Acronyms loaded and updated')
-    else:
-        acronyms = pd.DataFrame(columns=['term', 'label'])
 
     rel_terms = []
     if args.relevant_terms_file is not None:
