@@ -6,6 +6,7 @@ import math
 import os
 import pathlib
 import shutil
+import warnings
 from itertools import islice
 
 from RISparser import readris
@@ -25,6 +26,7 @@ TEX_REPORT = 'report.tex'
 YEARFIGURE = 'reportyear.png'
 TEMPLATES_DIRNAME = 'report_templates'
 TABLES_DIRNAME = 'tables'
+PLACEHOLDERFIGURE = 'placeholder.png'
 
 
 def get_journal(paper):
@@ -226,7 +228,7 @@ def report_journal_years(papers_list, journals_dict):
     return journal_year, min_year, max_year
 
 
-def plot_years(topics_dict, dirname, plot_size):
+def plot_years(topics_dict, dirname, plot_size, templates):
     """
     Creates a plot for the number of papers published each year for each topic
 
@@ -236,7 +238,15 @@ def plot_years(topics_dict, dirname, plot_size):
     :type dirname: Path
     :param plot_size: number of topics per plot
     :type plot_size: int
+    :param templates: name of directory where templates are saved
+    :type templates: Pat
     """
+    shutil.copy(templates / PLACEHOLDERFIGURE, dirname / YEARFIGURE)
+
+    for k in topics_dict:
+        if len(topics_dict[k]) == 0:
+            warnings.warn('There was a problem with the dictionary of topics.')
+            return
 
     rows = math.ceil(len(topics_dict) / plot_size)
     for i in range(rows):
@@ -420,7 +430,7 @@ def report(args):
     else:
         plot_size = 10
 
-    plot_years(topics_dict, dirname, plot_size)
+    plot_years(topics_dict, dirname, plot_size, templates)
     journals_dict = prepare_journals(papers_list)
     journals_year, min_year, max_year = report_journal_years(papers_list,
                                                              journals_dict)
