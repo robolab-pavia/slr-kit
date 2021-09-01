@@ -421,6 +421,10 @@ def prepare_script_arguments(config, config_dir, confname, script_args):
         dest = v.get('dest', k.replace('-', '_'))
         param = config.get(k, v['value'])
         def_val = (param == v['value'] or (param == '' and v['value'] is None))
+        default = v['action'].default
+        null = param is None or param == ''
+        if v['type'] is not None and isinstance(param, str) and not null:
+            param = v['type'](param)
 
         if v['choices'] is not None:
             if param not in v['choices']:
@@ -443,7 +447,10 @@ def prepare_script_arguments(config, config_dir, confname, script_args):
                 msg = 'Invalid value for parameter {!r} in {}.\n{}'
                 sys.exit(msg.format(k, config_dir / confname, e.args[0]))
         else:
-            setattr(args, dest, v['action'].default)
+            if v['type'] is not None and isinstance(default, str):
+                default = v['type'](default)
+
+            setattr(args, dest, default)
 
         if v.get('input', False):
             inputs[dest] = getattr(args, dest)
