@@ -52,8 +52,9 @@ def ris2csv(args):
             entries = readris(bibliography_file)
             risdf = pd.DataFrame(entries)
     except FileNotFoundError:
+        import pathlib
         msg = 'Error: input file {!r} not found'
-        sys.exit(msg.format(args.input_file))
+        sys.exit(msg.format(str(pathlib.Path(args.input_file).absolute())))
 
     try:
         sec_t = risdf['secondary_title']
