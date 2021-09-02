@@ -147,7 +147,7 @@ def init_argparser():
                              'file, is replaced with the stopword placeholder, '
                              'followed by the term itself with each space '
                              'changed with the "_" character and then another '
-                             'stopword placeholder.', non_standard=True)
+                             'stopword placeholder.')
     parser.add_argument('--acronyms', '-a',
                         help='TSV files with the approved acronyms')
     parser.add_argument('--target-column', '-t', action='store', type=str,

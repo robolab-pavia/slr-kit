@@ -504,26 +504,6 @@ def run_preproc(args):
     if not check_dependencies(inputs, 'preprocess', args.cwd):
         sys.exit(1)
 
-    # handle the special parameter relevant-terms
-    relterms_default = script_args['relevant-term']
-    param = config.get('relevant-term', relterms_default['value'])
-    msg = ('parameter "relevant-term" is not a list of list '
-           'in file {}').format(config_dir / confname)
-    value = None
-    if param != relterms_default['value']:
-        if not isinstance(param, list):
-            sys.exit(msg)
-        value = []
-        for p in param:
-            if not isinstance(p, list):
-                sys.exit(msg)
-            if len(p) >= 2:
-                value.append(tuple(p[:2]))
-            else:
-                value.append((p[0], None))
-    dest = relterms_default.get('dest', 'relevant_terms')
-    setattr(cmd_args, dest, value)
-
     os.chdir(args.cwd)
     preprocess(cmd_args)
 
@@ -586,6 +566,7 @@ def run_lda(args):
     else:
         confname = config_dir / 'lda.toml'
 
+    os.chdir(args.cwd)
     config = load_configfile(confname)
     from lda import lda, init_argparser as lda_argparse
     script_args = lda_argparse().slrkit_arguments
@@ -594,15 +575,6 @@ def run_lda(args):
     if not check_dependencies(inputs, 'lda', args.cwd):
         sys.exit(1)
 
-    # handle the outdir parameter
-    outdir_default = script_args['outdir']
-    param = config.get('outdir', outdir_default['value'])
-    if param != outdir_default['value']:
-        setattr(cmd_args, 'outdir', (args.cwd / param).resolve())
-    else:
-        setattr(cmd_args, 'outdir', args.cwd.resolve())
-
-    os.chdir(args.cwd)
     lda(cmd_args)
 
 
@@ -621,6 +593,7 @@ def run_optimize_lda(args):
 
 
 def run_lda_grid_search(args):
+    os.chdir(args.cwd)
     confname = 'lda_grid_search.toml'
     config_dir, meta = check_project(args.cwd)
     config = load_configfile(config_dir / confname)
@@ -630,15 +603,6 @@ def run_lda_grid_search(args):
                                                    script_args)
     if not check_dependencies(inputs, 'lda_grid_search', args.cwd):
         sys.exit(1)
-    # handle the outdir and result parameter
-    outdir_default = script_args['outdir']
-    param = config.get('outdir', outdir_default['value'])
-    if param != outdir_default['value']:
-        setattr(cmd_args, 'outdir', (args.cwd / param).resolve())
-    else:
-        setattr(cmd_args, 'outdir', args.cwd.resolve())
-
-    os.chdir(args.cwd)
 
     lda_grid_search(cmd_args)
 

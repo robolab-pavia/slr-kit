@@ -49,8 +49,7 @@ def init_argparser():
                         input=True)
     parser.add_argument('outdir', action='store', type=Path, nargs='?',
                         default=Path.cwd(), help='path to the directory where '
-                                                 'to save the results.',
-                        non_standard=True)
+                                                 'to save the results.')
     parser.add_argument('--text-column', '-t', action='store', type=str,
                         default='abstract_lem', dest='target_column',
                         help='Column in preproc_file to process. '
