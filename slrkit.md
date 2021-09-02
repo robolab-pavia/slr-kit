@@ -110,6 +110,8 @@ Optionally the `optimize_lda` (faster) or the `lda_grid_search` (slower) command
 The `record` command is designed to record the meaningful files of the project in a `git` repository.
 Its use is highly recommended.
 
+## Commands reference
+
 ### init
 Initialize the current directory as an SLR-KIT project.
 Usage:
@@ -652,3 +654,120 @@ The following command sets the variable for a single run in a Linux shell:
 
 Also using a saved model requires the use of the same seed used for training and the `PYTHONHASHSEED` to 0.
 More information on the `PYTHONHASHSEED` variable can be found [here](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED).
+
+## Auto-discovery of the configuration parameters
+
+The `slrkit.py` code, tries to auto-discover the configuration parameters of a script.
+This is done using the `ArgParse` class from the `slrkit_utils.argument_parser` module of the [`slrkit_utils` repository](https://github.com/robolab-pavia/slr-kit-utils.git).
+This class works like the standard `ArgumentParser` class of the `argparse` python module, but it collects information about each argument and stores it in the `slrkit_arguments` dictionary.
+Using this dictionary `slrkit.py` can find the names of each argument, its default value, if it is optional or required and all the other annotation.
+With this information `slrkit.py` can automatically create the default configuration files, and can easily pass the value in the configuration file to the command.
+
+### Script adaptation
+
+A script can be run as a command if it is adapted to do so.
+First the script must be importable from the `slrkit.py` code.
+Second the script module must define a function named `init_argparse` that does not take any arguments and returns the `ArgParse` object used by the script itself.
+Third the script information must be registered in the `SCRIPTS` dictionary (see below);
+Finally, the module must have a function (the name can be chosen freely) that accepts a `argparse Namespace` as argument that execute all the logic of the script.
+This `Namespace` is the one returned by the `ArgParse` object after the command line parsing.
+
+The `slrkit.py` code will use these features to handle and run the script.
+The script code is imported by the `slrkit.py` code.
+The `init_argparse` function and the `ArgParse` object are used to handle the arguments of the script, create a default configuration file for the command and to handle the configuration file and prepare the arguments for the script.
+The function with the logic of the script will be called by the `slrkit.py` with all the required arguments.
+
+### The `ArgParse` class
+
+This class is defined in the `slrkit_utils.argument_parser` module of the [`slrkit_utils` repository](https://github.com/robolab-pavia/slr-kit-utils.git).
+The `ArgParse` class is a subclass of the `argparse.ArgumentParser` class that collects the information about the configured arguments.
+The collected information are stored in the `slrkit_arguments` attribute that is a dictionary where the key is the name of an argument and the value is a dictionary that contains all the collected information.
+
+This is done with the overridden `add_argument`.
+This method collects standard information like:
+* the name of the argument (stored as the key of `slrkit_arguments`);
+* the name of the destination of the argument read from the command line (stored as `dest`);
+* the default value (`value`);
+* the type (`type`);
+* the help string (`help`);
+* the `choice` keyword argument that is the collection of allowable values for this argument (`choice`).
+
+The overridden method can also accept some other custom attributes in the form of keyword arguments.
+They are:
+
+* `input`: bool value, default False, flags an argument as an input file;
+* `output`: bool value, default False, flags an argument as an output file;
+* `non_standard`: bool value, default False, specifies that this argument must be handled in a special way (currently this attribute is not used);
+* `logfile`: bool value, default False, specifies that this argument is the path of a logfile;
+* `suggest_suffix`: str value, default None, suffix to suggest to the user for the value of this argument;
+* `cli_only`: bool value, default False, specifies that this argument is intended to be use on the command line only.
+
+These attributes are stored in the argument dictionary usign their name as the key.
+In addition, the `required` attribute is stored in the dictionary.
+This is a boolean value that tells if the argument is required or optional.
+
+The `action` attribute is also stored.
+This is the `Action` object used by the argument parser to handle the argument and to store the correct value of the argument.
+This attribute can be used to store the argument value from the configuration file in the same way the argument parser does.
+
+The `input` attribute is used to detect which arguments are input files coming from other stages.
+The `output` attribute is used to identify which argument is the output file of a script.
+The dependency system of the `slrkit` command uses these attributes to correctly suggest the default names of the input and output files in the configuration files and to suggest which command must be run if one or more inputs are missing.
+
+The file name suggestion in the configuration file also use the `suggest_suffix` attribute.
+If an argument has this attribute set, its value is used to create the default value used in the configuration file creation.
+The default name will be `<project name><suggest_suffix>`.
+
+The `logfile` attribute is used to mark the argument with the path to the log file in order to collect all the project logs in the `log` directory inside the project configuration directory.
+
+### Configuration files creation
+
+The `slrkit.py` code creates the configuration files using the content of the `slrkit_arguments` attribute of the `ArgParse` object of each script that is configured as a command.
+For each script argument not flagged as `cli_only` or `logfile` a corresponding entry is created in the configuration file.
+The entry as the same name as the key of the `slrkit_arguments` dictionary.
+The `value` value is used as the default value of each entry unless the `suggest_suffix` is specified.
+In that case the file name suggestion is performed as specified above.
+For each entry, the text of the `help` value of the `slrkit_arguments` is provvided as a comment.
+Moreover, a comment stating if the value is required or not is also produced.
+
+### The dependencies system
+
+In the `slrkit.py` code, the `SCRIPTS` dictionary stores the information regarding a script used as a command.
+The key of this dictionary is the name of the command.
+If a command as some sub-commands, the corresponding key value will be `<command name>_<sub-command name>`.
+Each entry of this dictionary has the following structure:
+* `module`: name of the module of the script of the command without the `.py` extension;
+* `additional_init`: boolean value that tells if this command requires additional actions to be performed during the project initialization. An example is the `optimize_lda` command that requires that the `optimize_lda_ga_params.toml` file to be copied in configuration directory and to update the `ga_param` entry of the `optimize_lda.toml` accordingly;
+* `depends`: list of the dependencies of the command.
+
+The `depends` list contains an element for each input file of the script that is produced by another command.
+Each element is the name of the command that produces that file.
+The order of each element must be the same of the corresponding input in the `ArgParse` argument declaration.
+For instance, if one script takes two inputs and first declared one depends on the output of the `preprocess` command while the second one depends on the output of the `terms generate` command, the corresponding `depends` list will be `['preprocess', 'terms_generate']`.
+
+The `slrkit.py` code uses the `depends` list in this way:
+
+1. the list of the inputs of a script (the argument flagged as `input`) is retrieved. The order of definition of each argument is preserved;
+2. for each input, the corresponding entry (the entry with the same index) in the `depends` list is taken;
+3. the entry is used to find the output (the argument flagged as `output`) of the command named in the `depends` entry on which this input depends;
+4. this information is used both to provvide a default value for each input in the configuration files creation and to suggest which command must be run if an input is missing.
+
+The commands listed in the `SCRIPTS` dictionary are the only ones that are handled in the configuration file creation phase of the `init` command.
+
+### The `prepare_script_arguments` function
+
+The `prepare_script_arguments` function handles the content of a configuration file and create the `Namespace` with the arguments for a script.
+
+The function takes the following arguments:
+    * `config`: content of the config file;
+    * `config_dir`: path to the config file directory;
+    * `confname`: name of the config file;
+    * `script_args`: information about the script arguments. This dictionary is the `slrkit_arguments` attribute of the `ArgParse` object of the script.
+
+The function returns the `Namespace` with the arguments values.
+All the arguments are filled using the values in the configuration file.
+The arguments flagged as `cli_only` in `script_args` are filled with the default value taken from `script_args`.
+The argument flagged as `logfile` is filled with a path to a log file in the `log` directory in the configuration directory.
+
+The `prepare_script_arguments` function returns also a dictionary with the inputs and a dictionary with the outputs of the script.
+These dictionaries as the name of the argument as the key and the value of the argument as the item.
