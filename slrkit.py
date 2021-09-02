@@ -860,7 +860,7 @@ def run_record(args):
         print('All the file are up to date, nothing to commit')
 
 
-def lda_grid_searc_subparser(subparser):
+def lda_grid_search_subparser(subparser):
     help_str = 'Run an optimization phase for the lda stage in a ' \
                'slr-kit project using a grid search method'
     parser_lda_grid_search = subparser.add_parser('lda_grid_search',
@@ -1070,7 +1070,7 @@ def init_argparser():
     # record
     record_subparser(subparser)
     # lda_grid_search
-    lda_grid_searc_subparser(subparser)
+    lda_grid_search_subparser(subparser)
     return parser
 
 
