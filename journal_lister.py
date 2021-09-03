@@ -1,8 +1,8 @@
 import pathlib
 import csv
 import sys
+import pandas as pd
 
-from RISparser import readris
 from slrkit_utils.argument_parser import ArgParse
 
 
@@ -30,36 +30,30 @@ def init_argparser():
     :rtype: ArgParse
     """
     parser = ArgParse()
-    parser.add_argument('ris_file', type=str, help='path to the ris file',
-                        suggest_suffix='.ris')
+    parser.add_argument('bib_file', type=str, help='path to the bibliography file',
+                        suggest_suffix='.csv')
     parser.add_argument('outfile', type=str, help='path to csv output file',
                         output=True, suggest_suffix='_journals.csv')
     return parser
 
 
-def ris_reader(ris_path):
+def biblio_reader(bib_path):
     """
-    Creates a list with every Journal from the ris file
+    Creates a list with every Journal from the bib file
 
-    :param ris_path: Path to the ris file
-    :type ris_path: pathlib.Path
+    :param bib_path: Path to the bib file
+    :type bib_path: pathlib.Path
     :return: List of journals
     :rtype: list
     """
-    journal_list = []
-    try:
-        with open(ris_path, 'r', encoding='utf-8') as bibliography_file:
-            entries = readris(bibliography_file)
-            for entry in entries:
-                try:
-                    value = entry['secondary_title']
-                except KeyError:
-                    value = entry.get('custom3')
 
-                journal_list.append(value)
+    try:
+        bib_df = pd.read_table(bib_path, sep='\t')
     except FileNotFoundError:
         msg = 'Error: file {!r} not found'
-        sys.exit(msg.format(str(ris_path)))
+        sys.exit(msg.format(str(bib_path)))
+
+    journal_list = list(bib_df['journal'])
 
     return journal_list
 
@@ -101,10 +95,10 @@ def main():
 
 
 def journal_lister(args):
-    ris_path = pathlib.Path(args.ris_file)
+    bib_path = pathlib.Path(args.bib_file)
     csv_path = pathlib.Path(args.outfile)
 
-    journal_list = ris_reader(ris_path)
+    journal_list = biblio_reader(bib_path)
 
     journal2csv(journal_list, csv_path)
 
