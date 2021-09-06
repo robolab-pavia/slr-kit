@@ -14,8 +14,8 @@ def init_argparser():
  to each document in <dataset>/<prefix>_docs-topics.json"""
     parser = argparse.ArgumentParser(description='Performs the LDA on a dataset',
                                      epilog=epilog)
-    parser.add_argument('topics', action="store", type=str,
-                        help='JSON file containing the topics.')
+    parser.add_argument('terms_topics', action="store", type=str,
+                        help='JSON file containing the association between terms and topics.')
     parser.add_argument('docs_topics', action="store", type=str,
                         help='JSON file containing the association between docs and topics.')
     return parser
@@ -26,7 +26,7 @@ def init_argparser():
 def main():
     args = init_argparser().parse_args()
 
-    with open(args.topics) as topics_file:
+    with open(args.terms_topics) as topics_file:
         loaded_topics = json.load(topics_file)
 
 
