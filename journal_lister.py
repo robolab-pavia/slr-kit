@@ -4,6 +4,7 @@ import sys
 import pandas as pd
 
 from slrkit_utils.argument_parser import ArgParse
+from utils import assert_column
 
 
 def to_record(config):
@@ -30,30 +31,30 @@ def init_argparser():
     :rtype: ArgParse
     """
     parser = ArgParse()
-    parser.add_argument('bib_file', type=str, help='path to the bibliography file',
+    parser.add_argument('abstract_file', type=str, help='path to the abstract file with papers data',
                         suggest_suffix='.csv')
     parser.add_argument('outfile', type=str, help='path to csv output file',
                         output=True, suggest_suffix='_journals.csv')
     return parser
 
 
-def biblio_reader(bib_path):
+def abstract_reader(abstract_path):
     """
-    Creates a list with every Journal from the bib file
+    Creates a list with every Journal from the abstract file
 
-    :param bib_path: Path to the bib file
-    :type bib_path: pathlib.Path
+    :param abstract_path: Path to the abstract file
+    :type abstract_path: pathlib.Path
     :return: List of journals
     :rtype: list
     """
 
     try:
-        bib_df = pd.read_table(bib_path, sep='\t')
+        abstr_df = pd.read_table(abstract_path, sep='\t')
     except FileNotFoundError:
         msg = 'Error: file {!r} not found'
-        sys.exit(msg.format(str(bib_path)))
-
-    journal_list = list(bib_df['journal'])
+        sys.exit(msg.format(str(abstract_path)))
+    assert_column(str(abstract_path), abstr_df, ['journal'])
+    journal_list = list(abstr_df['journal'])
 
     return journal_list
 
@@ -95,10 +96,10 @@ def main():
 
 
 def journal_lister(args):
-    bib_path = pathlib.Path(args.bib_file)
+    abstract_path = pathlib.Path(args.abstract_file)
     csv_path = pathlib.Path(args.outfile)
 
-    journal_list = biblio_reader(bib_path)
+    journal_list = abstract_reader(abstract_path)
 
     journal2csv(journal_list, csv_path)
 
