@@ -69,7 +69,7 @@ def init_argparser():
                         help='maximum year to be reported. '
                              'If missing, the maximum year '
                              'in the data is used.')
-    parser.add_argument('--plotsize', '-p', type=int,
+    parser.add_argument('--plotsize', '-p', type=int, default=10,
                         help='number of topics to be displayed in each subplot.')
 
     return parser
@@ -425,10 +425,7 @@ def report(args):
     papers_list, topics_list = prepare_papers(ris_path, json_path)
     topics_dict = report_year(papers_list, topics_list)
 
-    if args.plotsize is not None:
-        plot_size = args.plotsize
-    else:
-        plot_size = 10
+    plot_size = args.plotsize
 
     plot_years(topics_dict, dirname, plot_size, templates)
     journals_dict = prepare_journals(papers_list)
