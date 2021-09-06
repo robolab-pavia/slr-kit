@@ -98,7 +98,6 @@ Usually the workflow is the following:
 9. *(optional)* if there are lists of terms that are surely relevant, these lists must be stored in the project, and their names must be included in the `preprocess.toml` file;
 10. prepare the text for the elaboration with the `preprocess` command;
 11. generate the list of terms with the `terms generate` command;
-  stage 3 (classificazione)
 12. classify the terms with the `fawoc terms` command;
 13. extract the topic and retrieve the document-topic association with the `lda` command;
 14. prepare a report with some statistics about the papers with the `report` command;
