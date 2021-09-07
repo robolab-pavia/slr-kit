@@ -459,11 +459,17 @@ def preprocess_item(item, relevant_terms, stopwords, acronyms, language='en',
     # as placeholder because is preserved and substituted with the proper string
     # by the regex function
     text = item
-    for pl, abbr in acronyms_abbr_generator(acronyms, '---'):
-        text = re.sub(rf'\b{abbr[0]}\b', pl, item)
+    pl_list = []
+    for i, (pl, abbr) in enumerate(acronyms_abbr_generator(acronyms, '---')):
+        text = re.sub(rf'\b{abbr[0]}\b', f'@{i}@', text)
+        pl_list.append(pl)
 
     # Convert to lowercase
     text = text.lower()
+    for i, pl in enumerate(pl_list):
+        text = re.sub(rf'@{i}@', pl, text)
+
+    del pl_list
     # apply some regex to clean the text
     text = regex(text, placeholder, language, regex_df=regex_df)
     text = text.split(' ')
