@@ -2,6 +2,7 @@ import argparse
 import importlib
 import os
 import pathlib
+import re
 import shutil
 import sys
 
@@ -836,7 +837,19 @@ def run_record(args):
 
     # add the fawoc profiler files
     profilers = (config_dir / 'log').glob('fawoc_*_profiler.log')
-    files_to_record.extend(str(p) for p in profilers)
+    for p in profilers:
+        files_to_record.append(str(p))
+        try:
+            with open(p) as file:
+                content = file.read()
+        except FileNotFoundError:
+            # no file, so no substitutions to make
+            continue
+        else:
+            import re
+            content = re.sub(str(wd), 'PROJECT_DIR', content)
+            with open(p, 'w') as file:
+                file.write(content)
 
     git_add_files(files_to_record, repo, must_exists=False)
     if git_commit(repo, args.message):
