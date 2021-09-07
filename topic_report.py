@@ -251,10 +251,20 @@ def plot_years(topics_dict, dirname, plot_size, templates):
     """
     shutil.copy(templates / PLACEHOLDERFIGURE, dirname / YEARFIGURE)
 
+    if len(topics_dict) == 0:
+        sys.stderr.write('No topics were found.\n')
+        return
+
+    topics_dict[0] = {}
+    blank_topics = []
     for k in topics_dict:
         if len(topics_dict[k]) == 0:
-            warnings.warn('There was a problem with the dictionary of topics.')
-            return
+            sys.stderr.write('topic {} has no papers associated\n'.format(k))
+            blank_topics.append(k)
+        else:
+            break
+    for k in blank_topics:
+        topics_dict.pop(k)
 
     rows = math.ceil(len(topics_dict) / plot_size)
     for i in range(rows):
