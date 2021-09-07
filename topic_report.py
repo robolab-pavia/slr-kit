@@ -14,8 +14,10 @@ from itertools import islice
 from jinja2 import Environment, FileSystemLoader
 from matplotlib import pyplot as plt
 from tabulate import tabulate
+from utils import assert_column
 
 from slrkit_utils.argument_parser import ArgParse
+
 
 YEARTOPIC_TEX = 'yeartopic.tex'
 JOURNALTOPIC_TEX = 'journaltopic.tex'
@@ -87,8 +89,8 @@ def prepare_papers(abstract_path, json_path):
     good_papers = []
     try:
         full_ab_df = pd.read_table(abstract_path, sep='\t')
-
-        abstract_df = pd.DataFrame(columns=['title', 'journal'])
+        assert_column(str(abstract_path), full_ab_df, ['title', 'journal', 'year'])
+        abstract_df = pd.DataFrame(columns=['title', 'journal', 'year'])
         abstract_df[['title', 'journal', 'year']] = full_ab_df[['title', 'journal', 'year']]
     except FileNotFoundError:
         msg = 'Error: file {!r} not found'
@@ -417,7 +419,7 @@ def report(args):
     if TEX_TEMPLATE not in listdir:
         shutil.copy(templates / TEX_TEMPLATE, cwd)
 
-    abstract_path = args.abstract_path
+    abstract_path = args.abstract_file
     json_path = args.json_file
 
     if args.dir is not None:
