@@ -40,6 +40,10 @@ _modeldir: Optional[pathlib.Path] = None
 creator.create('FitnessMax', base.Fitness, weights=(1.0,))
 
 
+def to_ignore(_):
+    return ['lda*.json', '*lda_results/']
+
+
 class BoundsNotSetError(Exception):
     pass
 

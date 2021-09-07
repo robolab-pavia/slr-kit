@@ -34,6 +34,10 @@ _logger: Optional[logging.Logger] = None
 _modeldir: Optional[pathlib.Path] = None
 
 
+def to_ignore(_):
+    return ['lda*.json', '*lda_results/']
+
+
 def init_argparser():
     """Initialize the command line parser."""
     epilog = 'The script tests different lda models with different ' \

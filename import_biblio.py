@@ -24,6 +24,22 @@ def to_record(config):
     return [str(file)]
 
 
+def to_ignore(config):
+    """
+    Returns the list of files to ignore with git
+    :param config: content of the script config file
+    :type config: dict[str, Any]
+    :return: the list of files
+    :rtype: list[str]
+    :raise ValueError: if the config file does not contains the right values
+    """
+    file = config['output']
+    if file is None or file == '':
+        raise ValueError("'output' is not specified")
+    return [str(file)]
+
+
+
 def show_columns(df):
     print('Valid columns:')
     for c in df.columns:

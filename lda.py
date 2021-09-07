@@ -32,6 +32,10 @@ from utils import substring_index, STOPWORD_PLACEHOLDER, assert_column
 PHYSICAL_CPUS = cpu_count(logical=False)
 
 
+def to_ignore(_):
+    return ['lda*.json']
+
+
 def init_argparser():
     """
     Initialize the command line parser.
