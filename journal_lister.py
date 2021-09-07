@@ -31,8 +31,9 @@ def init_argparser():
     :rtype: ArgParse
     """
     parser = ArgParse()
-    parser.add_argument('abstract_file', type=str, help='path to the abstract file with papers data',
-                        suggest_suffix='.csv')
+    parser.add_argument('abstract_file', type=str,
+                        help='path to the abstract file with papers data',
+                        input=True)
     parser.add_argument('outfile', type=str, help='path to csv output file',
                         output=True, suggest_suffix='_journals.csv')
     return parser
