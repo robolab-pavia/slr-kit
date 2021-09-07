@@ -652,7 +652,7 @@ def run_import(args):
     if not args.list_columns:
         # change all the toml files that uses the ris file adding the import
         # input in their ris_file field
-        tomls = ['journals_extract.toml', 'journals_filter.toml', 'report.toml']
+        tomls = ['report.toml']
         for f in tomls:
             config = load_configfile(config_dir / f)
             config['ris_file'] = inputs['input_file']
