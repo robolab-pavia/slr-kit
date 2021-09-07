@@ -14,33 +14,32 @@ from utils import assert_column
 
 SLRKIT_DIR = pathlib.Path(__file__).parent
 SCRIPTS = {
-    # config_file: module_name
     'import': {'module': 'import_biblio', 'depends': [],
                'additional_init': False},
+    'journals_extract': {'module': 'journal_lister', 'depends': ['import'],
+                         'additional_init': False},
+    'journals_filter': {'module': 'filter_paper',
+                        'depends': ['import', 'journals_extract'],
+                        'additional_init': False},
     'acronyms': {'module': 'acronyms', 'depends': ['import'],
                  'additional_init': False},
     'preprocess': {'module': 'preprocess', 'depends': ['import'],
                    'additional_init': False},
     'terms_generate': {'module': 'gen_terms', 'depends': ['preprocess'],
                        'additional_init': False},
-    'lda': {'module': 'lda', 'depends': ['preprocess', 'terms_generate'],
-            'additional_init': False},
-    'optimize_lda': {'module': 'lda_ga',
-                     'depends': ['preprocess', 'terms_generate'],
-                     'additional_init': True},
     'fawoc_terms': {'module': 'fawoc.fawoc', 'depends': ['terms_generate'],
                     'additional_init': False},
     'fawoc_acronyms': {'module': 'fawoc.fawoc', 'depends': ['acronyms'],
                        'additional_init': False},
     'fawoc_journals': {'module': 'fawoc.fawoc', 'depends': ['journals_extract'],
                        'additional_init': False},
+    'lda': {'module': 'lda', 'depends': ['preprocess', 'terms_generate'],
+            'additional_init': False},
     'report': {'module': 'topic_report', 'depends': [],
                'additional_init': False},
-    'journals_extract': {'module': 'journal_lister', 'depends': [],
-                         'additional_init': False},
-    'journals_filter': {'module': 'filter_paper',
-                        'depends': ['import', 'journals_extract'],
-                        'additional_init': False},
+    'optimize_lda': {'module': 'lda_ga',
+                     'depends': ['preprocess', 'terms_generate'],
+                     'additional_init': True},
     'lda_grid_search': {'module': 'lda_grid_search',
                         'depends': ['preprocess', 'terms_generate'],
                         'additional_init': False},
@@ -652,7 +651,7 @@ def run_import(args):
     if not args.list_columns:
         # change all the toml files that uses the ris file adding the import
         # input in their ris_file field
-        tomls = ['journals_extract.toml', 'journals_filter.toml', 'report.toml']
+        tomls = ['report.toml']
         for f in tomls:
             config = load_configfile(config_dir / f)
             config['ris_file'] = inputs['input_file']

@@ -1,9 +1,10 @@
 import pathlib
 import csv
 import sys
+import pandas as pd
 
-from RISparser import readris
 from slrkit_utils.argument_parser import ArgParse
+from utils import assert_column
 
 
 def to_record(config):
@@ -30,36 +31,31 @@ def init_argparser():
     :rtype: ArgParse
     """
     parser = ArgParse()
-    parser.add_argument('ris_file', type=str, help='path to the ris file',
-                        suggest_suffix='.ris')
+    parser.add_argument('abstract_file', type=str,
+                        help='path to the abstract file with papers data',
+                        input=True)
     parser.add_argument('outfile', type=str, help='path to csv output file',
                         output=True, suggest_suffix='_journals.csv')
     return parser
 
 
-def ris_reader(ris_path):
+def abstract_reader(abstract_path):
     """
-    Creates a list with every Journal from the ris file
+    Creates a list with every Journal from the abstract file
 
-    :param ris_path: Path to the ris file
-    :type ris_path: pathlib.Path
+    :param abstract_path: Path to the abstract file
+    :type abstract_path: pathlib.Path
     :return: List of journals
     :rtype: list
     """
-    journal_list = []
-    try:
-        with open(ris_path, 'r', encoding='utf-8') as bibliography_file:
-            entries = readris(bibliography_file)
-            for entry in entries:
-                try:
-                    value = entry['secondary_title']
-                except KeyError:
-                    value = entry.get('custom3')
 
-                journal_list.append(value)
+    try:
+        abstr_df = pd.read_table(abstract_path, sep='\t')
     except FileNotFoundError:
         msg = 'Error: file {!r} not found'
-        sys.exit(msg.format(str(ris_path)))
+        sys.exit(msg.format(str(abstract_path)))
+    assert_column(str(abstract_path), abstr_df, ['journal'])
+    journal_list = list(abstr_df['journal'])
 
     return journal_list
 
@@ -101,10 +97,10 @@ def main():
 
 
 def journal_lister(args):
-    ris_path = pathlib.Path(args.ris_file)
+    abstract_path = pathlib.Path(args.abstract_file)
     csv_path = pathlib.Path(args.outfile)
 
-    journal_list = ris_reader(ris_path)
+    journal_list = abstract_reader(abstract_path)
 
     journal2csv(journal_list, csv_path)
 
