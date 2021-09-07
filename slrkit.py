@@ -234,7 +234,7 @@ def run_init(slrkit_args):
     for configname, script_data in SCRIPTS.items():
         config_files[configname] = prepare_configfile(script_data['module'],
                                                       meta)
-
+    ignore_list = []
     for configname, (conf, args) in config_files.items():
         depends = SCRIPTS[configname]['depends']
         inputs = list(filter(lambda a: args[a]['input'], args))
@@ -250,6 +250,12 @@ def run_init(slrkit_args):
 
                 conf[inputs[i]] = ''.join([meta['Project']['Name'],
                                            outputs[0]['suggest-suffix']])
+        mod = importlib.import_module(SCRIPTS[configname]['module'])
+        if hasattr(mod, 'to_ignore') and callable(mod.to_ignore):
+            try:
+                ignore_list.extend(mod.to_ignore(conf))
+            except ValueError as e:
+                pass  # at this stage the config files can be incomplete
 
         p = (config_dir / configname).with_suffix('.toml')
         if p.exists():
@@ -283,7 +289,7 @@ def run_init(slrkit_args):
     with open(metafile, 'w') as file:
         file.write(tomlkit.dumps(metadoc))
 
-    git_init(config_dir, metafile, slrkit_args.cwd)
+    git_init(config_dir, metafile, slrkit_args.cwd, ignore_list)
 
 
 def git_filelist_add_init(config_dir, metafile, wd):
@@ -306,12 +312,12 @@ def git_filelist_add_init(config_dir, metafile, wd):
     return list_of_files
 
 
-def git_init(config_dir, metafile, cwd):
+def git_init(config_dir, metafile, cwd, ignore_list):
     """
     Initializes a git repository in the project and commits the first files
 
-    It creates a .gitignore file and commits the META.toml and all the toml
-    files in the configuration directory
+    It creates a .gitignore file based on ignore_list and commits the META.toml
+    and all the toml files in the configuration directory.
     It ends the current process in case of error and prints a friendly error
     message
 
@@ -321,13 +327,18 @@ def git_init(config_dir, metafile, cwd):
     :type metafile: pathlib.Path
     :param cwd: path to the project
     :type cwd: pathlib.Path
+    :param ignore_list: list of file names to insert in .gitignore
+    :type ignore_list: list[str]
     :return: the repository object
     :rtype: git.repo.Repo
     """
     repo = git.repo.Repo.init(cwd)
+    ignore_list = set(ignore_list)
+    log = config_dir / 'log' / 'slr-kit.log'
+    ignore_list.add(str(log.relative_to(cwd)))
+
     with open(cwd / '.gitignore', 'a') as file:
-        file.write('*.json\n')
-        file.write('*_lda_results\n')
+        file.write('\n'.join(ignore_list))
 
     list_of_files = git_filelist_add_init(config_dir, metafile, cwd)
     try:
@@ -768,13 +779,13 @@ def run_record(args):
     config_dir, meta = check_project(args.cwd)
     metafile = args.cwd / 'META.toml'
     files = None
+    repo = None
     if args.message == '':
         sys.exit('Error: The commit message cannot be the empty string')
     try:
         repo = git.repo.Repo(args.cwd)
     except git.exc.InvalidGitRepositoryError:
         print('Repository not yet initializated. Running git init.')
-        repo = git_init(config_dir, metafile, args.cwd)
         init = True
     else:
         # try to add the files committed during init
@@ -785,8 +796,9 @@ def run_record(args):
         except GitError as e:
             msg = 'Error adding files to git: {!r}'.format(e.msg)
             sys.exit(msg)
-    # prepare the list of files to commit
+    # prepare the list of files to commit and to ignore
     files_to_record = []
+    ignore_list = []
     for k, v in SCRIPTS.items():
         mod = importlib.import_module(v['module'])
         config_file = (config_dir / k).with_suffix('.toml')
@@ -797,6 +809,16 @@ def run_record(args):
             except ValueError as e:
                 msg = 'Error collecting files to record from {}: {}'
                 sys.exit(msg.format(config_file, e.args[0]))
+        if init and hasattr(mod, 'to_ignore') and callable(mod.to_ignore):
+            try:
+                ignore_list.extend(mod.to_ignore(config))
+            except ValueError as e:
+                msg = 'Error collecting files to ignore from {}: {}'
+                sys.exit(msg.format(config_file, e.args[0]))
+
+    if init:
+        repo = git_init(config_dir, metafile, args.cwd, ignore_list)
+
     wd = pathlib.Path(repo.working_dir)
     # if we have just initialized the repo, there is nothing to clean in the
     # index
