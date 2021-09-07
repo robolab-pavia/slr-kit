@@ -145,7 +145,13 @@ The backups have the same name of the original files with the extension `.bak`.
 If the user gives the `--no-backup` option, no backup is performed.
 
 The `init` sub-command also initializes the `git` repository of the project.
-A `.gitignore` file is provided with some useful patterns.
+A `.gitignore` file is provided.
+Its content is produced collecting the output of the `to_ignore` function of each module.
+Each module is imported and if a `to_ignore` function is defined, it is called with the content of the configuration file of the script as a dictionary.
+This function must return a list of file names to ignore.
+If there is something wrong in the configuration data, the function must raise a `ValueError` exception with the reason of the error.
+The message of the exception is used to create the error message to show to the user.
+
 A first commit is recorded with:
 
 * the `META.toml` file;
