@@ -121,7 +121,7 @@ def create_meta(args):
     return config_dir, meta, metafile
 
 
-def prepare_configfile(modulename, metafile):
+def prepare_configfile(modulename, metafile, project_dir):
     module = importlib.import_module(modulename)
     args = module.init_argparser().slrkit_arguments
     conf = tomlkit.document()
@@ -137,7 +137,11 @@ def prepare_configfile(modulename, metafile):
                 try:
                     conf.add(arg_name, arg['value'])
                 except ValueError:
-                    conf.add(arg_name, str(arg['value']))
+                    if isinstance(arg['value'], pathlib.Path):
+                        conf.add(arg_name,
+                                 str(arg['value'].relative_to(project_dir)))
+                    else:
+                        conf.add(arg_name, str(arg['value']))
             else:
                 conf.add(arg_name, '')
     return conf, args
@@ -234,7 +238,7 @@ def run_init(slrkit_args):
     config_files = {}
     for configname, script_data in SCRIPTS.items():
         config_files[configname] = prepare_configfile(script_data['module'],
-                                                      meta)
+                                                      meta, slrkit_args.cwd)
     ignore_list = []
     for configname, (conf, args) in config_files.items():
         depends = SCRIPTS[configname]['depends']
@@ -274,7 +278,7 @@ def run_init(slrkit_args):
                 if not ga_params.exists():
                     shutil.copy2(SLRKIT_DIR / 'ga_param.toml', ga_params)
 
-                conf['ga_params'] = str(config_dir / 'optimize_lda_ga_params.toml')
+                conf['ga_params'] = str(ga_params.relative_to(slrkit_args.cwd))
             else:  # if here, no code for the additional init
                 raise AddionalInitNotProvvidedError(configname)
         with open(p, 'w') as file:
