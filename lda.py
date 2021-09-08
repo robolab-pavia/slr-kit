@@ -10,6 +10,8 @@ import sys
 # disable warnings if they are not explicitly wanted
 import tomlkit
 
+from join_lda_info import join_lda_info
+
 if not sys.warnoptions:
     import warnings
     warnings.simplefilter('ignore')
@@ -436,6 +438,9 @@ def output_topics(topics, docs_topics, outdir, file_prefix, use_timestamp=True):
     The saved files are: <outdir>/<file_prefix>_terms-topics_<timestamp>.json
     for the topics, and <outdir>/<file_prefix>_docs-topics_<timestamp>.json for
     the docs-topics association.
+    Also outputs the file <outdir>/<file_prefix>_info_<timestamp>.txt with all
+    the information about topics and documents joined in a single file.
+    This file is in the format produced by the join_lda_info.py.
     :param topics: dict of the topics as returned by prepare_topics
     :type topics: dict[int, dict[str, str or dict[str, float]]]
     :param docs_topics: docs-topics association as returned by prepare_topics
@@ -461,6 +466,9 @@ def output_topics(topics, docs_topics, outdir, file_prefix, use_timestamp=True):
     docs_file = outdir / name
     with open(docs_file, 'w') as file:
         json.dump(docs_topics, file, indent='\t')
+
+    info_file = outdir / f'{file_prefix}_info{timestamp}.txt'
+    join_lda_info(topics, docs_topics, str(info_file))
 
 
 def save_toml_files(args, results_df, result_dir):
