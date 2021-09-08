@@ -1,6 +1,7 @@
 import json
 import argparse
 
+
 def init_argparser():
     """
     Initialize the command line parser.
@@ -8,19 +9,15 @@ def init_argparser():
     :return: the command line parser
     :rtype: argparse.ArgumentParser
     """
-    epilog = """"'The program uses two files: <dataset>/<prefix>_preproc.csv and
- '<dataset>/<prefix>_terms.csv.
- It outputs the topics in <dataset>/<prefix>_topics.json and the topics assigned
- to each document in <dataset>/<prefix>_docs-topics.json"""
-    parser = argparse.ArgumentParser(description='Performs the LDA on a dataset',
-                                     epilog=epilog)
+    parser = argparse.ArgumentParser(description='Joins the output of LDA in a '
+                                                 'single file')
     parser.add_argument('terms_topics', action="store", type=str,
-                        help='JSON file containing the association between terms and topics.')
+                        help='JSON file containing the association between '
+                             'terms and topics.')
     parser.add_argument('docs_topics', action="store", type=str,
-                        help='JSON file containing the association between docs and topics.')
+                        help='JSON file containing the association between docs'
+                             ' and topics.')
     return parser
-
-
 
 
 def main():
