@@ -35,7 +35,7 @@ PHYSICAL_CPUS = cpu_count(logical=False)
 
 
 def to_ignore(_):
-    return ['lda*.json']
+    return ['lda*.json', 'lda_info*.txt']
 
 
 def init_argparser():

@@ -41,7 +41,7 @@ creator.create('FitnessMax', base.Fitness, weights=(1.0,))
 
 
 def to_ignore(_):
-    return ['lda*.json', '*lda_results/']
+    return ['lda*.json', 'lda_info*.txt', '*lda_results/']
 
 
 class BoundsNotSetError(Exception):
