@@ -254,7 +254,6 @@ def plot_years(topics_dict, dirname, plot_size, templates):
         sys.stderr.write('No topics were found.\n')
         return
 
-    topics_dict[0] = {}
     blank_topics = []
     for k in topics_dict:
         if len(topics_dict[k]) == 0:
