@@ -254,16 +254,6 @@ def plot_years(topics_dict, dirname, plot_size, templates):
         sys.stderr.write('No topics were found.\n')
         return
 
-    blank_topics = []
-    for k in topics_dict:
-        if len(topics_dict[k]) == 0:
-            sys.stderr.write('topic {} has no papers associated\n'.format(k))
-            blank_topics.append(k)
-        else:
-            break
-    for k in blank_topics:
-        topics_dict.pop(k)
-
     rows = math.ceil(len(topics_dict) / plot_size)
     for i in range(rows):
         for topic in islice(topics_dict, i*plot_size, (i+1)*plot_size):
@@ -303,6 +293,7 @@ def create_topic_year_list(topics_dict, max_year, min_year):
     first_line = ['Topic']
     first_line.extend(list(range(min_year, max_year + 1)))
     topic_year_list = [first_line]
+
     for topic in topics_dict:
         sorted_dic = sorted(topics_dict[topic].items())
         line = [topic]
@@ -441,6 +432,14 @@ def report(args):
     papers_list, topics_list = prepare_papers(abstract_path, json_path)
     topics_dict = report_year(papers_list, topics_list)
 
+    blank_topics = []
+    for k in topics_dict:
+        if len(topics_dict[k]) == 0:
+            sys.stderr.write('topic {} has no papers associated\n'.format(k))
+            blank_topics.append(k)
+    for k in blank_topics:
+        topics_dict.pop(k)
+
     plot_size = args.plotsize
 
     plot_years(topics_dict, dirname, plot_size, templates)
@@ -448,6 +447,15 @@ def report(args):
     journals_year, min_year, max_year = report_journal_years(papers_list,
                                                              journals_dict)
     journals_topics = report_journal_topics(journals_dict, papers_list)
+
+    blank_journals = []
+    for k in journals_topics:
+        if len(journals_topics[k]) == 0:
+            sys.stderr.write('journal {} has no topic associated\n'.format(k))
+            blank_journals.append(k)
+    for k in blank_journals:
+        journals_topics.pop(k)
+
     if args.minyear is not None:
         min_year = args.minyear
     if args.maxyear is not None:
