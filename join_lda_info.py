@@ -17,11 +17,14 @@ def init_argparser():
     parser.add_argument('docs_topics', action="store", type=str,
                         help='JSON file containing the association between docs'
                              ' and topics.')
+    parser.add_argument('--output', '-o', action="store", type=str,
+                        help='Output file')
     return parser
 
 
 def main():
     args = init_argparser().parse_args()
+    output = args.output
 
     with open(args.terms_topics) as topics_file:
         loaded_topics = json.load(topics_file)
@@ -46,10 +49,13 @@ def main():
     with open(args.docs_topics) as docs_file:
         docs = json.load(docs_file)
 
-    #print(docs)
+    if output is not None:
+        output_file = open(output, 'w')
+    else:
+        output_file = None
 
     for d in docs:
-        print(d['title'])
+        print(d['title'], file=output_file)
         top = []
         for t in d['topics']:
             top.append((t, d['topics'][t]))
@@ -58,7 +64,8 @@ def main():
             key = t[0]
             name = topics[key]['name']
             terms = [t[0] for t in topics[key]['terms']]
-            print("  {:5.1f}% {} {}".format(t[1] * 100, name, terms))
+            print('  {:5.1f}% {} {}'.format(t[1] * 100, name, terms),
+                  file=output_file)
 
 
 if __name__ == '__main__':
