@@ -35,10 +35,8 @@ def abstract_reader(abstract_path):
     """
 
     try:
-        full_ab_df = pd.read_table(abstract_path, sep='\t')
-        assert_column(str(abstract_path), full_ab_df, ['title', 'journal'])
-        abstract_df = pd.DataFrame(columns=['title', 'journal'])
-        abstract_df[['title', 'journal']] = full_ab_df[['title', 'journal']]
+        abstract_df = pd.read_csv(abstract_path, sep='\t')
+        assert_column(str(abstract_path), abstract_df, ['title', 'journal'])
     except FileNotFoundError:
         msg = 'Error: file {!r} not found'
         sys.exit(msg.format(str(abstract_path)))
