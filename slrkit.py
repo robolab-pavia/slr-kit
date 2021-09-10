@@ -961,14 +961,16 @@ def fawoc_subparser(subparser):
 
 def terms_subparser(subparser):
     help_str = 'Subcommand to extract and handle lists of terms in a slr-kit ' \
-               'project. Requires a sub-command'
+               'project. This command accepts a subcommand. If none is ' \
+               'given, "generate" is assumed.'
     terms_parser = subparser.add_parser('terms', help=help_str,
                                         description=help_str)
     terms_parser.set_defaults(func=run_terms)
     terms_subp = terms_parser.add_subparsers(title='terms commands',
                                              dest='terms_operation')
     # terms_generate
-    help_str = 'Generates a list of terms from documents in a slr-kit project'
+    help_str = 'Generates a list of terms from documents in a slr-kit project.' \
+               ' This is the default command if none is given.'
     terms_subp.add_parser('generate', help=help_str, description=help_str)
 
 
@@ -988,14 +990,15 @@ def acronyms_subparser(subparser):
 
 def journals_subparser(subparser):
     help_str = 'Subcommand to extract and filter a list of journals. ' \
-               'Requires a subcommand.'
+               'This command accepts a subcommand. If none is given, ' \
+               '"extract" is assumed.'
     journals_p = subparser.add_parser('journals', help=help_str,
                                       description=help_str)
     journals_subp = journals_p.add_subparsers(title='journals commands',
                                               dest='journals_operation')
     # journal_lister
     help_str = 'Prepare a list of journals, suitable to be classified with ' \
-               'fawoc.'
+               'fawoc. This is the default sub-command if none is given.'
     journals_subp.add_parser('extract', help=help_str, description=help_str)
     # filter_paper
     help_str = 'Filters the abstracts file marking the papers published in ' \
