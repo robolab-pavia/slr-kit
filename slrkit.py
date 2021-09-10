@@ -623,7 +623,10 @@ def run_lda_grid_search(args):
 
 
 def run_fawoc(args):
-    command_name = '_'.join(['fawoc', args.operation])
+    if args.fawoc_operation is None:
+        args.fawoc_operation = 'terms'
+
+    command_name = '_'.join(['fawoc', args.fawoc_operation])
     confname = ''.join([command_name, '.toml'])
     config_dir, meta = check_project(args.cwd)
     config = load_configfile(config_dir / confname)
@@ -640,11 +643,11 @@ def run_fawoc(args):
         setattr(cmd_args, 'width', args.width)
 
     # set profiler
-    profiler = ''.join(['fawoc_', args.operation, '_profiler.log'])
+    profiler = ''.join(['fawoc_', args.fawoc_operation, '_profiler.log'])
     setattr(cmd_args, 'profiler_name', (config_dir / 'log' / profiler).resolve())
 
     # disable the info file loading (if necessary)
-    if args.operation in ['acronyms']:
+    if args.fawoc_operation in ['acronyms']:
         setattr(cmd_args, 'no_info_file', True)
 
     os.chdir(args.cwd)
@@ -932,20 +935,27 @@ def lda_subparser(subparser):
 
 
 def fawoc_subparser(subparser):
-    help_str = 'Run fawoc in a slr-kit project.'
+    help_str = 'Run fawoc in a slr-kit project. This command accepts a ' \
+               'subcommand. If none is given "terms" is assumed.'
     parser_fawoc = subparser.add_parser('fawoc', help=help_str,
                                         description=help_str)
-    parser_fawoc.add_argument('operation', default='terms', nargs='?',
-                              choices=['terms', 'acronyms', 'journals'],
-                              help='Specifies what the user wants to '
-                                   'classify with fawoc. This argument can be '
-                                   'one of %(choices)r. '
-                                   'Default: %(default)r.')
     parser_fawoc.add_argument('--input', '-i', metavar='LABEL',
                               help='Input only the terms classified with the '
                                    'specified label')
     parser_fawoc.add_argument('--width', '-w', action='store', type=int,
                               help='Width of fawoc windows.')
+    fawoc_subp = parser_fawoc.add_subparsers(title='fawoc commands',
+                                             dest='fawoc_operation')
+    # fawoc_terms
+    help_str = 'Classifies the terms list. This is the default command if ' \
+               'none is given.'
+    fawoc_subp.add_parser('terms', help=help_str, description=help_str)
+    # fawoc_journals
+    help_str = 'Classifies the journals list.'
+    fawoc_subp.add_parser('journals', help=help_str, description=help_str)
+    # fawoc_acronyms
+    help_str = 'Classifies the acronyms list.'
+    fawoc_subp.add_parser('acronyms', help=help_str, description=help_str)
     parser_fawoc.set_defaults(func=run_fawoc)
 
 
