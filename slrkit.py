@@ -36,7 +36,7 @@ SCRIPTS = {
                        'additional_init': False},
     'lda': {'module': 'lda', 'depends': ['preprocess', 'terms_generate'],
             'additional_init': False},
-    'report': {'module': 'topic_report', 'depends': [],
+    'report': {'module': 'topic_report', 'depends': ['import'],
                'additional_init': False},
     'optimize_lda': {'module': 'lda_ga',
                      'depends': ['preprocess', 'terms_generate'],
