@@ -611,6 +611,8 @@ def load_acronyms(file):
 
         assert_column(file, acronyms, ['term', 'label'])
         acronyms = acronyms.loc[acronyms['label'].isin(['relevant', 'keyword'])]
+        if len(acronyms) == 0:
+            return pd.DataFrame(columns=['acronym', 'abbrev', 'n_word'])
         acronyms = acronyms['term'].apply(prepare_acronyms)
         acronyms.sort_values(by='n_word', ascending=False, inplace=True)
     else:
