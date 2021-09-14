@@ -173,21 +173,19 @@ All the selected columns are imported from the input file.
 The citation count for each paper is also retrieved and imported as the column `citation`.
 If the option `--list_columns` is set, the command outputs only the list of available columns of the input file specified in the configuration file and no data is imported.
 
-After a correct execution, the command changes `journals_extract.toml`, `journals_filter.toml` and `report.toml` files updating their `ris_file` field with the name of the input file.
-
 The `import.toml` has the following structure:
 
 * `input_file`: path to the bibliographical database to import. **Important:** this field is not pre-filled by the `init` command, the user **must** fill it before running the `import` command. This file is committed to `git` repository by the `record` command;
 * `type`: type of the database to import. Actually the only supported type is `RIS`;
 * `output`: name of the output file. It is pre-filled with `<project-name>_abstracts.csv`;
-* `columns`: comma separated list of columns to import. It is pre-filled with `title,abstract,year`. Additionally, a `citation` column is also imported by default.
+* `columns`: comma separated list of columns to import. It is pre-filled with `title,abstract,year,journal,citation`.
 
 ### journals
 This command allows the user to retrieve a list of journals and classify them in order to filter out the not relevant ones and the papers published on them.
 
 This command accepts two sub-commands:
 
-* `extract`: extracts the list of journals from the bibliographical database;
+* `extract`: extracts the list of journals from the *abstracts* file;
 * `filter`: uses the manual classification of the list of journals to filter out the papers published on the not relevant journals.
 
 Usage:
@@ -210,7 +208,7 @@ The structure is the following:
 The `extract` sub-command uses the `journals_extract.toml` configuration file and runs the `journal_lister.py` script.
 The `journals_extract.toml` file has the following structure:
 
-* `ris_file`: name of the bibliographical database. It is pre-filled with `<project-name>.ris` and is updated by the `import` command;
+* `abstract_file`: name of the *abstracts* file. It is pre-filled with `<project-name>_abstracts.csv`;
 * `outfile`: name of the output file. It is pre-filled with `<project-name>_journals.csv`.
 
 
@@ -223,8 +221,7 @@ All the papers from journals not classified as `relevant` or `keyword` will be m
 The `filter` sub-command uses the `journals_filter.toml` configuration file and runs the `filter_paper.py` script.
 The `journals_filter.toml` file has the following structure:
 
-* `ris_file`: name of the bibliographical database. It is pre-filled with `<project-name>.ris` and is updated by the `import` command;
-* `abstract_file`: name of the *abstract* file. It is pre-filled with `<project-name>_abstracts.csv`;
+* `abstract_file`: name of the *abstract* file. This file is used as both input and output. It is pre-filled with `<project-name>_abstracts.csv`;
 * `journal_file`: name of the journal list file produced by `journal extract`. It is pre-filled with `<project-name>_journals.csv`.
 
 ### acronyms
@@ -456,7 +453,7 @@ The  `--json_file` option, allows the user to select a different JSON file.
 
 The command uses the `report.toml` configuration file that has the following structure:
 
-* `ris_file`: name of the ris file of the bibliographical database. It is pre-filled with `<project-name>.ris` and modified by the `import` command with the name of the file used as its input;
+* `abstract_file`: name of the *abstracts* file of the project. It is pre-filled with `<project-name>_abstarcts.csv`;
 * `dir`: output directory where the templates and the reports are saved. If empty, the current directory is used;
 * `minyear`: minimum year to consider. If empty, the minimum year found in the data is used;
 * `maxyear`: maximum year to consider. If empty, the maximum year found in the data is used.
