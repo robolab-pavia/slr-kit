@@ -341,6 +341,7 @@ def git_init(config_dir, metafile, cwd, ignore_list):
     ignore_list = set(ignore_list)
     log = config_dir / 'log' / 'slr-kit.log'
     ignore_list.add(str(log.relative_to(cwd)))
+    ignore_list.add('*fawoc_data.json')
 
     with open(cwd / '.gitignore', 'a') as file:
         file.write('\n'.join(ignore_list))
