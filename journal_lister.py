@@ -20,7 +20,8 @@ def to_record(config):
     if out is None or out == '':
         raise ValueError("'outfile' is not specified")
 
-    return [str(out)]
+    fawoc_data = '_'.join([pathlib.Path(out).stem, 'fawoc_data.tsv'])
+    return [str(out), fawoc_data]
 
 
 def init_argparser():
