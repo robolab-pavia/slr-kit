@@ -86,7 +86,8 @@ def init_argparser():
                                           'documents (fraction of total corpus '
                                           'size, not an absolute number). If '
                                           'omitted %(default)s is used')
-    parser.add_argument('--seed', type=int, help='Seed to be used in training')
+    parser.add_argument('--seed', type=int, default=123,
+                        help='Seed to be used in training. Default %(default)r')
     parser.add_argument('--model', action='store_true',
                         help='if set, the lda model is saved to directory '
                              '<outdir>/lda_model. The model is saved '

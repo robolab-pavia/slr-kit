@@ -296,8 +296,8 @@ def init_argparser():
                         default='title', dest='title',
                         help='Column in preproc_file to use as document title. '
                              'If omitted %(default)r is used.')
-    parser.add_argument('--seed', type=int, action=ValidateInt,
-                        help='Seed to be used in training.')
+    parser.add_argument('--seed', type=int, default=123,
+                        help='Seed to be used in training. Default %(default)r')
     parser.add_argument('--placeholder', '-p',
                         default=STOPWORD_PLACEHOLDER,
                         help='Placeholder for barrier word. Also used as a '
