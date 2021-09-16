@@ -1,4 +1,5 @@
 import argparse
+import csv
 import dataclasses
 import logging
 import pathlib
@@ -401,6 +402,11 @@ def evaluate(ind: LdaIndividual):
     _queue.put(result)
     output_dir = _modeldir / u
     output_dir.mkdir(exist_ok=True)
+    with open(output_dir / 'results.csv', 'w') as file:
+        writer = csv.DictWriter(file, fieldnames=list(result.keys()))
+        writer.writeheader()
+        writer.writerow(result)
+
     model.save(str(output_dir / 'model'))
     dictionary.save(str(output_dir / 'model_dictionary'))
     return (c_v,)
