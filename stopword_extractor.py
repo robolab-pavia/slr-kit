@@ -16,15 +16,19 @@ def init_argparser():
                                   'with FAWOC')
     parser.add_argument('terms_file', type=str,
                         help='path to the terms file',
-                        input=True)
+                        input=True, cli_only=True)
     parser.add_argument('outfile', type=str,
                         help='path to the stopwords output file',
-                        output=True, suggest_suffix='_stopwords.csv')
+                        output=True, cli_only=True)
     return parser
 
 
 def main():
     args = init_argparser().parse_args()
+    stopword_extractor(args)
+
+
+def stopword_extractor(args):
     df = pd.read_csv(args.terms_file, sep='\t')
     assert_column(args.terms_file, df, ['term', 'label'])
     stopwords = df[df['label'] == Label.STOPWORD.label_name]
