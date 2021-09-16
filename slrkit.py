@@ -16,34 +16,37 @@ from utils import assert_column
 SLRKIT_DIR = pathlib.Path(__file__).parent
 SCRIPTS = {
     'import': {'module': 'import_biblio', 'depends': [],
-               'additional_init': False},
+               'additional_init': False, 'no_config': False},
     'journals_extract': {'module': 'journal_lister', 'depends': ['import'],
-                         'additional_init': False},
+                         'additional_init': False, 'no_config': False},
     'journals_filter': {'module': 'filter_paper',
                         'depends': ['import', 'journals_extract'],
-                        'additional_init': False},
+                        'additional_init': False, 'no_config': False},
     'acronyms': {'module': 'acronyms', 'depends': ['import'],
-                 'additional_init': False},
+                 'additional_init': False, 'no_config': False},
     'preprocess': {'module': 'preprocess', 'depends': ['import'],
-                   'additional_init': False},
+                   'additional_init': False, 'no_config': False},
     'terms_generate': {'module': 'gen_terms', 'depends': ['preprocess'],
-                       'additional_init': False},
+                       'additional_init': False, 'no_config': False},
     'fawoc_terms': {'module': 'fawoc.fawoc', 'depends': ['terms_generate'],
-                    'additional_init': False},
+                    'additional_init': False, 'no_config': False},
     'fawoc_acronyms': {'module': 'fawoc.fawoc', 'depends': ['acronyms'],
-                       'additional_init': False},
+                       'additional_init': False, 'no_config': False},
     'fawoc_journals': {'module': 'fawoc.fawoc', 'depends': ['journals_extract'],
-                       'additional_init': False},
+                       'additional_init': False, 'no_config': False},
     'lda': {'module': 'lda', 'depends': ['preprocess', 'terms_generate'],
-            'additional_init': False},
+            'additional_init': False, 'no_config': False},
     'report': {'module': 'topic_report', 'depends': ['import'],
-               'additional_init': False},
+               'additional_init': False, 'no_config': False},
     'optimize_lda': {'module': 'lda_ga',
                      'depends': ['preprocess', 'terms_generate'],
-                     'additional_init': True},
+                     'additional_init': True, 'no_config': False},
     'lda_grid_search': {'module': 'lda_grid_search',
                         'depends': ['preprocess', 'terms_generate'],
-                        'additional_init': False},
+                        'additional_init': False, 'no_config': False},
+    'stopwords': {'module': 'stopword_extractor',
+                  'depends': ['terms_generate'],
+                  'additional_init': False, 'no_config': True},
 }
 
 
@@ -237,6 +240,8 @@ def run_init(slrkit_args):
     os.chdir(slrkit_args.cwd)
     config_files = {}
     for configname, script_data in SCRIPTS.items():
+        if script_data['no_config']:
+            continue
         config_files[configname] = prepare_configfile(script_data['module'],
                                                       meta, slrkit_args.cwd)
     ignore_list = []
@@ -748,6 +753,46 @@ def run_journals(args):
     script_to_run(cmd_args)
 
 
+def run_stopwords(args):
+    config_dir, meta = check_project(args.cwd)
+    confname = 'terms_generate.toml'
+    config = load_configfile(config_dir / confname)
+    from stopword_extractor import (stopword_extractor,
+                                    init_argparser as argparser)
+    from gen_terms import init_argparser as gen_terms_argparse
+    script_args = argparser().slrkit_arguments
+    gen_terms_args = gen_terms_argparse().slrkit_arguments
+    del gen_terms_argparse
+    input_ = None
+    output = None
+    for arg in script_args.values():
+        if arg['input']:
+            input_ = arg['dest']
+        if arg['output']:
+            output = arg['dest']
+    terms_file = None
+    for name, arg in gen_terms_args.items():
+        if arg['output']:
+            terms_file = name
+    terms_file = config[terms_file]
+    del gen_terms_args, config
+    cmd_args = argparse.Namespace()
+    setattr(cmd_args, input_, terms_file)
+    setattr(cmd_args, output, args.output)
+    if not check_dependencies({input_: terms_file}, 'stopwords', args.cwd):
+        sys.exit(1)
+
+    os.chdir(args.cwd)
+    stopword_extractor(cmd_args)
+    if not args.no_add:
+        conf_file = config_dir / 'preprocess.toml'
+        config = load_configfile(conf_file)
+        config['stop-words'].append(args.output)
+        # save the new file
+        with open(conf_file, 'w') as file:
+            file.write(tomlkit.dumps(config))
+
+
 def run_record(args):
     """
     Records a snapshot of the project using git
@@ -854,6 +899,7 @@ def run_record(args):
         print('Commit correctly executed')
     else:
         print('All the file are up to date, nothing to commit')
+
 
 
 def lda_grid_search_subparser(subparser):
@@ -1038,6 +1084,20 @@ def init_subparser(subparser):
     parser_init.set_defaults(func=run_init)
 
 
+def stopword_subparser(subparser):
+    help_str = 'Extracts the terms classified as stopwords from the terms file'
+    parser_init = subparser.add_parser('stopwords', help=help_str,
+                                       description=help_str)
+    parser_init.add_argument('output', action='store', type=str,
+                             help='File where to store the stopwords. This file'
+                                  'will be added to the "stop-words" list in '
+                                  '"preprocess.toml"')
+    parser_init.add_argument('--no-add', action='store_true',
+                             help='Do not add the output file to the '
+                                  '"stop-words" list in "preprocess.toml"')
+    parser_init.set_defaults(func=run_stopwords)
+
+
 def init_argparser():
     """
     Initialize the command line parser.
@@ -1077,6 +1137,8 @@ def init_argparser():
     record_subparser(subparser)
     # lda_grid_search
     lda_grid_search_subparser(subparser)
+    # stopwords
+    stopword_subparser(subparser)
     return parser
 
 
