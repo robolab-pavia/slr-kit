@@ -67,11 +67,11 @@ class LdaIndividual:
     _alpha_val and _alpha_type values.
     The random_individual creates a new individual with random values.
     """
-    _topics: float
+    _topics: int
     _alpha_val: float
     _beta: float
     _no_above: float
-    _no_below: float
+    _no_below: int
     _alpha_type: int
     fitness: creator.FitnessMax = dataclasses.field(init=False)
     topics_bounds: ClassVar[range] = None
@@ -169,12 +169,12 @@ class LdaIndividual:
             no_below = random.randint(1, cls.max_no_below)
             no_above = random.uniform(cls.min_no_above, 1.0)
 
-        return LdaIndividual(_topics=float(random.randint(cls.topics_bounds.start,
-                                                    cls.topics_bounds.stop)),
+        return LdaIndividual(_topics=random.randint(cls.topics_bounds.start,
+                                                    cls.topics_bounds.stop),
                              _alpha_val=random.random(),
                              _beta=random.random(),
                              _no_above=no_above,
-                             _no_below=float(no_below),
+                             _no_below=no_below,
                              _alpha_type=random.choices([0, 1, -1],
                                                         [0.6, 0.2, 0.2],
                                                         k=1)[0])
@@ -187,7 +187,7 @@ class LdaIndividual:
     def topics(self, val):
         if self.topics_bounds is None:
             raise BoundsNotSetError('set_bounds must be called first')
-        self._topics = check_bounds(np.round(val),
+        self._topics = check_bounds(int(np.round(val)),
                                     self.topics_bounds.start,
                                     self.topics_bounds.stop)
 
@@ -225,7 +225,7 @@ class LdaIndividual:
     def no_below(self, val):
         if self.topics_bounds is None:
             raise BoundsNotSetError('set_bounds must be called first')
-        self._no_below = check_bounds(np.round(val), 1, self.max_no_below)
+        self._no_below = check_bounds(int(np.round(val)), 1, self.max_no_below)
 
     @property
     def alpha_type(self):
@@ -233,7 +233,7 @@ class LdaIndividual:
 
     @alpha_type.setter
     def alpha_type(self, val):
-        v = np.round(val)
+        v = int(np.round(val))
         if v != 0:
             v = np.sign(v)
         self._alpha_type = v
@@ -455,18 +455,33 @@ def load_ga_params(ga_params):
                 if 'sigma' not in params[sec][k]:
                     params[sec][k]['sigma'] = v['sigma']
     # fix types
+    params_good = {
+        'limits': {
+            'min_no_above': float(params['limits']['min_no_above']),
+            'max_no_below': float(params['limits']['max_no_below']),
+            'min_topics': int(params['limits']['min_topics']),
+            'max_topics': int(params['limits']['max_topics']),
+        },
+        'algorithm': {
+            'mu': int(params['algorithm']['mu']),
+            'lambda': int(params['algorithm']['lambda']),
+            'initial':int(params['algorithm']['initial']),
+            'generations':int(params['algorithm']['generations']),
+            'tournament_size':int(params['algorithm']['tournament_size']),
+        },
+        'probabilities': {
+            'mutate': float(params['probabilities']['mutate']),
+            'component_mutation': float(params['probabilities']['component_mutation']),
+            'mate': float(params['probabilities']['mate']),
+            'no_filter': float(params['probabilities']['no_filter']),
+        },
+        'mutate': {}
+    }
     for sec in params['mutate']:
-        params['mutate'][sec]['mu'] = float(params['mutate'][sec]['mu'])
-        params['mutate'][sec]['sigma'] = float(params['mutate'][sec]['sigma'])
-    for p in params['probabilities']:
-        params['probabilities'][p] = float(params['probabilities'][p])
-    params['limits']['min_no_above'] = float(params['limits']['min_no_above'])
-    params['limits']['max_no_below'] = float(params['limits']['max_no_below'])
-    params['limits']['min_topics'] = int(params['limits']['min_topics'])
-    params['limits']['max_topics'] = int(params['limits']['max_topics'])
-    for p in params['algorithm']:
-        params['algorithm'][p] = int(params['algorithm'][p])
+        params_good['mutate'][sec] = {'mu': float(params['mutate'][sec]['mu']),
+                                 'sigma': float(params['mutate'][sec]['sigma'])}
 
+    params = params_good
     del file, defaults, default_params_file
     if params['limits']['min_topics'] > params['limits']['max_topics']:
         raise ValueError('limits.max_topics must be > limits.min_topics')
