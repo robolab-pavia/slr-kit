@@ -67,11 +67,11 @@ class LdaIndividual:
     _alpha_val and _alpha_type values.
     The random_individual creates a new individual with random values.
     """
-    _topics: int
+    _topics: float
     _alpha_val: float
     _beta: float
     _no_above: float
-    _no_below: int
+    _no_below: float
     _alpha_type: int
     fitness: creator.FitnessMax = dataclasses.field(init=False)
     topics_bounds: ClassVar[range] = None
@@ -169,12 +169,12 @@ class LdaIndividual:
             no_below = random.randint(1, cls.max_no_below)
             no_above = random.uniform(cls.min_no_above, 1.0)
 
-        return LdaIndividual(_topics=random.randint(cls.topics_bounds.start,
-                                                    cls.topics_bounds.stop),
+        return LdaIndividual(_topics=float(random.randint(cls.topics_bounds.start,
+                                                    cls.topics_bounds.stop)),
                              _alpha_val=random.random(),
                              _beta=random.random(),
                              _no_above=no_above,
-                             _no_below=no_below,
+                             _no_below=float(no_below),
                              _alpha_type=random.choices([0, 1, -1],
                                                         [0.6, 0.2, 0.2],
                                                         k=1)[0])
@@ -187,7 +187,7 @@ class LdaIndividual:
     def topics(self, val):
         if self.topics_bounds is None:
             raise BoundsNotSetError('set_bounds must be called first')
-        self._topics = check_bounds(int(np.round(val)),
+        self._topics = check_bounds(np.round(val),
                                     self.topics_bounds.start,
                                     self.topics_bounds.stop)
 
@@ -225,7 +225,7 @@ class LdaIndividual:
     def no_below(self, val):
         if self.topics_bounds is None:
             raise BoundsNotSetError('set_bounds must be called first')
-        self._no_below = check_bounds(int(np.round(val)), 1, self.max_no_below)
+        self._no_below = check_bounds(np.round(val), 1, self.max_no_below)
 
     @property
     def alpha_type(self):
@@ -233,7 +233,7 @@ class LdaIndividual:
 
     @alpha_type.setter
     def alpha_type(self, val):
-        v = int(np.round(val))
+        v = np.round(val)
         if v != 0:
             v = np.sign(v)
         self._alpha_type = v
@@ -348,11 +348,11 @@ def load_additional_terms(input_file):
 def evaluate(ind: LdaIndividual):
     global _corpus, _seed, _queue, _modeldir
     # unpack parameter
-    n_topics = ind.topics
+    n_topics = int(ind.topics)
     alpha = ind.alpha
     beta = ind.beta
     no_above = ind.no_above
-    no_below = ind.no_below
+    no_below = int(ind.no_below)
     result = {}
     u = str(uuid.uuid4())
     result['topics'] = n_topics
@@ -454,6 +454,18 @@ def load_ga_params(ga_params):
                     params[sec][k]['mu'] = v['mu']
                 if 'sigma' not in params[sec][k]:
                     params[sec][k]['sigma'] = v['sigma']
+    # fix types
+    for sec in params['mutate']:
+        params['mutate'][sec]['mu'] = float(params['mutate'][sec]['mu'])
+        params['mutate'][sec]['sigma'] = float(params['mutate'][sec]['sigma'])
+    for p in params['probabilities']:
+        params['probabilities'][p] = float(params['probabilities'][p])
+    params['limits']['min_no_above'] = float(params['limits']['min_no_above'])
+    params['limits']['max_no_below'] = float(params['limits']['max_no_below'])
+    params['limits']['min_topics'] = int(params['limits']['min_topics'])
+    params['limits']['max_topics'] = int(params['limits']['max_topics'])
+    for p in params['algorithm']:
+        params['algorithm'][p] = int(params['algorithm'][p])
 
     del file, defaults, default_params_file
     if params['limits']['min_topics'] > params['limits']['max_topics']:
