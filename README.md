@@ -624,6 +624,27 @@ Save the result in `/path/to/outdir`:
 ```
 lda_grid_search.py dataset_preproc.csv dataset_terms.csv /path/to/outdir --min-topics 10 --max-topics 30 --step-topics 2
 ```
+
+## `stopword_extractor.py`
+
+- ACTION: Extracts a list of terms classified as stopwords from the terms file.
+- INPUT: CSV file with the list of terms classified by FAWOC.
+- OUTPUT: TXT file containing the list of stopwords.
+
+The script reads a file classified by FAWOC and searches for terms labelled as `stopword`.
+The output is a TXT file with one stopword per line.
+This is the format used by `preprocess.py` for the lists of stopwords.
+
+Positional arguments:
+* `terms_file`: path to the file with the classifed terms;
+* `outfile`: output file
+
+### Example of usage
+Extracts the stopwords from `dataset_terms.csv` and save the list in `stopwords.txt`:
+```
+stopword_extractor.py dataset_terms.csv stopwords.txt
+```
+
 # Additional scripts
 
 ## `analyze-occ.py`

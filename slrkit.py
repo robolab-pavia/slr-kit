@@ -1090,7 +1090,7 @@ def stopword_subparser(subparser):
                                        description=help_str)
     parser_init.add_argument('output', action='store', type=str,
                              help='File where to store the stopwords. This file'
-                                  'will be added to the "stop-words" list in '
+                                  ' will be added to the "stop-words" list in '
                                   '"preprocess.toml"')
     parser_init.add_argument('--no-add', action='store_true',
                              help='Do not add the output file to the '

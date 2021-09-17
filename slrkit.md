@@ -79,6 +79,7 @@ The sub-commands are:
 * [`optimize_lda`](#optimize_lda): run an optimization phase for the lda stage in a slr-kit project, using a GA.
 * [`record`](#record): record a snapshot of the project in the underlying git repository.
 * [`lda_grid_search`](#lda_grid_search): run an optimization phase for the lda stage in a slr-kit project using a grid search method.
+* [`stopwords`](#stopwords): extracts a list of terms classified as stopwords from the terms file.
 
 Each command operates on the directory from which the `slrkit` command is run.
 The `-C` option allows to change the current directory to the one specified.
@@ -108,6 +109,9 @@ Optionally the `optimize_lda` (faster) or the `lda_grid_search` (slower) command
 
 The `record` command is designed to record the meaningful files of the project in a `git` repository.
 Its use is highly recommended.
+
+The `stopwords` command allows to retrieve a list of stopwords identified during the classification of the terms.
+The list created by this command can be used to refine the generation of the terms.
 
 ## Commands reference
 
@@ -656,6 +660,18 @@ The following command sets the variable for a single run in a Linux shell:
 
 Also using a saved model requires the use of the same seed used for training and the `PYTHONHASHSEED` to 0.
 More information on the `PYTHONHASHSEED` variable can be found [here](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED).
+
+### stopwords
+The `stopwords` command extracts a list of terms classified as stopwords from the terms file.
+The command searches the terms labelled as `stopword` in the terms file (the file that is the input of the `fawoc terms` command) and outputs the list of these terms (one per line).
+The file created, is added to the `stop-word` list in the `preprocess.toml`.
+
+Usage:
+
+    python3 slrkit.py stopwords [--no-add] output
+
+The `output` argument is the output file of the command
+The `--no-add` optional arguments allows to not add the output file to the `stop-word` list in `preprocess.toml`.
 
 ## Auto-discovery of the configuration parameters
 
