@@ -35,7 +35,6 @@ from utils import STOPWORD_PLACEHOLDER, setup_logger
 # these globals are used by the multiprocess workers used in compute_optimal_model
 _corpus: Optional[List[List[str]]] = None
 _seed: Optional[int] = None
-_queue: Optional[Queue] = None
 _modeldir: Optional[pathlib.Path] = None
 
 creator.create('FitnessMax', base.Fitness, weights=(1.0,))
@@ -316,11 +315,10 @@ def init_argparser():
     return parser
 
 
-def init_train(corpora, seed, queue, modeldir):
-    global _corpus, _seed, _queue, _modeldir
+def init_train(corpora, seed, modeldir):
+    global _corpus, _seed, _modeldir
     _corpus = corpora
     _seed = seed
-    _queue = queue
     _modeldir = modeldir
 
 
@@ -346,7 +344,7 @@ def load_additional_terms(input_file):
 
 # topics, alpha, beta, no_above, no_below label
 def evaluate(ind: LdaIndividual):
-    global _corpus, _seed, _queue, _modeldir
+    global _corpus, _seed, _modeldir
     # unpack parameter
     n_topics = int(ind.topics)
     alpha = ind.alpha
@@ -355,14 +353,17 @@ def evaluate(ind: LdaIndividual):
     no_below = int(ind.no_below)
     result = {}
     u = str(uuid.uuid4())
+    result['uuid'] = u
+    result['coherence'] = -float('inf')
+    result['seed'] = _seed
+    result['num_docs'] = len(_corpus)
+    result['num_not_empty'] = 0
     result['topics'] = n_topics
     result['alpha'] = alpha
     result['beta'] = beta
     result['no_above'] = no_above
     result['no_below'] = no_below
-    result['uuid'] = u
-    result['seed'] = _seed
-    result['num_docs'] = len(_corpus)
+    result['time'] = 0
     start = timer()
     dictionary = Dictionary(_corpus)
     # Filter out words that occur less than no_above documents, or more than
@@ -372,10 +373,6 @@ def evaluate(ind: LdaIndividual):
         _ = dictionary[0]  # This is only to "load" the dictionary.
     except KeyError:
         c_v = -float('inf')
-        result['coherence'] = c_v
-        result['time'] = 0
-        result['num_not_empty'] = 0
-        _queue.put(result)
         return (c_v,)
 
     not_empty_bows = []
@@ -399,7 +396,6 @@ def evaluate(ind: LdaIndividual):
     stop = timer()
     result['coherence'] = c_v
     result['time'] = stop - start
-    _queue.put(result)
     output_dir = _modeldir / u
     output_dir.mkdir(exist_ok=True)
     with open(output_dir / 'results.csv', 'w') as file:
@@ -498,18 +494,19 @@ def load_ga_params(ga_params):
     return params
 
 
-def collect_results(queue):
+def collect_results(outdir):
     results = []
-    while not queue.empty():
-        results.append(queue.get())
+    for p in outdir.glob('*/results.csv'):
+        results.append(pd.read_csv(p))
+        p.unlink()
 
-    df = pd.DataFrame(results)
+    df = pd.concat(results)
     df.sort_values(by='coherence', ascending=False, inplace=True)
     df.reset_index(drop=True, inplace=True)
     return df
 
 
-def optimization(documents, params, toolbox, queue, args, model_dir):
+def optimization(documents, params, toolbox, args, model_dir):
     """
     Performs the optimization of the LDA model using the GA
 
@@ -519,8 +516,6 @@ def optimization(documents, params, toolbox, queue, args, model_dir):
     :type params: dict[str, Any]
     :param toolbox: DEAP toolbox with all the operators set
     :type toolbox: base.Toolbox
-    :param queue: queue used by worker to send their results
-    :type queue: Queue
     :param args: command line arguments
     :type args: argparse.Namespace
     :param model_dir: path to the directory where to save the models
@@ -533,7 +528,7 @@ def optimization(documents, params, toolbox, queue, args, model_dir):
     stats.register('min', np.min)
     stats.register('max', np.max)
     with Pool(processes=PHYSICAL_CPUS, initializer=init_train,
-              initargs=(documents, args.seed, queue, model_dir)) as pool:
+              initargs=(documents, args.seed, model_dir)) as pool:
         toolbox.register('map', pool.map)
         _, _ = algorithms.eaMuPlusLambda(pop, toolbox,
                                          mu=params['algorithm']['mu'],
@@ -627,10 +622,8 @@ def lda_ga_optimization(args):
     model_dir = result_dir / 'models'
     model_dir.mkdir(exist_ok=True)
 
-    q = Queue(estimated_trainings)
-    optimization(docs, params, toolbox, q, args, model_dir)
-    df = collect_results(q)
-    q.close()
+    optimization(docs, params, toolbox, args, model_dir)
+    df = collect_results(model_dir)
 
     best = df.at[0, 'uuid']
     lda_path = model_dir / best
