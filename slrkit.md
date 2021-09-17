@@ -673,6 +673,18 @@ Usage:
 The `output` argument is the output file of the command
 The `--no-add` optional arguments allows to not add the output file to the `stop-word` list in `preprocess.toml`.
 
+## Exchanging slrkit projects with git
+A slrkit project is a git repository, so it is possible to record the work done and exchange it using a remote repository.
+Since the `record` command tracks only the configuration of a project and the files that cannot be recreated directly using the slrkit commands, cloning/pulling a slrkit project requires some steps to recreate the missing files.
+
+In particular the following command must be run:
+
+* `import`: to recreate the *abstracts* file;
+* `journals filter`: to mark the excluded papers. This is mandatory if a *journals* file is present in the repository;
+* `preprocess`: to recreate the *preprocess* file used by the lda related commands.
+
+After these commands the working directory is ready to run any lda related command.
+
 ## Auto-discovery of the configuration parameters
 
 The `slrkit.py` code, tries to auto-discover the configuration parameters of a script.
