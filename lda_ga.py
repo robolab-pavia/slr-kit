@@ -622,7 +622,10 @@ def lda_ga_optimization(args):
     model_dir = result_dir / 'models'
     model_dir.mkdir(exist_ok=True)
 
-    optimization(docs, params, toolbox, args, model_dir)
+    try:
+        optimization(docs, params, toolbox, args, model_dir)
+    except KeyboardInterrupt:
+        pass
     df = collect_results(model_dir)
 
     best = df.at[0, 'uuid']
