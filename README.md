@@ -645,6 +645,28 @@ Extracts the stopwords from `dataset_terms.csv` and save the list in `stopwords.
 stopword_extractor.py dataset_terms.csv stopwords.txt
 ```
 
+## recover_classification.py
+- ACTION: Merges an old classified terms file with a new terms file.
+- INPUT: a CSV file with the classified terms and another CSV file with new terms.
+- OUTPUT: the merged CSV file.
+usage: recover_classification.py [-h] old new FILENAME
+
+This script is used to recover a classification already done.
+If a new list of terms is produced (maybe changing some parameters in `preprocess.py`), this script allows to recover an old classification taking the label of the already classified terms and applying them to the new list.
+
+Positional arguments:
+* `old`: old CSV data file partially classified
+* `new`: new CSV data file to be classified
+* `output`: output file name
+
+### Example of usage
+Recovers the classification made in `dataset_terms.csv` trasfering the applied labels to `dataset_terms_new.csv` and producing the `dataset_terms_merged.csv` file with the recovered classification.
+
+```
+recover_classification.py dataset_terms.csv dataset_terms_new.csv dataset_terms_merged.csv
+```
+
+
 # Additional scripts
 
 ## `analyze-occ.py`

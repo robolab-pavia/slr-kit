@@ -17,8 +17,7 @@ def init_argparser():
                         help='old CSV data file partially classified')
     parser.add_argument('new', action='store', type=str,
                         help='new CSV data file to be classified')
-    parser.add_argument('output', metavar='FILENAME',
-                        help='output file name')
+    parser.add_argument('output', help='output file name')
 
     return parser
 
