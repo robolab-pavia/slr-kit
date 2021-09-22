@@ -769,6 +769,25 @@ def run_report(args):
 
 
 def run_journals(args):
+    """
+    Run the journals command
+
+    The journals_operation attribute of args must contains the name of the
+    sub-command to run (extract or filter).
+    Usually this function checks for the dependencies and if one or more input
+    files are missing it prints the corresponding error messages produced by
+    check_dependencies and calls sys.exit(1).
+    If args.command is 'build', this means that the function is called as part
+    of the build command. In this case if the check for the dependencies fails,
+    it prints a warning message and return False
+    If every checks are ok and the execution does not give any error this
+    function returns True.
+    :param args: the arguments from the command line
+    :type args: argparse.Namespace
+    :return: True if everything ok. False if the dependenies check fails and the
+        the function is run from the build command
+    :rtype: bool
+    """
     if args.journals_operation is None or args.journals_operation == 'extract':
         confname = 'journals_extract.toml'
         from journal_lister import (journal_lister as script_to_run,
@@ -788,6 +807,11 @@ def run_journals(args):
                                                    script_args)
     msgs = check_dependencies(inputs, 'journals_filter', args.cwd)
     if msgs:
+        if args.command == 'build':
+            # we are called by the build command and no journals file found
+            # print a warning and return
+            print('No journals file found - SKIP')
+            return False
         for m in msgs:
             print(m)
         if args.journals_operation == 'filter':
@@ -797,6 +821,7 @@ def run_journals(args):
 
     os.chdir(args.cwd)
     script_to_run(cmd_args)
+    return True
 
 
 def run_stopwords(args):
@@ -949,6 +974,42 @@ def run_record(args):
     else:
         print('All the file are up to date, nothing to commit')
 
+
+def run_build(args):
+    """
+    Runs the commands required to rebuild a project after git clone
+
+    It runs:
+    - import
+    - journals filter
+    - preprocess
+
+    :param args: arguments from the command line
+    :type args: argparse.Namespace
+    """
+    # run_import requires the list_columns arg that is a boolean
+    setattr(args, 'list_columns', False)
+    print('Running import')
+    run_import(args)
+    print('import: DONE')
+    # run_journals requires the journals_operation arg to determine which
+    # sub-command to run. In this case we want the journals filter
+    setattr(args, 'journals_operation', 'filter')
+    print('Running journals filter')
+    if run_journals(args):
+        print('journals filters: DONE')
+
+    print('Running preprocess')
+    run_preproc(args)
+    print('preprocess: DONE')
+
+
+def build_subparser(subparser):
+    help_str = 'Run all the commands needed to re-create all the files after ' \
+               'cloning a slr-kit project.'
+    parser_build = subparser.add_parser('build', help=help_str,
+                                        description=help_str)
+    parser_build.set_defaults(func=run_build)
 
 
 def lda_grid_search_subparser(subparser):
@@ -1188,6 +1249,8 @@ def init_argparser():
     lda_grid_search_subparser(subparser)
     # stopwords
     stopword_subparser(subparser)
+    # build
+    build_subparser(subparser)
     return parser
 
 
