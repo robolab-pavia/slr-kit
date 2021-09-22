@@ -484,8 +484,9 @@ def check_dependencies(inputs, commandname, cwd):
     """
     Checks if the inputs are present and suggest the command to run if they are missing
 
-    This function prints error messages for each input that is missing
+    This function returns error messages for each input that is missing
     suggesting the command to run to create it.
+    If all the inputs exists, it returns an empty list
 
     :param inputs: dict of the inputs as returned by prepare_script_arguments
     :type inputs: dict[str, Any]
@@ -493,24 +494,24 @@ def check_dependencies(inputs, commandname, cwd):
     :type commandname: str
     :param cwd: current directory (arg of the -C option)
     :type cwd: pathlib.Path
-    :return: True if all inputs exists and False otherwise
-    :rtype: bool
+    :return: a list of messages to print to the user if one or more inputs does
+        not exists or an empty list if all inputs exists
+    :rtype: list[str]
     """
-    must_exit = False
+    msgs = []
     for i, (k, v) in enumerate(inputs.items()):
         p = pathlib.Path(v)
         if not p.is_absolute():
             p = cwd / p
 
         if not p.exists():
-            must_exit = True
             dep = SCRIPTS[commandname]['depends'][i]
             dep = ' '.join(dep.split('_'))
             msg = 'Error: input file {!r} missing. Run the {!r} command to ' \
                   'create it'
-            print(msg.format(str(p), dep))
+            msgs.append(msg.format(str(p), dep))
 
-    return not must_exit
+    return msgs
 
 
 def run_preproc(args):
@@ -521,7 +522,10 @@ def run_preproc(args):
     script_args = preproc_argparse().slrkit_arguments
     cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
                                                    script_args)
-    if not check_dependencies(inputs, 'preprocess', args.cwd):
+    msgs = check_dependencies(inputs, 'preprocess', args.cwd)
+    if msgs:
+        for m in msgs:
+            print(m)
         sys.exit(1)
 
     os.chdir(args.cwd)
@@ -542,8 +546,12 @@ def run_terms(args):
     script_args = argparser().slrkit_arguments
     cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
                                                    script_args)
-    if not check_dependencies(inputs, 'terms_generate', args.cwd):
+    msgs = check_dependencies(inputs, 'terms_generate', args.cwd)
+    if msgs:
+        for m in msgs:
+            print(m)
         sys.exit(1)
+
     os.chdir(args.cwd)
     script_to_run(cmd_args)
 
@@ -592,7 +600,10 @@ def run_lda(args):
     script_args = lda_argparse().slrkit_arguments
     cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
                                                    script_args)
-    if not check_dependencies(inputs, 'lda', args.cwd):
+    msgs = check_dependencies(inputs, 'lda', args.cwd)
+    if msgs:
+        for m in msgs:
+            print(m)
         sys.exit(1)
 
     # this is required to set the PYTHONHASHSEED variable from our code and
@@ -613,8 +624,12 @@ def run_optimize_lda(args):
     script_args = lda_ga_argparse().slrkit_arguments
     cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
                                                    script_args)
-    if not check_dependencies(inputs, 'optimize_lda', args.cwd):
+    msgs = check_dependencies(inputs, 'optimize_lda', args.cwd)
+    if msgs:
+        for m in msgs:
+            print(m)
         sys.exit(1)
+
     os.chdir(args.cwd)
     # this is required to set the PYTHONHASHSEED variable from our code and
     # ensure the reproducibility of the lda train
@@ -635,7 +650,10 @@ def run_lda_grid_search(args):
     script_args = lda_gs_argparse().slrkit_arguments
     cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
                                                    script_args)
-    if not check_dependencies(inputs, 'lda_grid_search', args.cwd):
+    msgs = check_dependencies(inputs, 'lda_grid_search', args.cwd)
+    if msgs:
+        for m in msgs:
+            print(m)
         sys.exit(1)
 
     # this is required to set the PYTHONHASHSEED variable from our code and
@@ -660,7 +678,10 @@ def run_fawoc(args):
     script_args = fawoc_argparse().slrkit_arguments
     cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
                                                    script_args)
-    if not check_dependencies(inputs, command_name, args.cwd):
+    msgs = check_dependencies(inputs, command_name, args.cwd)
+    if msgs:
+        for m in msgs:
+            print(m)
         sys.exit(1)
     # command line overrides
     if args.input is not None:
@@ -703,7 +724,10 @@ def run_acronyms(args):
     script_args = acro_argparse().slrkit_arguments
     cmd_args, inputs, outputs = prepare_script_arguments(config, config_dir, confname,
                                                          script_args)
-    if not check_dependencies(inputs, 'acronyms', args.cwd):
+    msgs = check_dependencies(inputs, 'acronyms', args.cwd)
+    if msgs:
+        for m in msgs:
+            print(m)
         sys.exit(1)
 
     os.chdir(args.cwd)
@@ -763,8 +787,10 @@ def run_journals(args):
     cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
                                                    script_args)
     if args.journals_operation == 'filter':
-        ret = check_dependencies(inputs, 'journals_filter', args.cwd)
-        if not ret:
+        msgs = check_dependencies(inputs, 'journals_filter', args.cwd)
+        if msgs:
+            for m in msgs:
+                print(m)
             print("Remember to run the 'fawoc journals' command to classify",
                   "the list of journals")
             sys.exit(1)
@@ -799,7 +825,10 @@ def run_stopwords(args):
     cmd_args = argparse.Namespace()
     setattr(cmd_args, input_, terms_file)
     setattr(cmd_args, output, args.output)
-    if not check_dependencies({input_: terms_file}, 'stopwords', args.cwd):
+    msgs = check_dependencies({input_: terms_file}, 'stopwords', args.cwd)
+    if msgs:
+        for m in msgs:
+            print(m)
         sys.exit(1)
 
     os.chdir(args.cwd)
