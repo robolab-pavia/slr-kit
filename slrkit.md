@@ -782,7 +782,8 @@ If a command as some sub-commands, the corresponding key value will be `<command
 Each entry of this dictionary has the following structure:
 * `module`: name of the module of the script of the command without the `.py` extension;
 * `additional_init`: boolean value that tells if this command requires additional actions to be performed during the project initialization. An example is the `optimize_lda` command that requires that the `optimize_lda_ga_params.toml` file to be copied in configuration directory and to update the `ga_param` entry of the `optimize_lda.toml` accordingly;
-* `depends`: list of the dependencies of the command.
+* `depends`: list of the dependencies of the command;
+* `no_config`: boolean value taht tells if a command does not use a configuration file. If it is `True`, the command not uses a configuration file, and so no configuration file is created by the `init` command.
 
 The `depends` list contains an element for each input file of the script that is produced by another command.
 Each element is the name of the command that produces that file.
