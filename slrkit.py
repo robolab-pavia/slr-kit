@@ -786,14 +786,14 @@ def run_journals(args):
     script_args = argparser().slrkit_arguments
     cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
                                                    script_args)
-    if args.journals_operation == 'filter':
-        msgs = check_dependencies(inputs, 'journals_filter', args.cwd)
-        if msgs:
-            for m in msgs:
-                print(m)
+    msgs = check_dependencies(inputs, 'journals_filter', args.cwd)
+    if msgs:
+        for m in msgs:
+            print(m)
+        if args.journals_operation == 'filter':
             print("Remember to run the 'fawoc journals' command to classify",
                   "the list of journals")
-            sys.exit(1)
+        sys.exit(1)
 
     os.chdir(args.cwd)
     script_to_run(cmd_args)
