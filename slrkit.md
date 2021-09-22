@@ -430,16 +430,8 @@ The `lda` sub-command uses, by default, the `lda.toml` configuration file that h
 * `placeholder`: placeholder for the barriers. Pre-filled with `@`;
 * `delimiter`: field delimiter used in the *preprocess* file. Pre-filled with `\t`.
 
-**IMPORTANT:**
+The command manage to set the `PYTHONHASHSEED` to 0 so setting the `seed` value is enough to have reproducible runs.
 
-there are some issues on the reproducibility of the LDA training.
-Setting the `seed` value is not enough to guarantee the reproducibility of the experiment.
-It is also necessary to set the environment variable `PYTHONHASHSEED` to `0`.
-The following command sets the variable for a single run in a Linux shell:
-
-    PYTHONHASHSEED=0 python3 slrkit.py lda
-
-Also using a saved model requires the use of the same seed used for training and the `PYTHONHASHSEED` to 0.
 More information on the `PYTHONHASHSEED` variable can be found [here](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED).
 
 ### report
@@ -546,16 +538,8 @@ The script, also outputs the extracted topics and the topics-documents associati
 The topics are output in `<outdir>/lda_terms-topics_<date>_<time>.json` and the topics assigned
 to each document in `<outdir>/lda_docs-topics_<date>_<time>.json`.
 
-**IMPORTANT:**
+The command manage to set the `PYTHONHASHSEED` to 0 so setting the `seed` value is enough to have reproducible runs.
 
-there are some issues on the reproducibility of the LDA training.
-Setting the `seed` option (see below) is not enough to guarantee the reproducibility of the experiment.
-It is also necessary to set the environment variable `PYTHONHASHSEED` to `0`.
-The following command sets the variable for a single run in a Linux shell:
-
-    PYTHONHASHSEED=0 python3 slrkit.py optimize_lda
-
-Also using a saved model requires the use of the same seed used for training and the `PYTHONHASHSEED` to 0.
 More information on the `PYTHONHASHSEED` variable can be found [here](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED).
 
 ### record
@@ -648,17 +632,8 @@ It also outputs a tsv file in `<outdir>/<date>_<time>_lda_results/results.csv` w
 * `num_docs`: number of document;
 * `num_not_empty`: number of documents not empty after filtering.
 
+The command manage to set the `PYTHONHASHSEED` to 0 so setting the `seed` value is enough to have reproducible runs.
 
-**IMPORTANT:**
-
-there are some issues on the reproducibility of the LDA training.
-Setting the `seed` option (see below) is not enough to guarantee the reproducibility of the experiment.
-It is also necessary to set the environment variable `PYTHONHASHSEED` to `0`.
-The following command sets the variable for a single run in a Linux shell:
-
-    PYTHONHASHSEED=0 python3 lda_grid_search
-
-Also using a saved model requires the use of the same seed used for training and the `PYTHONHASHSEED` to 0.
 More information on the `PYTHONHASHSEED` variable can be found [here](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED).
 
 ### stopwords
