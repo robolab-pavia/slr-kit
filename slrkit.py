@@ -918,6 +918,8 @@ def run_record(args):
     files_to_record = []
     ignore_list = []
     for k, v in SCRIPTS.items():
+        if v['no_config']:
+            continue
         mod = importlib.import_module(v['module'])
         config_file = (config_dir / k).with_suffix('.toml')
         config = load_configfile(config_file)
