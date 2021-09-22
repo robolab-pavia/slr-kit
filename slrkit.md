@@ -80,6 +80,7 @@ The sub-commands are:
 * [`record`](#record): record a snapshot of the project in the underlying git repository.
 * [`lda_grid_search`](#lda_grid_search): run an optimization phase for the lda stage in a slr-kit project using a grid search method.
 * [`stopwords`](#stopwords): extracts a list of terms classified as stopwords from the terms file.
+* [`build`](#build): re-create the not versioned files after a git clone.
 
 Each command operates on the directory from which the `slrkit` command is run.
 The `-C` option allows to change the current directory to the one specified.
@@ -648,6 +649,20 @@ Usage:
 The `output` argument is the output file of the command
 The `--no-add` optional arguments allows to not add the output file to the `stop-word` list in `preprocess.toml`.
 
+### build
+The `build` command executes the command required to re-create the files not versioned.
+This command is helpful after a cloning a slrkit project.
+For more information see this [section](#exchanging-slrkit-projects-with-git)
+
+The command executes the following commands in order:
+1. `import`;
+2. `journal filter`;
+3. `preprocess`.
+
+Usage:
+
+    python3 slrkit.py build
+
 ## Exchanging slrkit projects with git
 A slrkit project is a git repository, so it is possible to record the work done and exchange it using a remote repository.
 Since the `record` command tracks only the configuration of a project and the files that cannot be recreated directly using the slrkit commands, cloning/pulling a slrkit project requires some steps to recreate the missing files.
@@ -659,6 +674,8 @@ In particular the following command must be run:
 * `preprocess`: to recreate the *preprocess* file used by the lda related commands.
 
 After these commands the working directory is ready to run any lda related command.
+
+The `build` command executes these commands in order.
 
 ## Auto-discovery of the configuration parameters
 
