@@ -563,15 +563,16 @@ The command records the following files:
 1. the modifications made to the `META.toml` file;
 2. all the modified configuration file;
 3. all the modifications made to the `.gitignore` file;
-4. the bibliographic database used as input of the import file;
-5. the *journals* file;
-6. the *acronyms* file;
-7. the stop-words lists used by the `preprocess` command, if any;
-8. the relevant terms lists used by the `preprocess` command, if any;
-9. the *terms* file, with the corresponding `fawoc_data.tsv` file;
-10. all the profiler files created by the `fawoc` sub-commands.
+4. the README.md file if present;
+5. the bibliographic database used as input of the import file;
+6. the *journals* file;
+7. the *acronyms* file;
+8. the stop-words lists used by the `preprocess` command, if any;
+9. the relevant terms lists used by the `preprocess` command, if any;
+10. the *terms* file, with the corresponding `fawoc_data.tsv` file;
+11. all the profiler files created by the `fawoc` sub-commands.
 
-The names of the files listed from 4 to 10 are taken from the configuration files of the commands that generates/uses them.
+The names of the files listed from 5 to 11 are taken from the configuration files of the commands that generates/uses them.
 These files are committed only if they exist in the project at the moment the `report` command is run.
 If one of these files is deleted, or its name is not referenced anymore in the configuration files, the `record` command does not remove the file from the repository unless the `--clean` flag is set.
 With the `--rm` flag the `record` command removes and deletes the file that are not referenced anymore in the configuration files.
@@ -662,6 +663,27 @@ The command executes the following commands in order:
 Usage:
 
     python3 slrkit.py build
+
+### readme
+The `readme` command creates and git commits a README.md file for the project.
+The information are taken from the `META.toml` file.
+More precisely the following information are used:
+
+* from the `Project` section:
+  * `Name`;
+  * `Author`;
+  * `Description`;
+* from the `Source` section:
+  * `URL` if present or `Origin`;
+  * `Date`;
+  * `Query`.
+
+If one or more of these fields are empty, the command simply skips that README part.
+After the README is created, it is committed to the git repository.
+
+Usage:
+
+    python3 slrkit.py readme
 
 ## Exchanging slrkit projects with git
 A slrkit project is a git repository, so it is possible to record the work done and exchange it using a remote repository.
