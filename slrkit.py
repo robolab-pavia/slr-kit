@@ -2,7 +2,6 @@ import argparse
 import importlib
 import os
 import pathlib
-import re
 import shutil
 import sys
 
@@ -596,7 +595,14 @@ def run_lda(args):
     if not check_dependencies(inputs, 'lda', args.cwd):
         sys.exit(1)
 
-    lda(cmd_args)
+    # this is required to set the PYTHONHASHSEED variable from our code and
+    # ensure the reproducibility of the lda train
+    import multiprocessing
+    multiprocessing.set_start_method('spawn')
+    os.putenv('PYTHONHASHSEED', '0')
+    p = multiprocessing.Process(target=lda, args=(cmd_args, ))
+    p.start()
+    p.join()
 
 
 def run_optimize_lda(args):
@@ -610,7 +616,14 @@ def run_optimize_lda(args):
     if not check_dependencies(inputs, 'optimize_lda', args.cwd):
         sys.exit(1)
     os.chdir(args.cwd)
-    lda_ga_optimization(cmd_args)
+    # this is required to set the PYTHONHASHSEED variable from our code and
+    # ensure the reproducibility of the lda train
+    import multiprocessing
+    multiprocessing.set_start_method('spawn')
+    os.putenv('PYTHONHASHSEED', '0')
+    p = multiprocessing.Process(target=lda_ga_optimization, args=(cmd_args, ))
+    p.start()
+    p.join()
 
 
 def run_lda_grid_search(args):
@@ -625,7 +638,14 @@ def run_lda_grid_search(args):
     if not check_dependencies(inputs, 'lda_grid_search', args.cwd):
         sys.exit(1)
 
-    lda_grid_search(cmd_args)
+    # this is required to set the PYTHONHASHSEED variable from our code and
+    # ensure the reproducibility of the lda train
+    import multiprocessing
+    multiprocessing.set_start_method('spawn')
+    os.putenv('PYTHONHASHSEED', '0')
+    p = multiprocessing.Process(target=lda_grid_search, args=(cmd_args, ))
+    p.start()
+    p.join()
 
 
 def run_fawoc(args):
