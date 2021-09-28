@@ -1,5 +1,9 @@
 # Fawoc report
 
+### this is the topic-terms table
+
+{{ topic_terms_table }}
+
 ### this is the topic-year table
 
 {{ year_table }}

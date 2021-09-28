@@ -1,11 +1,15 @@
 \documentclass{article}
 \usepackage{graphicx}
 \usepackage[margin=0.6in]{geometry}
+\usepackage{longtable}
 \newcommand*{\dirpath}{.}% PATH TO DIRECTORY WITH REPORT FILES
 
 \begin{document}
 	\title{Fawoc Report}
 	\maketitle
+
+	\include{\dirpath/tables/topicterms}
+
 	\begin{table}[h]
 		\centering
 		\include{\dirpath/tables/yeartopic}
