@@ -45,7 +45,7 @@ def init_argparser():
     parser.add_argument('json_file', type=str, cli_only=True,
                         help='the path to the lda results file containing the '
                              'association between documents and topics.')
-    parser.add_argument('topics_file', type=str,
+    parser.add_argument('topics_file', type=str, cli_only=True,
                         help='The path to the lda results file containing the '
                              'topics list and their keywords')
     parser.add_argument('--dir', '-d', metavar='FILENAME',
