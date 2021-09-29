@@ -352,6 +352,9 @@ def create_journal_year_list(journals_year, max_year, min_year):
 def topic_terms_list_maker(topic_file, no_stats):
     with open(topic_file) as file:
         topic_dict = json.load(file)
+    if not isinstance(topic_dict, dict):
+        msg = 'Error: wrong format in file {!r}: the main object is not a dictionary'
+        raise ValueError(msg.format(str(topic_file)))
     if no_stats:
         topic_terms_list = [['Topic', 'Coherence', 'Term']]
     else:
@@ -378,6 +381,9 @@ def topic_terms_list_maker(topic_file, no_stats):
 def compact_topic_terms(topic_file, no_stats):
     with open(topic_file) as file:
         topic_dict = json.load(file)
+    if not isinstance(topic_dict, dict):
+        msg = 'Error: wrong format in file {!r}: the main object is not a dictionary'
+        raise ValueError(msg.format(str(topic_file)))
     topic_terms_list = [['Topic', 'Coherence', 'Term']]
     for k in topic_dict:
         tmp_row = [topic_dict[k]['name'], topic_dict[k]['coherence']]
