@@ -20,6 +20,7 @@ from slrkit_utils.argument_parser import ArgParse
 YEARTOPIC_TEX = 'yeartopic.tex'
 JOURNALTOPIC_TEX = 'journaltopic.tex'
 JOURNALYEAR_TEX = 'journalyear.tex'
+TOPICTERMS_TEX = 'topicterms.tex'
 MD_TEMPLATE = 'report_template.md'
 MD_REPORT = 'report.md'
 TEX_TEMPLATE = 'report_template.tex'
@@ -44,6 +45,9 @@ def init_argparser():
     parser.add_argument('json_file', type=str, cli_only=True,
                         help='the path to the lda results file containing the '
                              'association between documents and topics.')
+    parser.add_argument('topics_file', type=str, cli_only=True,
+                        help='The path to the lda results file containing the '
+                             'topics list and their keywords')
     parser.add_argument('--dir', '-d', metavar='FILENAME',
                         help='output directory where reports and files will be '
                              'saved')
@@ -57,6 +61,10 @@ def init_argparser():
                              'in the data is used.')
     parser.add_argument('--plotsize', '-p', type=int, default=10,
                         help='number of topics to be displayed in each subplot.')
+    parser.add_argument('--compact', '-c', action='store_true',
+                        help='create compact table for topics')
+    parser.add_argument('--no_stats', '-s', action='store_true',
+                        help='do not list terms stats in topics terms table')
 
     return parser
 
@@ -341,17 +349,70 @@ def create_journal_year_list(journals_year, max_year, min_year):
     return journal_year_list
 
 
+def topic_terms_list_maker(topic_file, no_stats):
+    with open(topic_file) as file:
+        topic_dict = json.load(file)
+    if not isinstance(topic_dict, dict):
+        msg = 'Error: wrong format in file {!r}: the main object is not a dictionary'
+        raise ValueError(msg.format(str(topic_file)))
+    if no_stats:
+        topic_terms_list = [['Topic', 'Coherence', 'Term']]
+    else:
+        topic_terms_list = [['Topic', 'Coherence', 'Term', 'Term metric']]
+    for k in topic_dict:
+        first = True
+        for w in topic_dict[k]['terms_probability']:
+            tmp_row = []
+            if first:
+                tmp_row.append(topic_dict[k]['name'])
+                tmp_row.append(topic_dict[k]['coherence'])
+                first = False
+            else:
+                tmp_row.append(' ')
+                tmp_row.append(' ')
+            tmp_row.append(w)
+            if not no_stats:
+                tmp_row.append(str(topic_dict[k]['terms_probability'][w])[:5])
+            topic_terms_list.append(tmp_row)
+
+    return topic_terms_list
+
+
+def compact_topic_terms(topic_file, no_stats):
+    with open(topic_file) as file:
+        topic_dict = json.load(file)
+    if not isinstance(topic_dict, dict):
+        msg = 'Error: wrong format in file {!r}: the main object is not a dictionary'
+        raise ValueError(msg.format(str(topic_file)))
+    topic_terms_list = [['Topic', 'Coherence', 'Term']]
+    for k in topic_dict:
+        tmp_row = [topic_dict[k]['name'], topic_dict[k]['coherence']]
+        tmp_string = ''
+        for t in topic_dict[k]['terms_probability']:
+            tmp_string += t
+            if not no_stats:
+                tmp_string += '(' + str(topic_dict[k]['terms_probability'][t])[:5] + '), '
+            else:
+                tmp_string += ', '
+        tmp_row.append(tmp_string)
+        topic_terms_list.append(tmp_row)
+    return topic_terms_list
+
+
 def save_markdown_report(topic_year_list, journal_topic_list, journal_year_list,
-                         md_filename, template_path):
+                         topic_terms_list, md_filename, template_path):
     env = Environment(loader=FileSystemLoader(template_path), autoescape=True)
     template = env.get_template(MD_TEMPLATE)
+    topic_terms_table = tabulate(topic_terms_list, headers='firstrow',
+                                 floatfmt='.3f', tablefmt='github')
     topic_year_table = tabulate(topic_year_list, headers='firstrow',
                                 tablefmt='github')
     journal_topic_table = tabulate(journal_topic_list, headers='firstrow',
                                    floatfmt='.3f', tablefmt='github')
     journal_year_table = tabulate(journal_year_list, headers='firstrow',
                                   floatfmt='.3f', tablefmt='github')
-    md_file = template.render(year_report=YEARFIGURE,
+    md_file = template.render(topic_terms_table=topic_terms_table,
+                              year_report=YEARFIGURE,
                               year_table=topic_year_table,
                               journal_topic_table=journal_topic_table,
                               journal_year_table=journal_year_table)
@@ -360,15 +421,18 @@ def save_markdown_report(topic_year_list, journal_topic_list, journal_year_list,
         fh.write(md_file)
 
 
-def save_latex_table(data_list, filename, fix_align):
+def save_latex_table(data_list, filename, fix_align, longtable):
     latex_table = tabulate(data_list, headers='firstrow', tablefmt='latex')
     if fix_align:
         latex_table = latex_table.replace('lrrrrr', 'p{3cm}rrrrr')
+    if longtable:
+        latex_table = tabulate(data_list, headers='firstrow', tablefmt='latex_longtable')
+        latex_table = latex_table.replace('lrl', 'p{3cm}|p{3cm}|p{7cm}')
     with open(filename, 'w') as f:
         f.write(latex_table)
 
 
-def prepare_tables(topics_dict, journals_topic, journals_year, dirname,
+def prepare_tables(topics_dict, journals_topic, journals_year, topic_terms_list, dirname,
                    md_template_path, min_year, max_year):
     """
     Creates tables for every data created in previous function, with the Tabulate
@@ -380,6 +444,8 @@ def prepare_tables(topics_dict, journals_topic, journals_year, dirname,
     :type journals_topic: dict
     :param journals_year: dictionary with journal-year data
     :type journals_year: dict
+    :param topic_terms_list: List with topics and terms
+    :type topic_terms_list: list
     :param dirname: name of the directory where the files will be saved
     :type dirname: pathlib.Path
     :param md_template_path: path to the directory containing the markdown
@@ -393,18 +459,20 @@ def prepare_tables(topics_dict, journals_topic, journals_year, dirname,
     tables: pathlib.Path = dirname / TABLES_DIRNAME
     tables.mkdir(exist_ok=True)
 
+    save_latex_table(topic_terms_list, tables / TOPICTERMS_TEX, False, True)
+
     topic_year_list = create_topic_year_list(topics_dict, max_year, min_year)
-    save_latex_table(topic_year_list, tables / YEARTOPIC_TEX, False)
+    save_latex_table(topic_year_list, tables / YEARTOPIC_TEX, False, False)
 
     journal_topic_list = create_journal_topic_list(journals_topic, topics_dict)
-    save_latex_table(journal_topic_list, tables / JOURNALTOPIC_TEX, True)
+    save_latex_table(journal_topic_list, tables / JOURNALTOPIC_TEX, True, False)
 
     journal_year_list = create_journal_year_list(journals_year, max_year,
                                                  min_year)
-    save_latex_table(journal_year_list, tables / JOURNALYEAR_TEX, True)
+    save_latex_table(journal_year_list, tables / JOURNALYEAR_TEX, True, False)
 
     save_markdown_report(topic_year_list, journal_topic_list, journal_year_list,
-                         dirname / MD_REPORT, md_template_path)
+                         topic_terms_list, dirname / MD_REPORT, md_template_path)
 
 
 def report(args):
@@ -419,6 +487,14 @@ def report(args):
 
     abstract_path = args.abstract_file
     json_path = args.json_file
+    topics_path = args.topics_file
+    no_stats = False
+    if args.no_stats:
+        no_stats = True
+    if args.compact:
+        topic_terms_list = compact_topic_terms(topics_path, no_stats)
+    else:
+        topic_terms_list = topic_terms_list_maker(topics_path, no_stats)
 
     if args.dir is not None:
         dirname = cwd / args.dir
@@ -464,7 +540,7 @@ def report(args):
         msg = 'The minimum year {} is greater than the maximum year {}'
         raise ValueError(msg.format(min_year, max_year))
 
-    prepare_tables(topics_dict, journals_topics, journals_year, dirname, cwd,
+    prepare_tables(topics_dict, journals_topics, journals_year, topic_terms_list, dirname, cwd,
                    min_year, max_year)
 
     shutil.copy(cwd / TEX_TEMPLATE, dirname / TEX_REPORT)

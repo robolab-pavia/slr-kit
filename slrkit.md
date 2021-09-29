@@ -442,11 +442,11 @@ This command runs the `topic_report.py` script.
 
 Usage:
 
-    python3 slrkit.py report [--json_file file]
+    python3 slrkit.py report [docs_topics_file terms_topics_file]
 
-The command searches all the `lda_docs-topics*.json` file in the current directory and uses the most recent one.
-Files with that name are the ones produced by the `lda` command and contains the association between documents and topics.
-The  `--json_file` option, allows the user to select a different JSON file.
+With no arguments, the command searches all the `lda_docs-topics*.json` and `lda_terms-topics*.json` files in the current directory and uses the most recent one for each type.
+Files with that names are the ones produced by the `lda` command and contains the association between documents and topics and the association between terms and topics.
+The  `docs_topics_file` and `terms_topic_file` options, allow the user to select a different set of JSON files.
 
 The command uses the `report.toml` configuration file that has the following structure:
 
@@ -454,6 +454,9 @@ The command uses the `report.toml` configuration file that has the following str
 * `dir`: output directory where the templates and the reports are saved. If empty, the current directory is used;
 * `minyear`: minimum year to consider. If empty, the minimum year found in the data is used;
 * `maxyear`: maximum year to consider. If empty, the maximum year found in the data is used.
+* `plotsize`: number of topics to be displayed in each subplot saved in the report directory;
+* `compact`: if true the command creates a compact table for the topics;
+* `no_stats`: if true the topics table do not show the statistics about terms.
 
 On the first run, the command copies the `report_template.md` and `report_template.tex` from the `report_template` directory inside this repository, to the current project.
 These two files are used to create the reports.
