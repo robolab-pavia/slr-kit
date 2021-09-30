@@ -606,6 +606,11 @@ def run_lda(args):
             print(m)
         sys.exit(1)
 
+    # check the seed parameter: if it is set to '' (no seed set) change it to
+    # None. In this way the lda code will work
+    if cmd_args.seed == '':
+        cmd_args.seed = None
+
     # this is required to set the PYTHONHASHSEED variable from our code and
     # ensure the reproducibility of the lda train
     import multiprocessing
@@ -631,6 +636,12 @@ def run_optimize_lda(args):
         sys.exit(1)
 
     os.chdir(args.cwd)
+
+    # check the seed parameter: if it is set to '' (no seed set) change it to
+    # None. In this way the lda code will work
+    if cmd_args.seed == '':
+        cmd_args.seed = None
+
     # this is required to set the PYTHONHASHSEED variable from our code and
     # ensure the reproducibility of the lda train
     import multiprocessing
@@ -655,6 +666,11 @@ def run_lda_grid_search(args):
         for m in msgs:
             print(m)
         sys.exit(1)
+
+    # check the seed parameter: if it is set to '' (no seed set) change it to
+    # None. In this way the lda code will work
+    if cmd_args.seed == '':
+        cmd_args.seed = None
 
     # this is required to set the PYTHONHASHSEED variable from our code and
     # ensure the reproducibility of the lda train
