@@ -34,6 +34,7 @@ from utils import STOPWORD_PLACEHOLDER, setup_logger
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
 _corpus: Optional[List[List[str]]] = None
+_titles: Optional[List[str]] = None
 _seed: Optional[int] = None
 _modeldir: Optional[pathlib.Path] = None
 
@@ -315,9 +316,10 @@ def init_argparser():
     return parser
 
 
-def init_train(corpora, seed, modeldir):
-    global _corpus, _seed, _modeldir
+def init_train(corpora, titles, seed, modeldir):
+    global _corpus, _titles, _seed, _modeldir
     _corpus = corpora
+    _titles = titles
     _seed = seed
     _modeldir = modeldir
 
@@ -344,7 +346,7 @@ def load_additional_terms(input_file):
 
 # topics, alpha, beta, no_above, no_below label
 def evaluate(ind: LdaIndividual):
-    global _corpus, _seed, _modeldir
+    global _corpus, _titles, _seed, _modeldir
     # unpack parameter
     n_topics = int(ind.topics)
     alpha = ind.alpha
@@ -377,11 +379,13 @@ def evaluate(ind: LdaIndividual):
 
     not_empty_bows = []
     not_empty_docs = []
-    for c in _corpus:
+    not_empty_titles = []
+    for i, c in enumerate(_corpus):
         bow = dictionary.doc2bow(c)
         if bow:
             not_empty_bows.append(bow)
             not_empty_docs.append(c)
+            not_empty_titles.append(_titles[i])
 
     result['num_not_empty'] = len(not_empty_bows)
     model = LdaModel(not_empty_bows, num_topics=n_topics,
@@ -398,6 +402,9 @@ def evaluate(ind: LdaIndividual):
     result['time'] = stop - start
     output_dir = _modeldir / u
     output_dir.mkdir(exist_ok=True)
+    topics, docs_topics, _ = prepare_topics(model, not_empty_docs,
+                                            not_empty_titles, dictionary)
+    output_topics(topics, docs_topics, output_dir, 'lda')
     with open(output_dir / 'results.csv', 'w') as file:
         writer = csv.DictWriter(file, fieldnames=list(result.keys()))
         writer.writeheader()
@@ -506,12 +513,14 @@ def collect_results(outdir):
     return df
 
 
-def optimization(documents, params, toolbox, args, model_dir):
+def optimization(documents, titles, params, toolbox, args, model_dir):
     """
     Performs the optimization of the LDA model using the GA
 
     :param documents: corpus of documents to elaborate
     :type documents: list[list[str]]
+    :param titles: titles of the documents
+    :type titles: list[str]
     :param params: GA parameters
     :type params: dict[str, Any]
     :param toolbox: DEAP toolbox with all the operators set
@@ -528,7 +537,7 @@ def optimization(documents, params, toolbox, args, model_dir):
     stats.register('min', np.min)
     stats.register('max', np.max)
     with Pool(processes=PHYSICAL_CPUS, initializer=init_train,
-              initargs=(documents, args.seed, model_dir)) as pool:
+              initargs=(documents, titles, args.seed, model_dir)) as pool:
         toolbox.register('map', pool.map)
         _, _ = algorithms.eaMuPlusLambda(pop, toolbox,
                                          mu=params['algorithm']['mu'],
@@ -623,7 +632,7 @@ def lda_ga_optimization(args):
     model_dir.mkdir(exist_ok=True)
 
     try:
-        optimization(docs, params, toolbox, args, model_dir)
+        optimization(docs, titles, params, toolbox, args, model_dir)
     except KeyboardInterrupt:
         pass
     df = collect_results(model_dir)
