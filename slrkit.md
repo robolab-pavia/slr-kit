@@ -404,11 +404,13 @@ Optional arguments:
 
 * `--config | -c CONFIG`: specifies a different configuration file than the default one;
 * `--directory | -d DIRECTORY`: specifies the path to the directory with the results of the optimization phase;
-* `--uuid | -u UUID`: UUID of the model stored in the result directory. This option is ignored if the `--directory` option is not given;
-* `--id ID`: 0-based id of the model stored in the result directory. The associaction between id and model is stored in the `results.csv` file of the result directory. This file is sorted by coherence so the id 0 is the best model. This option is ignored if the `--directory` option is not given or the `--uuid` option is present. If both `--uuid` and this option are missing and the `--directory` is present, `--id` is assumed with value 0.
+* `--uuid | -u UUID`: UUID of the model stored in the result directory.
+* `--id ID`: 0-based id of the model stored in the result directory. The associaction between id and model is stored in the `results.csv` file of the result directory. This file is sorted by coherence so the id 0 is the best model. If both `--uuid` and this option are missing and the `--directory` is present, `--id` is assumed with value 0.
 
 The `--config` and the `--direcotry` are mutually exclusive.
+Also, the `--uuid` and the `--id` option are mutally exclusive.
 The `--directory`, in conjunction with the `--uuid` or the `--id`, allows the user to select one model of a run of the `optimize_lda` command (or the `lda_ga.py` script).
+If one of the `--uuid/--id` option is present, the `--directory` is required, otherwise the command ends with an error.
 
 This command runs the `lda.py` script.
 The `lda` sub-command uses, by default, the `lda.toml` configuration file that has the following structure:
@@ -520,9 +522,11 @@ The `ga_params` file has the following structure:
 
 Refer to the documentation of the `lda_ga.py` script in [README.md](README.md) for more information about the behaviour of the script and the GA parameters.
 
-The script outputs all the trained models in `<outdir>/<date>_<time>_lda_results/<UUID>`.
+The script outputs all the trained models in `<outdir>/<date>_<time>_lda_results/models/<UUID>`.
+The command outputs also the topics and the documents topics correspondence for each trained model.
+
 For each trained model is it produced a `toml` file with all the parameter already set to use the corresponding model with the `lda.py` script or the `lda` command.
-These `toml` files are saved in `<outdir>/<date>_<time>_lda_results/<UUID>.toml`, and can be loaded in the `lda.py` script or the `lda` command using its `--config` option.
+These `toml` files are saved in `<outdir>/<date>_<time>_lda_results/toml/<UUID>.toml`, and can be loaded in the `lda.py` script or the `lda` command using its `--config` option.
 It also outputs a tsv file in `<outdir>/<date>_<time>_lda_results/results.csv` with the following format:
 
 * `id`: progressive identification number;
@@ -541,6 +545,8 @@ It also outputs a tsv file in `<outdir>/<date>_<time>_lda_results/results.csv` w
 The script, also outputs the extracted topics and the topics-documents association produced by the best model.
 The topics are output in `<outdir>/lda_terms-topics_<date>_<time>.json` and the topics assigned
 to each document in `<outdir>/lda_docs-topics_<date>_<time>.json`.
+A txt file with a summary of the results is also produced with name `<outdir>/lda_info_<date>_<time>.txt`.
+
 
 The command manage to set the `PYTHONHASHSEED` to 0 so setting the `seed` value is enough to have reproducible runs.
 
