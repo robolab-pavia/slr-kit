@@ -558,6 +558,15 @@ def run_terms(args):
 
 def run_lda(args):
     config_dir, meta = check_project(args.cwd)
+    if args.directory is None and (args.uuid is not None or args.id is not None):
+        msg = 'Error: missing --directory option. It is required by the {} ' \
+              'option'
+        if args.uuid is not None:
+            msg = msg.format('--uuid')
+        else:
+            msg = msg.format('--id')
+        print(msg)
+        sys.exit(1)
     if args.config is not None:
         confname = pathlib.Path(args.config)
         if not confname.is_absolute():
@@ -1139,7 +1148,7 @@ def report_subparser(subparser):
     parser_report.set_defaults(func=run_report)
 
 
-def lda_subparser(subparser):
+def subparser_lda(subparser):
     help_str = 'Run the lda stage in a slr-kit project'
     parser_lda = subparser.add_parser('lda', help=help_str,
                                       description=help_str)
@@ -1150,21 +1159,22 @@ def lda_subparser(subparser):
     group.add_argument('--directory', '-d',
                        help='Path to the directory with the results of the '
                             'optimization phase.')
-    parser_lda.add_argument('--uuid', '-u',
-                            help='UUID of the model stored in the result '
-                                 'directory. This option is ignored if the '
-                                 '--directory option is not given.')
-    parser_lda.add_argument('--id', default=0, type=int,
-                            help='0-based id of the model stored in the result '
-                                 'directory. The associaction between id and '
-                                 'model is stored in the `results.csv` file of '
-                                 'the result directory. This file is sorted by '
-                                 'coherence so the id 0 is the best model. This'
-                                 ' option is ignored if the --directory option '
-                                 'is not given or the --uuid option is present.'
-                                 ' If both --uuid and this option are missing '
-                                 'and the --directory is present, --id is '
-                                 'assumed with value %(default)r')
+    group2 = parser_lda.add_mutually_exclusive_group()
+    group2.add_argument('--uuid', '-u',
+                        help='UUID of the model stored in the result directory. '
+                             'If this option is given without the --directory '
+                             'option, the command ends with an error.')
+    group2.add_argument('--id', default=0, type=int,
+                        help='0-based id of the model stored in the result '
+                             'directory. The associaction between id and model '
+                             'is stored in the `results.csv` file of the '
+                             'result directory. This file is sorted by '
+                             'coherence so the id 0 is the best model. If this '
+                             'option is given without the --directory option, '
+                             'the command ends with an error. If both --uuid '
+                             'and this option are missing and the --directory '
+                             'is present, --id is assumed with value '
+                             '%(default)r')
     parser_lda.set_defaults(func=run_lda)
 
 
@@ -1315,7 +1325,7 @@ def init_argparser():
     # fawoc
     fawoc_subparser(subparser)
     # lda
-    lda_subparser(subparser)
+    subparser_lda(subparser)
     # report
     report_subparser(subparser)
     # optimize_lda
