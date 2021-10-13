@@ -32,6 +32,7 @@ from slrkit_utils.argument_parser import ArgParse
 from utils import substring_index, STOPWORD_PLACEHOLDER, assert_column
 
 PHYSICAL_CPUS = cpu_count(logical=False)
+MIN_ALPHA_VAL = 1e-20
 
 
 def to_ignore(_):
@@ -72,7 +73,9 @@ def init_argparser():
                                          '%(default)s is used')
     parser.add_argument('--alpha', action='store', type=str,
                         default='auto', help='alpha parameter of LDA. If '
-                                             'omitted %(default)s is used')
+                                             'omitted %(default)s is used. '
+                                             'Cannot be less than '
+                                             '{}'.format(MIN_ALPHA_VAL))
     parser.add_argument('--beta', action='store', type=str,
                         default='auto', help='beta parameter of LDA. If omitted'
                                              ' %(default)s is used')
@@ -553,6 +556,9 @@ def lda(args):
             alpha = float(args.alpha)
         except ValueError:
             alpha = args.alpha
+        else:
+            if alpha < MIN_ALPHA_VAL:
+                sys.exit('Error: alpha cannot be less than 1e-20')
         try:
             beta = float(args.beta)
         except ValueError:
