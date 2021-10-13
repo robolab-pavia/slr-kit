@@ -7,7 +7,7 @@ import random
 import sys
 import uuid
 from datetime import datetime
-from multiprocessing import Pool, Queue
+from multiprocessing import Pool
 from pathlib import Path
 from timeit import default_timer as timer
 from typing import Optional, List, Union, ClassVar
@@ -26,9 +26,8 @@ if not sys.warnoptions:
 from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel, LdaModel
 
-from slrkit_utils.argument_parser import (ArgParse,
-                                          ValidateInt)
-from lda import (PHYSICAL_CPUS, prepare_documents,
+from slrkit_utils.argument_parser import ArgParse
+from lda import (PHYSICAL_CPUS, MIN_ALPHA_VAL, prepare_documents,
                  prepare_topics, output_topics, save_toml_files)
 from utils import STOPWORD_PLACEHOLDER, setup_logger
 
@@ -171,7 +170,7 @@ class LdaIndividual:
 
         return LdaIndividual(_topics=random.randint(cls.topics_bounds.start,
                                                     cls.topics_bounds.stop),
-                             _alpha_val=random.random(),
+                             _alpha_val=random.uniform(MIN_ALPHA_VAL, 1.0),
                              _beta=random.random(),
                              _no_above=no_above,
                              _no_below=no_below,
