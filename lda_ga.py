@@ -403,7 +403,13 @@ def evaluate(ind: LdaIndividual):
         result['time'] = stop - start
         topics, docs_topics, _ = prepare_topics(model, not_empty_docs,
                                                 not_empty_titles, dictionary)
-        output_topics(topics, docs_topics, output_dir, 'lda')
+        # check for NaNs
+        for t in topics:
+            if any(np.isnan(p) for p in t['terms_probability'].values()):
+                result['coherence'] = -float('inf')
+
+        if not np.isinf(result['coherence']):
+            output_topics(topics, docs_topics, output_dir, 'lda')
 
         model.save(str(output_dir / 'model'))
         dictionary.save(str(output_dir / 'model_dictionary'))
