@@ -370,48 +370,50 @@ def evaluate(ind: LdaIndividual):
     # Filter out words that occur less than no_above documents, or more than
     # no_below % of the documents.
     dictionary.filter_extremes(no_below=no_below, no_above=no_above)
+    no_train = False
     try:
         _ = dictionary[0]  # This is only to "load" the dictionary.
     except KeyError:
-        c_v = -float('inf')
-        return (c_v,)
+        no_train = True
 
-    not_empty_bows = []
-    not_empty_docs = []
-    not_empty_titles = []
-    for i, c in enumerate(_corpus):
-        bow = dictionary.doc2bow(c)
-        if bow:
-            not_empty_bows.append(bow)
-            not_empty_docs.append(c)
-            not_empty_titles.append(_titles[i])
-
-    result['num_not_empty'] = len(not_empty_bows)
-    model = LdaModel(not_empty_bows, num_topics=n_topics,
-                     id2word=dictionary, chunksize=len(not_empty_bows),
-                     passes=10, random_state=_seed,
-                     minimum_probability=0.0, alpha=alpha, eta=beta)
-    # computes coherence score for that model
-    cv_model = CoherenceModel(model=model, texts=not_empty_docs,
-                              dictionary=dictionary, coherence='c_v',
-                              processes=1)
-    c_v = cv_model.get_coherence()
-    stop = timer()
-    result['coherence'] = c_v
-    result['time'] = stop - start
     output_dir = _modeldir / u
     output_dir.mkdir(exist_ok=True)
-    topics, docs_topics, _ = prepare_topics(model, not_empty_docs,
-                                            not_empty_titles, dictionary)
-    output_topics(topics, docs_topics, output_dir, 'lda')
+    if no_train == False:
+        not_empty_bows = []
+        not_empty_docs = []
+        not_empty_titles = []
+        for i, c in enumerate(_corpus):
+            bow = dictionary.doc2bow(c)
+            if bow:
+                not_empty_bows.append(bow)
+                not_empty_docs.append(c)
+                not_empty_titles.append(_titles[i])
+
+        result['num_not_empty'] = len(not_empty_bows)
+        model = LdaModel(not_empty_bows, num_topics=n_topics,
+                         id2word=dictionary, chunksize=len(not_empty_bows),
+                         passes=10, random_state=_seed,
+                         minimum_probability=0.0, alpha=alpha, eta=beta)
+        # computes coherence score for that model
+        cv_model = CoherenceModel(model=model, texts=not_empty_docs,
+                                  dictionary=dictionary, coherence='c_v',
+                                  processes=1)
+        result['coherence'] = cv_model.get_coherence()
+        stop = timer()
+        result['time'] = stop - start
+        topics, docs_topics, _ = prepare_topics(model, not_empty_docs,
+                                                not_empty_titles, dictionary)
+        output_topics(topics, docs_topics, output_dir, 'lda')
+
+        model.save(str(output_dir / 'model'))
+        dictionary.save(str(output_dir / 'model_dictionary'))
+
     with open(output_dir / 'results.csv', 'w') as file:
         writer = csv.DictWriter(file, fieldnames=list(result.keys()))
         writer.writeheader()
         writer.writerow(result)
 
-    model.save(str(output_dir / 'model'))
-    dictionary.save(str(output_dir / 'model_dictionary'))
-    return (c_v,)
+    return (result['coherence'],)
 
 
 def check_bounds(val, min_, max_):
