@@ -404,7 +404,7 @@ def evaluate(ind: LdaIndividual):
         topics, docs_topics, _ = prepare_topics(model, not_empty_docs,
                                                 not_empty_titles, dictionary)
         # check for NaNs
-        for t in topics:
+        for t in topics.values():
             if any(np.isnan(p) for p in t['terms_probability'].values()):
                 result['coherence'] = -float('inf')
 
