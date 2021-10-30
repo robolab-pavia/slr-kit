@@ -309,6 +309,8 @@ def init_argparser():
     parser.add_argument('--no_timestamp', action='store_true',
                         help='if set, no timestamp is added to the topics file '
                              'names')
+    parser.add_argument('--no-relevant', action='store_true',
+                        help='if set, use only the term labelled as keyword')
     parser.add_argument('--logfile', default='slr-kit.log',
                         help='log file name. If omitted %(default)r is used',
                         logfile=True)
@@ -598,9 +600,13 @@ def lda_ga_optimization(args):
     logger.info('==== lda_ga_grid_search started ====')
 
     relevant_prefix = args.placeholder
+    if args.no_relevant:
+        labels = ('keyword',)
+    else:
+        labels = ('keyword', 'relevant')
+
     docs, titles = prepare_documents(args.preproc_file, args.terms_file,
-                                     ('keyword', 'relevant'),
-                                     args.target_column, args.title,
+                                     labels, args.target_column, args.title,
                                      delimiter=args.delimiter,
                                      placeholder=args.placeholder,
                                      relevant_prefix=relevant_prefix)
