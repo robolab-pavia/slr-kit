@@ -821,7 +821,8 @@ The function takes the following arguments:
 The function returns the `Namespace` with the arguments values.
 All the arguments are filled using the values in the configuration file.
 The arguments flagged as `cli_only` in `script_args` are filled with the default value taken from `script_args`.
-The argument flagged as `logfile` is filled with a path to a log file in the `log` directory in the configuration directory.
+The arguments flagged as `logfile` is filled with a path to a log file in the `log` directory in the configuration directory.
+The arguments flagged as `non_standard` are not processed by the function, and must be handled by the code that runs the command.
 
 The `prepare_script_arguments` function returns also a dictionary with the inputs and a dictionary with the outputs of the script.
-These dictionaries as the name of the argument as the key and the value of the argument as the item.
+These dictionaries have the name of the argument as the key and the value of the argument as the item.
