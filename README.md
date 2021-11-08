@@ -463,9 +463,9 @@ The format of this file is the following:
   * `generations`: number of generation;
   * `tournament_size`: number of individuals randomly selected for the selection tournament.
 * `probabilities`: this section contains the probabilities used by the script:
-  * `mutate`: probability of mutation;
+  * `mutate`: probability of mutation. The sum of this probability and the mate probability must be less than 1;
   * `component_mutation`: probability of mutation of each individual component;
-  * `mate`: probability of crossover (also called mating);
+  * `mate`: probability of crossover (also called mating). The sum of this probability and the mutate probability must be less than 1;
   * `no_filter`: probability that a new individual is created with no term filter (no_above = no_below = 1);
 * `mutate`: this section contains the parameters of the gaussian distributions used by the mutation for each parameter:
   * `topics.mu` and `topics.sigma` are the mean value and the standard deviation for the topics parameter;
@@ -476,6 +476,13 @@ The format of this file is the following:
   * `alpha_type.mu` and `alpha_type.sigma` are the mean value and the standard deviation for the type of the alpha parameter.
 
 An example of this file can be found in the `ga_param.toml` file.
+The default values in this file can be a good starting point for the GA parameters, but they require a check from the user.
+In particular the probabilities must be checked to ensure some variation in the individuals.
+The `component_mutation` probability must be checked to ensure that the mutation operator applies some variation to each mutating individuals.
+The parameters in the `mutate` section are also important.
+In particular the `topics.sigma` must be choosen taking into account the range of possible numbers of topics.
+The `no_below.sigma` must be choosen taking into account the number of document used in training.
+The other defaults are usually fine to guarantee some variation of the parameters and can be left untouched.
 
 To each trained model it is assigned an UUID.
 The script outputs all the models in `<outdir>/<date>_<time>_lda_results/<UUID>`.

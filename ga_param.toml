@@ -16,6 +16,13 @@ mate = 0.5 # probability of crossover (mating)
 no_filter = 0.5 # probability that a new individual is created with no term filter (no_above = no_below = 1)
 [mutate]
 # if a component is selected for mutation, a random gaussian number with mu mean and sigma standard deviation is added to the component
+# the default values for topics and no_below are selected to ensure some variation on these parameters,
+# but they must be reviewed by the user. In particular, the topics.sigma must be adapted to the topics range,
+# and the no_below.sigma must be chosen taking into account the number of the documents.
+# alpha and beta usually are between 0 and 1 so the default values here are usually fine.
+# no_above is also between 0 and 1 so the same consideration from alpha and beta applies.
+# alpha_type is an integer and can be -1, 0 or 1 only, so the default value here is mostly fine to ensure
+# some variation of this parameter.
 topics.mu = 0
 topics.sigma = 3
 alpha_val.mu = 0
