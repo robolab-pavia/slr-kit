@@ -7,16 +7,17 @@ Introduces Gensim's LDA model and demonstrates its use on the NIPS corpus.
 """
 import re
 import sys
-# disable warnings if they are not explicitly wanted
 import tomlkit
 
 from join_lda_info import join_lda_info
 
+# disable warnings if they are not explicitly wanted
 if not sys.warnoptions:
     import warnings
     warnings.simplefilter('ignore')
 
 import json
+import math
 from datetime import datetime
 from itertools import repeat
 from multiprocessing import Pool
@@ -379,6 +380,7 @@ def prepare_topics(model, docs, titles, dictionary):
     """
     docs_topics = []
     not_empty_docs = []
+    topics_n_digit = math.floor(math.log10(model.num_topics) + 1)
     for i, (title, d) in enumerate(zip(titles, docs)):
         bow = dictionary.doc2bow(d)
         isempty = False
@@ -393,7 +395,7 @@ def prepare_topics(model, docs, titles, dictionary):
         d_t = {
             'id': i,
             'title': title,
-            'topics': {tu[0]: float(tu[1]) for tu in t},
+            'topics': {f'{tu[0]:0{topics_n_digit}d}': float(tu[1]) for tu in t},
             'empty': isempty
         }
         docs_topics.append(d_t)
@@ -411,12 +413,13 @@ def prepare_topics(model, docs, titles, dictionary):
     topics_order.sort(key=lambda x: coherence[x], reverse=True)
     for i in topics_order:
         topic = model.show_topic(i)
+        num = f'{i:0{topics_n_digit}d}'
         t_dict = {
-            'name': f'Topic {i}',
+            'name': f'Topic {num}',
             'terms_probability': {t[0]: float(t[1]) for t in topic},
             'coherence': f'{float(coherence[i]):.5f}',
         }
-        topics[i] = t_dict
+        topics[num] = t_dict
 
     return topics, docs_topics, avg_topic_coherence
 
