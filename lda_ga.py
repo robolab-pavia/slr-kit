@@ -73,7 +73,7 @@ class LdaIndividual:
     _no_below: int
     _alpha_type: int
     fitness: creator.FitnessMax = dataclasses.field(init=False)
-    topics_bounds: ClassVar[range] = None
+    topics_bounds: ClassVar[tuple] = None
     max_no_below: ClassVar[int] = None
     min_no_above: ClassVar[int] = None
 
@@ -105,7 +105,7 @@ class LdaIndividual:
         :type min_no_above: float
         :raise ValueError: if min_no_above is > 1.0
         """
-        cls.topics_bounds = range(min_topics, max_topics + 1)
+        cls.topics_bounds = (min_topics, max_topics)
         cls.max_no_below = max_no_below
         if min_no_above > 1.0:
             raise ValueError('min_no_above must be less then 1.0')
@@ -168,8 +168,9 @@ class LdaIndividual:
             no_below = random.randint(1, cls.max_no_below)
             no_above = random.uniform(cls.min_no_above, 1.0)
 
-        return LdaIndividual(_topics=random.randint(cls.topics_bounds.start,
-                                                    cls.topics_bounds.stop),
+        topics_min = cls.topics_bounds[0]
+        topic_max = cls.topics_bounds[1]
+        return LdaIndividual(_topics=random.randint(topics_min, topic_max),
                              _alpha_val=random.uniform(MIN_ALPHA_VAL, 1.0),
                              _beta=random.random(),
                              _no_above=no_above,
@@ -187,8 +188,8 @@ class LdaIndividual:
         if self.topics_bounds is None:
             raise BoundsNotSetError('set_bounds must be called first')
         self._topics = check_bounds(int(np.round(val)),
-                                    self.topics_bounds.start,
-                                    self.topics_bounds.stop)
+                                    self.topics_bounds[0],
+                                    self.topics_bounds[1])
 
     @property
     def alpha_val(self):
