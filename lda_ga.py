@@ -31,6 +31,9 @@ from lda import (PHYSICAL_CPUS, MIN_ALPHA_VAL, prepare_documents,
                  prepare_topics, output_topics, save_toml_files)
 from utils import STOPWORD_PLACEHOLDER, setup_logger
 
+EPSILON = 1e-7
+
+
 # these globals are used by the multiprocess workers used in compute_optimal_model
 _corpus: Optional[List[List[str]]] = None
 _titles: Optional[List[str]] = None
@@ -48,7 +51,7 @@ class BoundsNotSetError(Exception):
     pass
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(eq=False)
 class LdaIndividual:
     """
     Represents an individual, a set of parameters for the LDA model
@@ -88,6 +91,48 @@ class LdaIndividual:
         self.no_above = self._no_above
         self.no_below = self._no_below
         self.alpha_type = self._alpha_type
+
+    def _to_tuple(self):
+        """
+        Creates a tuple from the components of the individual
+
+        All the float component are truncated using the EPSILON value.
+        This tuple can be used to compare two individuals and to calculate a
+        good hash value.
+        The order of the elements is: alpha, beta, no_above, no_below, topics.
+        The alpha component is a string if the alpha_type of the individual is
+        not 0.
+
+        :return: a tuple containing the components of the individual
+        """
+        a = self.alpha
+        a = round(a/EPSILON) * EPSILON if isinstance(a, float) else a
+        b = round(self.beta/EPSILON) * EPSILON
+        na = round(self.no_above/EPSILON) * EPSILON
+        return (a, b, self.no_below, na, self.no_below, self.topics)
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+
+        tup_self = self._to_tuple()
+        tup_other = other._to_tuple()
+        eq = False
+        for s, o in zip(tup_self, tup_other):
+            if type(s) != type(o):
+                return False
+            if isinstance(s, (int, str)):
+                if s != o:
+                    return False
+            else:
+                if abs(s - o) > EPSILON:
+                    return False
+
+        return True
+
+    def __hash__(self):
+        tup = self._to_tuple()
+        return hash(tup)
 
     @classmethod
     def set_bounds(cls, min_topics, max_topics, max_no_below, min_no_above):
@@ -201,7 +246,7 @@ class LdaIndividual:
 
     @property
     def beta(self):
-        return self._beta
+        return float(self._beta)
 
     @beta.setter
     def beta(self, val):
@@ -209,7 +254,7 @@ class LdaIndividual:
 
     @property
     def no_above(self):
-        return self._no_above
+        return float(self._no_above)
 
     @no_above.setter
     def no_above(self, val):
@@ -219,7 +264,7 @@ class LdaIndividual:
 
     @property
     def no_below(self):
-        return self._no_below
+        return int(self._no_below)
 
     @no_below.setter
     def no_below(self, val):
@@ -241,7 +286,7 @@ class LdaIndividual:
     @property
     def alpha(self) -> Union[float, str]:
         if self._alpha_type == 0:
-            return self._alpha_val
+            return float(self._alpha_val)
         elif self._alpha_type > 0:
             return 'symmetric'
         else:
