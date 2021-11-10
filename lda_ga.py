@@ -5,12 +5,13 @@ import logging
 import pathlib
 import random
 import sys
+import time
 import uuid
 from datetime import datetime
-from multiprocessing import Pool
+from multiprocessing import Pool, Manager
 from pathlib import Path
 from timeit import default_timer as timer
-from typing import Optional, List, Union, ClassVar
+from typing import Optional, List, Union, ClassVar, Dict, Tuple
 
 import numpy as np
 import pandas as pd
@@ -39,6 +40,7 @@ _corpus: Optional[List[List[str]]] = None
 _titles: Optional[List[str]] = None
 _seed: Optional[int] = None
 _modeldir: Optional[pathlib.Path] = None
+_coherences: Optional[Dict[int, Tuple[Optional[float], str]]] = None
 
 creator.create('FitnessMax', base.Fitness, weights=(1.0,))
 
@@ -363,12 +365,13 @@ def init_argparser():
     return parser
 
 
-def init_train(corpora, titles, seed, modeldir):
-    global _corpus, _titles, _seed, _modeldir
+def init_train(corpora, titles, seed, modeldir, coherences):
+    global _corpus, _titles, _seed, _modeldir, _coherences
     _corpus = corpora
     _titles = titles
     _seed = seed
     _modeldir = modeldir
+    _coherences = coherences
 
 
 def load_additional_terms(input_file):
@@ -393,7 +396,7 @@ def load_additional_terms(input_file):
 
 # topics, alpha, beta, no_above, no_below label
 def evaluate(ind: LdaIndividual):
-    global _corpus, _titles, _seed, _modeldir
+    global _corpus, _titles, _seed, _modeldir, _coherences
     # unpack parameter
     n_topics = int(ind.topics)
     alpha = ind.alpha
@@ -412,13 +415,28 @@ def evaluate(ind: LdaIndividual):
     result['beta'] = beta
     result['no_above'] = no_above
     result['no_below'] = no_below
+    result['saved_model'] = False
+    result['same_as'] = ''
     result['time'] = 0
+    no_train = False
+    # check the cache
+    ind_hash = hash(ind)
+    try:
+        cv = (None, '')
+        while cv[0] is None:
+            time.sleep(1)
+            cv = _coherences[ind_hash]
+
+        result['coherence'] = cv[0]
+        result['same_as'] = cv[1]
+        no_train = True
+    except KeyError:
+        _coherences[ind_hash] = (None, '')
     start = timer()
     dictionary = Dictionary(_corpus)
     # Filter out words that occur less than no_above documents, or more than
     # no_below % of the documents.
     dictionary.filter_extremes(no_below=no_below, no_above=no_above)
-    no_train = False
     try:
         _ = dictionary[0]  # This is only to "load" the dictionary.
     except KeyError:
@@ -426,7 +444,7 @@ def evaluate(ind: LdaIndividual):
 
     output_dir = _modeldir / u
     output_dir.mkdir(exist_ok=True)
-    if no_train == False:
+    if not no_train:
         not_empty_bows = []
         not_empty_docs = []
         not_empty_titles = []
@@ -459,8 +477,11 @@ def evaluate(ind: LdaIndividual):
         if not np.isinf(result['coherence']):
             output_topics(topics, docs_topics, output_dir, 'lda')
 
+        _coherences[ind_hash] = (result['coherence'], result['uuid'])
+
         model.save(str(output_dir / 'model'))
         dictionary.save(str(output_dir / 'model_dictionary'))
+        result['saved_model'] = True
 
     with open(output_dir / 'results.csv', 'w') as file:
         writer = csv.DictWriter(file, fieldnames=list(result.keys()))
@@ -591,16 +612,19 @@ def optimization(documents, titles, params, toolbox, args, model_dir):
     stats.register('std', np.std)
     stats.register('min', np.min)
     stats.register('max', np.max)
-    with Pool(processes=PHYSICAL_CPUS, initializer=init_train,
-              initargs=(documents, titles, args.seed, model_dir)) as pool:
-        toolbox.register('map', pool.map)
-        _, _ = algorithms.eaMuPlusLambda(pop, toolbox,
-                                         mu=params['algorithm']['mu'],
-                                         lambda_=params['algorithm']['lambda'],
-                                         cxpb=params['probabilities']['mate'],
-                                         mutpb=params['probabilities']['mutate'],
-                                         ngen=params['algorithm']['generations'],
-                                         stats=stats, verbose=True)
+    with Manager() as m:
+        coherence_cache = m.dict()
+        with Pool(processes=PHYSICAL_CPUS, initializer=init_train,
+                  initargs=(documents, titles, args.seed,
+                            model_dir, coherence_cache)) as pool:
+            toolbox.register('map', pool.map)
+            algorithms.eaMuPlusLambda(pop, toolbox,
+                                      mu=params['algorithm']['mu'],
+                                      lambda_=params['algorithm']['lambda'],
+                                      cxpb=params['probabilities']['mate'],
+                                      mutpb=params['probabilities']['mutate'],
+                                      ngen=params['algorithm']['generations'],
+                                      stats=stats, verbose=True)
 
 
 def prepare_ga_toolbox(max_no_below, params):
