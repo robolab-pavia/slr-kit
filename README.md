@@ -1,8 +1,10 @@
 # slr-kit: a tool to assist the writing of Systematic Literature Reviews
 
-`slr-kit` is a tool that is intended to assist in the development of a Systematic Literature Review (SLR) of scientific papers.
+`slr-kit` is a tool that is intended to assist in the development of a Systematic Literature Review (SLR) of scientific papers related to a specific scientific field.
 
 The tool is based on a specific semi-supervised workflow that leverages automatic techniques based on text mining to automatize key steps in the workflow, while some manual operations are necessary to provide the expert knowledge to the process. `slr-kit` aims at making the manual operations as efficient as possible.
+
+As a byproduct, `slr-kit` can be used to derive a listo terms related on a specific topic.
 
 # Installation and usage
 
