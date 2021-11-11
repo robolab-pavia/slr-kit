@@ -500,8 +500,8 @@ def report(args):
     if args.dir is not None:
         dirname = cwd / args.dir
     else:
-        timestamp = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-        dirname = cwd / ('report' + timestamp)
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d-%H%M%S')
+        dirname = cwd / f'{timestamp}_report'
 
     dirname.mkdir(exist_ok=True)
 
