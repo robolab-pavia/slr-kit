@@ -31,11 +31,11 @@ python3 slrkit.py --help
 The workflow is based on the following stages:
 
 - selection of bibliographic data set (manual)
-- extraction of n-grams (automatic)
-- classification of n-grams (manual)
+- extraction of terms (automatic)
+- classification of terms using FAWOC (manual)
 - clustering of documents (automatic)
 - validation of the topics associated with the clusters (manual)
-- derivation of statistics (automatic)
+- generation of reports (automatic)
 
 # FA.WO.C. comments
 
