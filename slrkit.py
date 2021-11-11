@@ -567,6 +567,8 @@ def run_lda(args):
             msg = msg.format('--id')
         print(msg)
         sys.exit(1)
+    if args.id is None:
+        args.id = 0
     if args.config is not None:
         confname = pathlib.Path(args.config)
         if not confname.is_absolute():
@@ -1168,7 +1170,7 @@ def subparser_lda(subparser):
                         help='UUID of the model stored in the result directory. '
                              'If this option is given without the --directory '
                              'option, the command ends with an error.')
-    group2.add_argument('--id', default=0, type=int,
+    group2.add_argument('--id', type=int,
                         help='0-based id of the model stored in the result '
                              'directory. The associaction between id and model '
                              'is stored in the `results.csv` file of the '
