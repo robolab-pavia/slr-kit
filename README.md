@@ -4,13 +4,16 @@
 
 The tool is based on a specific semi-supervised workflow that leverages automatic techniques based on text mining to automatize key steps in the workflow, while some manual operations are necessary to provide the expert knowledge to the process. `slr-kit` aims at making the manual operations as efficient as possible.
 
+It analyzes the abstracts of scientific papers to derive the topics associated to the papers, allowing the clustering of papers by topic.
+
 As a byproduct, `slr-kit` can be used to derive a listo terms related on a specific topic.
 
 # Table of contents
 
 - Installation
 - Usage
-- The proposed workflow
+- The workflow on data from scratch (basic version)
+- Using existing data
 - Links to other docs
 
 # Installation
@@ -37,843 +40,144 @@ If `slr-kit` was installed from the git repository, you can launch the `slrkit.p
 python3 slrkit.py
 ```
 
-# Support material for the FAST SLR workflow
+# The workflow on data from scratch (basic version)
 
-The workflow is based on the following stages:
+The workflow supported by `slr-kit` includes several optional steps that can be done to refine the results.
+Here it is reported the mandatory steps to obtain the desired reports starting from the bibliographic material.
 
-- selection of bibliographic data set (manual)
+The basic steps are:
+
+- initialization of the project (automatic)
+- import of bibliographic data (automatic)
+- preprocessing of the abstracts (automatic)
 - extraction of terms (automatic)
 - classification of terms using FAWOC (manual)
-- clustering of documents (automatic)
-- validation of the topics associated with the clusters (manual)
+- topics extraction (automatic)
 - generation of reports (automatic)
 
-# FA.WO.C. comments
 
-## TODO and possible features
+## Initialization of the project (automatic)
 
-- NEW FEATURE: the program should be able to open a list of strings coming from the source abstracts that contain the word under exaxmination, to help understanding its relevance; this could be done only upon user request - if too computational heavy - or always in real-time - if not so heavy.
-- Allow the user to configure the keys associated to the different actions/class; a simple JSON file may contain the association "key <-> action".
-
-# Possible efficient workflow to use FA.WO.C.
-
-## Manual workflow
-
-- stage 1: mark words either being NOISE or postponed (look for trivial noise words, such as "however, thus, require, ...")
-- stage 2: classify the postponed words as either NOISE or RELEVANT
-- stage 3: classify the relevant words as keywords or not
-
-In all the stages, mark NOT-RELEVANT words if needed.
-
-## Possible automatic stages
-
-- probably stage 1 could be made automatic
-
-# SLR-KIT projects and slrkit command
-The `slrkit.py` application helps to manage all the stages of an SLR project.
-A project is a collection of file created with the SLR-KIT script that refers to an initial set of document that has to be analyzed.
-For more information see the [slrkit command documentation](slrkit.md).
-
-# Available scripts and programs
-
-The following scripts and programs are currently available. They are listed in the order that they are expected to be used in the SLR workflow.
-All the scripts expect utf-8 files as input.
-
-## `import_biblio.py`
-
-- ACTION: Import a bibliographic and convert it to the CSV format.
-- INPUT: the bibliographic file.
-- OUTPUT: CSV file format with the desired columns.
-
-The output is sent to stdout unless an output file name is explicitly specified.
-The input file format can be chosen using an option.
-Currently, only the RIS format is supported.
-
-The advice is to always start from the RIS format (instead of CSV or BIB) since it allows a better, easier and clearer separation among the different elements of a bibliographic item.
-The command line parameters allow to select the fields to export fro the RIS file.
-
-During the conversion, an unique progressive number is added to each paper, which acts as unique identifier in the rest of the processing (within a column named `id`).
-Therefore, be careful to not mix different versions of the source file that may generate a different numbering of the papers.
-
-TODO: add an option to append the output to an existing CSV file?
-
-Positional arguments:
-* `input_file`: input bibliography file
-
-Optional arguments:
-* `--type | -t TYPE`: Type of the bibliography file. Supported types: RIS. If absent 'RIS' is used.
-* `--output | -o FILENAME`: output CSV file name
-* `--columns | -c col1,..,coln`: list of comma-separated columns to export. If absent 'title,abstract' is used. Use '?' for the list of available columns
-
-### Example of usage
-
-The standard slr-kit workflow needs a CSV file with two columns: `title` and `abstract`. Such CSV file can be obtained with the command:
+Create a new directory to host the `slr-kit` project, and move into the newly created directory (we use `my-project` as test project):
 
 ```
-import_biblio --columns title,abstract dataset.ris > dataset_abstracts.csv
+mkdir my-project && cd my-project
 ```
 
-## `acronyms.py`
-
-- ACTION: Extracts a list of acronyms from the abstracts.
-- INPUT: CSV file with the list of abstracts generated by `import_biblio.py`.
-- OUTPUT: CSV file containing the short and extended acronyms suitable to be classified with FAWOC.
-
-Uses the algorithm presented in A. Schwartz and M. Hearst, "A Simple Algorithm for Identifying Abbreviations Definitions in Biomedical Text", Biocomputing, 2003.
-
-The script assumes that the abstracts are contained in a column named `abstract`.
-A different column can be specified usign a command liine option. It also requires a column named `id`.
-All the rows in the input file with 'rejected' as the `status` field (if present) are discarded and not elaborated.
-The output is a TSV file with the columns `id`, `term` and `label`.
-This is the format used by FAWOC.
-The `id` is a number that univocally identifies an acronym.
-`term` contains the acronym.
-The format is `<extended acronym> | (<abbreviation>)`.
-The `label` will be empty, becasue it is the column that will be used by FAWOC for the classification.
-
-Positional arguments:
-* `datafile` input CSV data file
-
-Optional arguments:
-* `--output | -o FILENAME`: output file name
-* `--column | -c COLUMN`: Name of the column of datafile to search the acronyms. Default: abstract
-
-## `preprocess.py`
-
-- ACTION: Performs the preprocessing of the documents to prepare it for further processing.
-- INPUT: The CSV file produced by `import_biblio.py` or the one modified by `filter_paper.py`.
-- OUTPUT: A CSV file containing the same columns of the input file, plus a new column containing the preprocessed text.
-
-The preprocessing includes:
-
-- Remove punctuations
-- Convert to lowercase
-- Remove stop words
-- Mark selected n-grams as relevant
-- Acronyms substitution
-- Remove special characters and digits
-- Regex based substitutions
-- Lemmatisation
-
-All the rows in the input file with 'rejected' as the `status` field (if present) are discarded and not elaborated.
-The stop words are read **only** from one or more optional files.
-These words are replaced, in the output, with a placeholder (called stopword placeholder) that is recognized in the term extraction phase.
-The default stopword placeholder is the '@' character.
-
-The user can also specify files containing lists of relevant n-grams.
-For each specified file, the user can specify a particular marker that will be used as replacement text for each term in that list.
-That marker will be surrounded with the stopword placeholder.
-If the user do not specify a marker for a list of terms, then a different approach is used.
-Each term will be replaced with a placeholder composed by, the stopword placeholder, the words composing the term separated with '_' and finally another stopword placeholder.
-This kind of placeholders can be used by the subsequent phases to recognize the term without losing the meaning of the n-gram.
-
-Examples (assuming that '@' is the stopword placeholder):
-1. if the user specifies a list of relevant n-grams with the specific placeholder 'TASK_PARAM', all the n-grams in that list will be replaced with '@TASK_PARAM@'.
-2. if the user specifies a list of relevant n-grams without a specific placeholder, then each n-gram will be replaced with a specific string. The n-gram 'edf' will be replaced with '@edf@', the n-gram 'earliest deadline first' will be replaced with '@earliest_deadline_first@'.
-
-This program also handles the acronyms.
-A TSV file containing the approved acronyms can be specified.
-This file must have the format defined by the acronyms.py script. 
-The file must have two columns 'term' and 'label':
-
-* 'term' must contain the acronym in the form `<extended acronym> | (<abbreviation>)`
-* 'label' is the classification made with fawoc. Only the rows with label equal to 'relevant' or 'keyword' will be considered.
-
-For each considered row in the TSV file, the program searches for:
-
-1. the abbreviation of the acronym;
-2. the extended acronym;
-3. the extended acronym with all the spaces substituted with '-'.
-
-The first search is case-sensitive, while the other two are not. 
-The program replaces each recognized acronym with the marker `<stopword placeholder><acronym abbreviation><stopword placeholder>`.
-
-The `preprocess.py` script can apply some specific regex and substitutions.
-Using the `--regex` option, the user can pass to script a csv file containing the instructions to apply these substitutions.
-
-The file accepted by the `--regex` option has the following structure:
-
-* `pattern`: the pattern to search in the text. Can be a `python3` regex pattern or a string to be searched verbatim;
-* `repl`: the string that substitutes the `pattern`. The actual text substituted is `__<repl-content>__`;
-* `regexBoolean`: if `true` the `pattern` is treated as a regular expression. If `false` the `pattern` is searched verbatim.
-
-
-Positional arguments:
-- `datafile` input CSV data file
-
-optional arguments:
-
-* `--output | -o FILENAME` output file name. If omitted or '-' stdout is used
-* `--placeholder | -p PLACEHOLDER` Placeholder for stop words. Also used as a prefix for the relevant words. Default: '@'
-* `--stop-words | -b FILENAME [FILENAME ...]` stop words file name
-* `--relevant-term | -r FILENAME [PLACEHOLDER]` relevant terms file name and the placeholder to use with those terms. The placeholder must not contains any space. If the placeholder is omitted, each relevant term from this file, is replaced with the stopword placeholder, followed by the term itself with each space changed with the "-" character and then another stopword placeholder.
-* `--acronyms | -a ACRONYMS` TSV files with the approved acronyms
-* `--target-column | -t TARGET_COLUMN` Column in datafile to process. If omitted 'abstract' is used.
-* `--output-column OUTPUT_COLUMN` name of the column to saveIf omitted 'abstract_lem' is used.
-* `--input-delimiter INPUT_DELIMITER` Delimiter used in datafile. Default '\t'
-* `--output-delimiter OUTPUT_DELIMITER` Delimiter used in output file. Default '\t'
-* `--rows | -R INPUT_ROWS` Select maximum number of samples
-* `--language | -l LANGUAGE` language of text. Must be a ISO 639-1 two-letter code. Default: 'en'
-* `--regex REGEX` regex .csv for specific substitutions
-
-### Example of usage
-
-The following example processes the `dataset_abstracts.csv` file, filtering the stop words in `stop_words.txt` and produces `dataset_preproc.csv`, which contains the same columns of the input file plus the `abstract_lem` column:
+Initialize the project:
 
 ```
-preprocess.py --stop-words stop_words.txt dataset_abstracts.csv > dataset_preproc.csv
-```
-The following example processes the `dataset_abstracts.csv` file, replacing the terms `relevant_terms.txt` with placeholder created from the terms themselves, replacing the terms in `other_relevant.txt` with '@PLACEHOLDER@' and produces `dataset_preproc.csv`, which contains the same columns of the input file plus the `abstract_lem` column:
-
-```
-preprocess.py --relevant-term relevant_terms.txt -r other_relevant.txt PLACEHOLDER dataset_abstracts.csv > dataset_preproc.csv
-```
-## `gen_terms.py`
-
-- ACTION: Extracts the terms ({1,2,3,4}-grams) from the abstracts.
-- INPUT: The TSV file produced by `preprocess.py` (it works on the column `abstract_lem`).
-- OUTPUT: A TSV file containing the list of terms, and a TSV with their frequency.
-
-This script extracts the terms from the file produced by the `preprocess.py` script.
-It uses the placeholder character to skip all the n-grams that contains the placeholder.
-The script also skips all the terms that contains tokens that starts and ends with the placeholder.
-This kind of tokens are produced by `preprocess.py` to mark the acronyms and the relevant terms.
-
-The format of the output file is the one used by `FAWOC`. The structure is the following:
-
-* `id`: a progressive identification number;
-* `term`: the n-gram;
-* `label`: the label added by `FAWOC` to the n-gram. This field is left blank by the `gen_terms.py` script.
-
-This command produces also the `fawoc_data.tsv` file, with the following structure:
-
-* `id`: the identification number of the term;
-* `term`: the term;
-* `count`: the number of occurrences of the term.
-
-This file is used by `FAWOC` to show the number of occurrences of each term.
-### Arguments:
-
-- `inputfile`: name of the TSV produced by `preprocess.py`;
-- `outputfile`: name of the output file. This name is also used to create the name of the file with the term frequencies.
-  For instance, if `outputfile` is `filename.tsv`, the frequencies file will be named `filename_fawoc_data.tsv`.
-  This file is create in the same directory of `outputfile`;
-- `--stdout | -s`: also print on stdout the output file;
-- `--n-grams | -n N`: maximum size of n-grams. The script will output all the 1-grams, ... N-grams;
-- `--min-frequency |-m N`: minimum frequency of the n-grams. All the n-grams with a frequency lower than `N` are not output.
-- `--placeholder | -p PLACEHOLDER`: placeholder for barrier word. Also used as a prefix for the relevant words. Default: '@'
-- `--column | -c COLUMN`: column in datafile to process. If omitted 'abstract_lem' is used.
-- `--delimiter DELIMITER`: delimiter used in datafile. Default '\t'
-- `--logfile LOGFILE`: log file name. If omitted 'slr-kit.log' is used
-
-### Example of usage
-
-Extracts terms from `dataset_preproc.csv` and store them in `dataset_terms.csv` and `dataset_terms_fawoc_data.tsv`:
-
-```
-gen_terms.py dataset_preproc.csv dataset_terms.csv
+slrkit init my-project
 ```
 
-## `cumulative-frequency.py`
+## Import of bibliographic data (automatic)
 
-- ACTION: Extracts the terms ({1,2,3,4}-grams) from the abstracts, and produces a lineplot of most N frequent terms over the number of papers.
-- INPUT: The CSV file produced by `preprocess.py` (it works on the column `abstract_lem`).
-- OUTPUT: A png file showing the plot and/or the dataset used to build that png
+Copy the bibliographic data into the project directory, naming it `my-project.ris`.
 
-### Example of usage
-
-Extracts terms from `dataset_preproc.csv` and prints the chart on `./n-grams_frequency/dataset_preproc_N-gram.png`:
+Change the `input_file` parameter into the file configuration file `slr-kit.conf/import.toml` as follows:
 
 ```
-cumulative-frequency.py --datafile dataset_preproc.csv --top 5 --savefig
+input_file = "my-project.ris"
 ```
 
-## `fawoc.py`, the FAst WOrd Classifier
+At the moment, only the [RIS file format](https://en.wikipedia.org/wiki/RIS_(file_format)) is supported as source data file.
+The RIS format is one of the many available on, e.g., [Scopus](https://www.scopus.com/).
+Make sure that the file contains the Abstract of the papers.
 
-- ACTION: GUI program for the fast classification of terms.
-- INPUT: The CSV file with the terms produced by `gen-n-grams.py`.
-- OUTPUT: The same input CSV with the labels assigned to the terms.
-
-NOTE: the program changes the content of the input file.
-
-The program uses also two files to save its state and retrieve some information about terms.
-Assuming that the input file is called `dataset_terms.tsv`, FAWOC uses `dataset_terms_fawoc_data.json` and `dataset_terms_fawoc_data.tsv`.
-This two files are searched and saved in the same directory of the input file.
-The json file is used to save the state of FAWOC, and it is saved every time the input file is updated.
-The tsv file is used to load some additional data about the terms (currently only the terms count).
-This file is not modified by FAWOC.
-If these two file are not present, they are created by FAWOC, the json file with the current state.
-The tsv file is created with data eventually loaded from the input file.
-If no count field was present in the input file a default value of -1 is used for all terms.
-
-FAWOC saves data every 10 classsifications.
-To save data more often, use the 'w' key.
-
-The program also writes profiling information into the file `profiler.log` with the relevant operations that are carried out.
-
-
-## `occurrences.py`
-
-- ACTION: Determines the occurrences of the terms in the abstracts.
-- INPUT: Two files: 1) the list of abstracts generated by `preprocess.py` and 2) the list of terms generated by `fawoc.py`
-- OUTPUT: A JSON data structure with the position of every term in each abstract; the output is written to stdout by default.
-
-### Example of usage
-
-Extracts the occurrences of the terms listed in `dataset_terms.csv` in the abstracts contained in `dataset_preproc.csv`, storing the results in `dataset_occ_keyword.json`:
+To import the data into the project, run the command:
 
 ```
-occurrences.py -l keyword dataset_preproc.csv dataset_terms.csv > dataset_occ_keyword.json
+slrkit import
 ```
 
-## `dtm.py`
+## Preprocessing of the abstracts (automatic)
 
-- ACTION: Calculates the document-terms matrix
-- INPUT: The terms-documents JSON produced by `occurrences.py`
-- OUTPUT: A CSV file containing the matrix; terms are on the rows, documents IDs are on the columns
-
-Document IDs match with the ones assigned by `ris2csv.py`.
-
-### Example of usage
-
-Calculates the document-terms matrix starting from `dataset_occ_keyword.json` and storing the matrix in `dataset_dtm.csv`:
+Preprocess the abstracts:
 
 ```
-dtm.py dataset_occ_keyword.json > dataset_dtm.csv
+slrkit preprocess
 ```
 
-## `cosine_similarity.py`
+This performs several text processing operations on the abstracts, preparing the text for further processing.
 
-- ACTION: Calculates the cosine similarity of the document-terms matrix (generated by `dtm.py`)
-- INPUT: CSV file with document-terms matrix
-- OUTPUT: CSV file with the cosine similarity of terms
+## Extraction of terms (automatic)
 
-### Example of usage
+Extract the list of terms from the abstracts:
 
 ```
-cosine_similarity.py dataset_dtm.csv > dataset_cosine_similarity.csv
+slrkit terms
 ```
 
-## `embeddings.py`
+## Classification of terms using FAWOC (manual)
 
-- ACTION: Create words embeddings based on Word2Vec and computed documents similarity
-- INPUT: CSV with corpus preprocessed (`preprocess.py) , CSV file with document-terms matrix
-- OUTPUT: CSV file with the similarity of documents vectors
-
-### Example of usage
+Run FAWOC and classify the terms:
 
 ```
-ebbedings.py dataset_preproc.csv dataset_dtm.csv > dataset_w2v_similarity.csv
+slrkit fawoc terms
 ```
 
-## `supervised_clustering.py`
+With FAWOC, you can quickly (well, some time is required depending on the amount of terms) classify the terms.
 
-- ACTION: Perform semi-supervised clustering with pairwise constraints
-- INPUT: JSON file with a precomputed ground-truth from `parse_pairings.py`
-- OUTPUT: CSV file with documents divided into clusters
+For this basic example, you can distinguish the terms between RELEVANT (pressing `r`) and NOISE (press `n`) terms.
+If you make some mistake, press `u` to undo.
 
-### Example of usage
+## Extraction of topics (automatic)
+
+Run the text mining procedure with the command to generate the topics:
 
 ```
-supervised_clustering.py ground_truth.json > pckmeans_clusters.csv
+slrkit topics
 ```
 
-## `lda.py`
-
-- ACTION: Train an LDA model and outputs the extracted topics and the association between topics and documents.
-- INPUT: The TSV file produced by `preprocess.py` (it works on the column `abstract_lem`) and the terms TSV file classified with FAWOC.
-- OUTPUT: A JSON file with the description of extracted topics and a JSON file with the association between topics and documents.
-
-The script uses the terms classified with `FAWOC` to classify the documents in the file produced by `preprocess.py`.
-It filters all the placeholder tokens in the preprocess file and filters all the terms not classified as `relevant` or `keyword` in the terms list.
-The script also considers as `relevant` all the token that starts and ends with the placeholder characters (the script strips the placeholder characters and uses the rest of the token).
-These tokens are used by `preprocess.py` to mark the additional relevant terms and the acronyms.
-
-For more information and references about LDA, check the [Gensim LDA library page](https://radimrehurek.com/gensim/models/ldamodel.html).
-
-This script outputs the topics in `<outdir>/lda_terms-topics_<date>_<time>.json` and the topics assigned
-to each document in `<outdir>/lda_docs-topics_<date>_<time>.json`.
-
-**IMPORTANT:**
-
-there are some issues on the reproducibility of the LDA training.
-Setting the `seed` option (see below) is not enough to guarantee the reproducibilty of the experiment.
-It is also necessary to set the environment variable `PYTHONHASHSEED` to `0`.
-The following command sets the variable for a single run in a Linux shell:
-
-    PYTHONHASHSEED=0 python3 lda.py ...
-
-Also using a saved model requires the use of the same seed used for training and the `PYTHONHASHSEED` to 0.
-More information on the `PYTHONHASHSEED` variable can be found [here](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED).
-
-### Arguments:
-
-Positional:
-
-- `preproc_file` path to the preprocess file with the text to elaborate.
-- `terms_file` path to the file with the classified terms.
-- `outdir` path to the directory where to save the results. If omitted, the current directory is used.
-
-Optional:
-
-- `--text-column | -t TARGET_COLUMN`: Column in preproc_file to process. If omitted 'abstract_lem' is used.
-- `--title-column TITLE`: Column in preproc_file to use as document title. If omitted 'title' is used.
-- `--topics TOPICS`       Number of topics. If omitted 20 is used
-- `--alpha ALPHA`         alpha parameter of LDA. If omitted "auto" is used
-- `--beta BETA`           beta parameter of LDA. If omitted "auto" is used
-- `--no_below NO_BELOW`   Keep tokens which are contained in at least this number of documents. If
-                      omitted 20 is used
-- `--no_above NO_ABOVE`   Keep tokens which are contained in no more than this fraction of documents
-                      (fraction of total corpus size, not an absolute number). If omitted 0.5 is
-                      used
-- `--seed SEED`           Seed to be used in training
-- `--model`               if set, the lda model is saved to directory `<outdir>/lda_model`. The model is
-                      saved with name "model".
-- `--no-relevant`        if set, use only the term labelled as keyword
-- `--load-model LOAD_MODEL`
-                      Path to a directory where a previously trained model is saved. Inside this
-                      directory the model named "model" is searched. the loaded model is used with
-                      the dataset file to generate the topics and the topic document association
-- `--no_timestamp`    if set, no timestamp is added to the topics file names
-- `--placeholder PLACEHOLDER, -p PLACEHOLDER`
-                        Placeholder for barrier word. Also used as a prefix for the relevant words. 
-                        Default: "@"
-- `--config | -c CONFIG`
-                        Path to a toml config file like the one used by the slrkit lda command. It overrides **all** the cli arguments.
-
-
-### Example of usage 
-Extracts topics from dataset `dataset_preproc.csv` using the classified terms in `dataset_terms.csv` and saving the result in `/path/to/outdir`:
-```
-lda.py dataset_preproc.csv dataset_terms.csv /path/to/outdir
-```
-
-## `lda_ga.py`
-
-- ACTION: Uses a GA to search the best LDA model parameters, outputs all the trained models and the extracted topics and the association between topics and documents produced by the best model.
-- INPUT: The TSV file produced by `preprocess.py` (it works on the column `abstract_lem`), the terms TSV file classified with FAWOC and a toml file with the parameter used by the GA.
-- OUTPUT: All the trained models in a format suitable to be used with the `lda.py` script and a tsv file that summarize all the results. Also outputs the extracted topics and the association between topics and documents produced by the best model.
-
-The script uses the terms classified with `FAWOC` to classify the documents in the file produced by `preprocess.py` in the same way that the `lda.py` scripts does.
-
-The script searches the best combination (in terms of coherence) of number of topics, alpha, beta, no-below and no-above parameters.
-Each combination of parameters (a.k.a. individual) is represented as
-
-    (topics, alpha_val, beta, no_above, no_below, alpha_type)
-
-Each parameter has the following meaning:
-
-* `topics`: number of topics. It is an integer number;
-* `alpha_val`: value of the alpha parameter. It is a floating point number;
-* `beta`: value of the beta parameter. It is a floating point number;
-* `no_above`: value of the no-above parameter. It is a floating point number;
-* `no_below`: value of the no-below parameter. It is an integer number;
-* `alpha_type`: this integer number tells if the alpha parameter must have the value of `alpha_val` or if one of the string values must be used. The allowed value are:
-  * `0`: use the `alpha_val`;
-  * `1`: use the string `symmetrical`;
-  * `-1`: use the string `asymmetrical`;
-
-It uses a GA algorithm (the mu+lambda genetic algorithm) to find the best model.
-The mu+lambda GA starts with an initial population.
-Then creates *lambda* new individuals (a.k.a. solutions) by replication, mutation or crossover (only one of this operation is applied to a single individual).
-From the initial population plus the new *lambda* individuals the algorithm selects *mu* individuals that "survive" to the next generation.
-This procedure is repeated *num-generation* times.
-The selection procedure is a tournament where a fixed number of individuals are randomly choosen to partecipate in the tournament.
-The individual in the tournament with the best coherence is selected to pass to the next generation.
-The tournament is applied *mu* times in order to select the *mu* individuals of the next generation.
-The GA uses a gaussian mutaion.
-This means that if an individual must be mutated, then the mutation randomly selects which parameters have to be mutated.
-For each selected parameter, a random number is choosen from a gaussian distribution and it is added to the parameter.
-Each parameter has his own gaussian distribution.
-The crossover randomly selects a set of parameters that the two individuals have to exchange.
-More information and references about the mu+lambda GA can be found [here](https://deap.readthedocs.io/en/master/api/algo.html#deap.algorithms.eaMuPlusLambda).
-
-All the parameter of the GA are taken from a [TOML version 1.0.0](https://toml.io/en/v1.0.0) file.
-The format of this file is the following:
-* `limits`: this section contains the ranges of the parameter;
-  * `min_topics`: minimum number of topics;
-  * `max_topics`: maximum number of topics;
-  * `max_no_below`: maximum value of the no-below parameter. The minimum is always 1. A value of -1 means a tenth of the number of documents;
-  * `min_no_above`: minimum value of the no-above parameter. The maximum is always 1.
-* `algorithm`: this section contains the parameters used by the GA:
-  * `mu`: number of individuals that will pass each generation;
-  * `lambda`: number of individuals that are generated at each generation;
-  * `initial`: size of the initial population;
-  * `generations`: number of generation;
-  * `tournament_size`: number of individuals randomly selected for the selection tournament.
-* `probabilities`: this section contains the probabilities used by the script:
-  * `mutate`: probability of mutation. The sum of this probability and the mate probability must be less than 1;
-  * `component_mutation`: probability of mutation of each individual component;
-  * `mate`: probability of crossover (also called mating). The sum of this probability and the mutate probability must be less than 1;
-  * `no_filter`: probability that a new individual is created with no term filter (no_above = no_below = 1);
-* `mutate`: this section contains the parameters of the gaussian distributions used by the mutation for each parameter:
-  * `topics.mu` and `topics.sigma` are the mean value and the standard deviation for the topics parameter;
-  * `alpha_val.mu` and `alpha_val.sigma` are the mean value and the standard deviation for the value of the alpha parameter;
-  * `beta.mu` and `beta.sigma` are the mean value and the standard deviation for the beta parameter;
-  * `no_above.mu` and `no_above.sigma` are the mean value and the standard deviation for the no_above parameter;
-  * `no_below.mu` and `no_below.sigma` are the mean value and the standard deviation for the no_below parameter;
-  * `alpha_type.mu` and `alpha_type.sigma` are the mean value and the standard deviation for the type of the alpha parameter.
-
-An example of this file can be found in the `ga_param.toml` file.
-The default values in this file can be a good starting point for the GA parameters, but they require a check from the user.
-In particular the probabilities must be checked to ensure some variation in the individuals.
-The `component_mutation` probability must be checked to ensure that the mutation operator applies some variation to each mutating individuals.
-The parameters in the `mutate` section are also important.
-In particular the `topics.sigma` must be choosen taking into account the range of possible numbers of topics.
-The `no_below.sigma` must be choosen taking into account the number of document used in training.
-The other defaults are usually fine to guarantee some variation of the parameters and can be left untouched.
-
-To each trained model it is assigned an UUID.
-The script outputs all the models in `<outdir>/<date>_<time>_lda_results/<UUID>`.
-For each trained model is it produced a `toml` file with all the parameter already set to use the corresponding model with the `lda.py` script.
-These `toml` files are saved in `<outdir>/<date>_<time>_lda_results/<UUID>.toml`, and can be loaded in the `lda.py` script using its `--config` option.
-It also outputs a tsv file in `<outdir>/<date>_<time>_lda_results/results.csv` with the following format:
-
-* `id`: progressive identification number;
-* `topics`: number of topics;
-* `alpha`: alpha value;
-* `beta`: beta value;
-* `no_below`: no-below value;
-* `no_above`: no-above value;
-* `coherence`: coherence score of the model;
-* `times`: time spent evaluating this model;
-* `seed`: seed used;
-* `uuid`: UUID of the model;
-* `num_docs`: number of document;
-* `num_not_empty`: number of documents not empty after filtering.
-
-The script, also outputs the extracted topics and the topics-documents aasociation produced by the best model.
-The topics are output in `<outdir>/lda_terms-topics_<date>_<time>.json` and the topics assigned
-to each document in `<outdir>/lda_docs-topics_<date>_<time>.json`.
-
-**IMPORTANT:**
-
-there are some issues on the reproducibility of the LDA training.
-Setting the `seed` option (see below) is not enough to guarantee the reproducibilty of the experiment.
-It is also necessary to set the environment variable `PYTHONHASHSEED` to `0`.
-The following command sets the variable for a single run in a Linux shell:
-
-    PYTHONHASHSEED=0 python3 lda_ga.py ...
-
-Also using a saved model requires the use of the same seed used for training and the `PYTHONHASHSEED` to 0.
-More information on the `PYTHONHASHSEED` variable can be found [here](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED).
-
-### Arguments:
-
-Positional:
-
-- `preproc_file` path to the preprocess file with the text to elaborate.
-- `terms_file` path to the file with the classified terms.
-- `outdir` path to the directory where to save the results. If omitted, the current directory is used.
-
-Optional:
-
-optional arguments:
-* `--text-column | -t TARGET_COLUMN`
-  Column in preproc_file to process. If omitted 'abstract_lem' is used.
-* `--title-column TITLE`  Column in preproc_file to use as document title. If omitted 'title' is used.
-* `--seed SEED`           Seed to be used in training
-* `--placeholder | -p PLACEHOLDER`
-  Placeholder for barrier word. Also used as a prefix for the relevant words. Default: '@'
-* `--delimiter DELIMITER`
-  Delimiter used in preproc_file. Default '\t'
-* `--no_timestamp`    if set, no timestamp is added to the topics file names
-* `--logfile LOGFILE`     log file name. If omitted 'slr-kit.log' is used
-
-### Example of usage
-```
-lda_ga.py dataset_preproc.csv dataset_terms.csv ga_param.toml /path/to/outdir
-```
-
-## `lda_grid_search.py`
-
-- ACTION: Performs a grid search on the LDA model parameters and outputs all the trained models.
-- INPUT: The TSV file produced by `preprocess.py` (it works on the column `abstract_lem`) and the terms TSV file classified with FAWOC.
-- OUTPUT: All the trained models in a format suitable to be used with the `lda.py` script and a tsv file that summarize all the results.
-
-The script uses the terms classified with `FAWOC` to classify the documents in the file produced by `preprocess.py` in the same way that the `lda.py` scripts does.
-
-The script searches the best combination (in terms of coherence) of number of topics, alpha, beta, no-below and no-above parameters.
-It searches all the possibile combinations of parameters, discarding all the cases that results with all the documents empty.
-The grid is set up with the following criteria:
-
-| parameter        | values                                                                                        | notes                                                                    |
-|------------------|-----------------------------------------------------------------------------------------------|--------------------------------------------------------------------------|
-| number of topics | from min to max specified on the command line<br>with step also specified on the command line |                                                                          |
-| alpha            | from 0.1 to 1 with step 0.1<br>also values 'symmetrical' and 'asymmetrical'                   |                                                                          |
-| beta             | from 0.1 to 1 with step 0.1<br>also value 'auto'                                              |                                                                          |
-| no-below         | values 1, 20, 40, 100 and a tenth of the documents                                            | the values that are greater then the number<br>of document are discarded |
-| no-above         | values 0.5, 0.6, 0.75, 1.0                                                                    |                                                                          |
-
-To each model it is assigned an UUID.
-The script outputs all the models in `<outdir>/<date>_<time>_lda_results/<UUID>`.
-It also outputs a tsv file in `<outdir>/<date>_<time>_lda_results/results.csv` with the following format:
-
-* `id`: progressive identification number;
-* `corpus`: descriptor of the copus used. It has the form `(labels, no_below, no_above)`, with labels the list of labels considered when filtering the documents (`relevant` and `keyword` or `keyword` alone). `no_below` and `no_above` have the same meaning as below;
-* `no_below`: no-below value;
-* `no_above`: no-above value;
-* `topics`: number of topics;
-* `alpha`: alpha value;
-* `beta`: beta value;
-* `coherence`: coherence score of the model;
-* `times`: time spent evaluating this model;
-* `seed`: seed used;
-* `uuid`: UUID of the model;
-* `num_docs`: number of document;
-* `num_not_empty`: number of documents not empty after filtering.
-
-**IMPORTANT:**
-
-there are some issues on the reproducibility of the LDA training.
-Setting the `seed` option (see below) is not enough to guarantee the reproducibilty of the experiment.
-It is also necessary to set the environment variable `PYTHONHASHSEED` to `0`.
-The following command sets the variable for a single run in a Linux shell:
-
-    PYTHONHASHSEED=0 python3 lda_grid_search.py ...
-
-Also using a saved model requires the use of the same seed used for training and the `PYTHONHASHSEED` to 0.
-More information on the `PYTHONHASHSEED` variable can be found [here](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED).
-
-### Arguments:
-
-Positional:
-
-- `preproc_file` path to the preprocess file with the text to elaborate.
-- `terms_file` path to the file with the classified terms.
-- `outdir` path to the directory where to save the results. If omitted, the current directory is used.
-
-Optional:
-
-optional arguments:
-* `--text-column | -t TARGET_COLUMN`
-Column in preproc_file to process. If omitted 'abstract_lem' is used.
-* `--title-column TITLE`  Column in preproc_file to use as document title. If omitted 'title' is used.
-* `--min-topics | -m MIN_TOPICS`
-Minimum number of topics to retrieve (default: 5)
-* `--max-topics | -M MAX_TOPICS`
-Maximum number of topics to retrieve (default: 20)
-* `--step-topics | -s STEP_TOPICS`
-Step in range(min,max,step) for topics retrieving (default: 1)
-* `--seed SEED`           Seed to be used in training
-* `--plot-show`           if set, it plots the coherence
-* `--plot-save`           if set, it saves the plot of the coherence as `<outdir>/lda_plot.pdf`
-* `--placeholder | -p PLACEHOLDER`
-Placeholder for barrier word. Also used as a prefix for the relevant words. Default: '@'
-* `--delimiter DELIMITER`
-Delimiter used in preproc_file. Default '\t'
-* `--logfile LOGFILE`     log file name. If omitted 'slr-kit.log' is used
-
-### Example of usage
-Performs a grid search from 10 to 30 topics with a step of 2 topics using the documents in `dataset_preproc.csv` and using the classified terms in `dataset_terms.csv`.
-Save the result in `/path/to/outdir`:
-```
-lda_grid_search.py dataset_preproc.csv dataset_terms.csv /path/to/outdir --min-topics 10 --max-topics 30 --step-topics 2
-```
-
-## `stopword_extractor.py`
-
-- ACTION: Extracts a list of terms classified as stopwords from the terms file.
-- INPUT: CSV file with the list of terms classified by FAWOC.
-- OUTPUT: TXT file containing the list of stopwords.
-
-The script reads a file classified by FAWOC and searches for terms labelled as `stopword`.
-The output is a TXT file with one stopword per line.
-This is the format used by `preprocess.py` for the lists of stopwords.
-
-Positional arguments:
-* `terms_file`: path to the file with the classifed terms;
-* `outfile`: output file
-
-### Example of usage
-Extracts the stopwords from `dataset_terms.csv` and save the list in `stopwords.txt`:
-```
-stopword_extractor.py dataset_terms.csv stopwords.txt
-```
-
-## recover_classification.py
-- ACTION: Merges an old classified terms file with a new terms file.
-- INPUT: a CSV file with the classified terms and another CSV file with new terms.
-- OUTPUT: the merged CSV file.
-usage: recover_classification.py [-h] old new FILENAME
-
-This script is used to recover a classification already done.
-If a new list of terms is produced (maybe changing some parameters in `preprocess.py`), this script allows to recover an old classification taking the label of the already classified terms and applying them to the new list.
-
-Positional arguments:
-* `old`: old CSV data file partially classified
-* `new`: new CSV data file to be classified
-* `output`: output file name
-
-### Example of usage
-Recovers the classification made in `dataset_terms.csv` trasfering the applied labels to `dataset_terms_new.csv` and producing the `dataset_terms_merged.csv` file with the recovered classification.
+Alternatively, you want to run an optimization in the generation of the topics with:
 
 ```
-recover_classification.py dataset_terms.csv dataset_terms_new.csv dataset_terms_merged.csv
+slrkit topics optimize
 ```
 
+This operation takes **significantly more time**, but produces results that are **far more accurate**.
 
-# Additional scripts
+HINT: Use the optimization everytime a "production ready" result is required.
 
-## `analyze-occ.py`
+## Generation of reports (automatic)
 
-- ACTION: Generates the report of which document (abstract) contains which terms; for each document, reports all the contained terms, and the count.
-- INPUT: The JSON file produced by `occurrences.py`.
-- OUTPUT: A CSV file containing the list of documents (abstracts) containing the terms and the corresponding information.
-
-## `noise-stats.py`
-
-- ACTION: Calculate a statistic regarding noise words; it calculates, for each word, the ratio of the words labelled as noise (plus unlabelled words) against the total number of that word
-- INPUT: The CSV file with the terms extracted by `gen-n-grams.py`.
-- OUTPUT: A CSV files with one word (not a term!) per row, with its total count, number of noise labels and unlabelled items, plus the calculation of an index of noisiness
-
-Notice that a word is not a term. In the term `this term important` there are the three words `this`, `term` and `important`.
-This statistic could help to spot wrong labelling and/or words that are likely to be noise across several datasets.
-
-It is an utility program that may not directly enter the main workflow, but can start providing interesting insights regarding noise words that can help, in the future, to spot possible noise words earlier, or to spot possible errors in the classification.
-
-
-## `clear-postponed.py`
-
-- ACTION: Removes the label `postponed` from the input file.
-- INPUT: The CSV file with the terms extracted by `gen-n-grams.py`.
-- OUTPUT: The same input file without the `postponed`.
-
-TODO: being able to specify on the command line the label to remove.
-
-## `cmp-terms.py`
-
-- ACTION: Compare two CSV containing the same list of terms with possibly different labelling
-- INPUT: The two CSV files in the format produced by `gen-n-grams.py`; they should containg the same list of terms
-- OUTPUT: The list of terms that have different labels in the two files
-
-## `copy-labels.py`
-
-- ACTION: Copy the labels from the terms in the input CSV to the corresponding terms in the destination CSV.
-- INPUT: The two CSV files in the format produced by `gen-n-grams.py`.
-- OUTPUT: The list of terms in the destination CSV with labels assigned as in the input CSV.
-
-This script is useful when doing experiments with subsets of a list of terms that was already labelled.
-This type of experiments are indicated to save processing time during the development of scripts and algorithms.
-
-## `gen-td-idf.py`
-
-- ACTION: Calculates the TD-IDF index for the terms contained in the abstracts
-- INPUT: The list of abstracts generated by `preprocess.py`
-- OUTPUT: CSV containing the words with the top index
-
-NOTE: At the moment, this script works on the complete lemmatized abstracts. It could be made better to work on the JSON output of `occurrences.py`.
-
-## `match-occ-counts.py`
-
-- ACTION: Serve per generare il file di report con keyword + not-relevant per ciascun articolo in modo da studiarne il comportamento
-- INPUT:
-- OUTPUT:
-
-## `parse_pairings.py`
-
-- ACTION: Parse a file of a manual clustering session to create a ground-truth for a semi-supervised clustering
-- INPUT: Text file where each line represents a cluster and documents ID with format: 'cluster_label:2,3,5,34,[...]'
-- OUTPUT: JSON file with format: 'id' : ['label1', 'label2'] (a document may belong to multiple clusters)
-
-### Example of usage
+Generate the reports with:
 
 ```
-parse_pairings.py manual_pairings.txt > ground_truth.json
+slrkit report
 ```
 
-## `evaluate_clusters.py`
+The reports are generated in the `<timestamp>_<UUID>_reports/`.
+In the directory, you will find some `.md`, `.tex` and `.png` files that report the graphs and tables with the results.
 
-- ACTION: Analyze clustering performance comparing results with a ground truth
-- INPUT: Clusters and manually labeled documents (from `parse_pairings.py`)
-- OUTPUT: Multiple files with confusion matrices, pairs overlappings and other metrics
+# Using existing data
 
-### Example of usage
-
-```
-evaluate_clusters.py pckmeans_clusters.csv ground_truth.json
-```
-
-## `topic_report.py`
-
-- ACTION: Generates reports for various statistics regarding topics and papers. The reports will be based on 2 templates, if they are not found in the working directory of this script, they will be automatically copied from the directory `report_templates`.
-- INPUT: the abstracs file containing the 'title', 'journal' and 'year' columns, and the lda json file with the topics assigned to each document. This file is usually called `lda_docs-topics_<date>_<time>.json`.
-- OUTPUT: A directory named `report<timestamp>`, containing a figure in png format called `reportyear.png` and a `table` directory with three tex files containing tables in tex format. Also, a latex and a markdown reports are saved inside the directory, with names `report_template.tex` and `report.md`.
-
-This script prepares reports with some statistics about the analyzed documents.
-The statistics are:
-
-* number of paper classified in each topic, pubblicated in each considered year. Since the `lda.py` script calculate, for each paper, the probabilities that the paper is about a certain topic, this statistic is calculated as a real number;
-* a plot of the statistic above;
-* the number of paper pubblished in each journal for each topic. This statistic is a real number for the same reason of the one above;
-* the number of paper pubblished in each journal in each considered year;
-
-### Arguments
-
-Positional:
-
-- `abstract_file` path to the abstracts file
-- `json_file`: path to the json docs file, generated by `lda.py`
-- `topics_file`: path to the json topic terms file, generated by `lda.py`
-
-Optional:
-
-- `--dir | -d DIR`: path to the directory where output will be saved.
-- `--minyear | -m YEAR`: minimum year that will be used in the reports. If missing, the minimum year found in the data is used;
-- `--maxyear | -M YEAR`: maximum year that will be used in the reports. If missing, the maximum year found in the data is used.
-- `--plotsize | -p SIZE`: number of topics to be displayed in each subplot. If missing, 10 will be used.
-- `--compact | -c` : if set, the table listing all topics and terms will be in a compact style.
-- `--no_stats | -s` : if set, the table listing all topics and terms won't list every term coherence to the topic.
-
-### Example of usage
+## Clone a repository with labelled data
 
 ```
-topic_report.py dataset_abstract.csv lda_docs-topics_2021-07-14_101211.json
+git clone <repository>
 ```
 
-## report_templates
-In this directory there are the 2 templates, `report_template.md` and `report_template.tex` that are used by `topic_report.py`.
+## Regenerate all the necessary data
 
-## `report_template.md`
+```
+slrkit build
+```
 
-This is the Markdown template that will be automatically cloned and filled by `topic_report.py`.
-The report will contain:
-- A table containing data about Topic-Year evolution
-- A graph about Topic-Year evolution
-- A table containing data about the Journals that published the papers, and their topics distribution
-- A table containing data about the Journals that published the papers, and the publication year distribution
+## Generate topics and reports
 
-## `journal_lister.py`
+```
+slrkit topics optimize
+```
 
-- ACTION: Generates a list of the journals where the analyzed papers was pubblished.
-- INPUT: the abstracts file generated by `import_biblio.py` with the `journal` column.
-- OUTPUT: A list of journals in the format used by `FAWOC`.
+```
+slrkit report
+```
 
-This command produces a list suitable to be classified with `FAWOC` in order to filter the journals that are not relevant for the analysis.
+# Links to other docs
 
-The output file has the following format:
+- documentation of the commands of `slr-kit`: [slrkit command documentation](slrkit.md)
+- documentation of the scripts: TBD
+- FAWOC: TBD
+- utilities and analysis tools: TBD
 
-* `id`: a progressive identification number;
-* `term`: the name of the journal;
-* `label`: the label added by `FAWOC` to the journal. This field is left blank;
-* `count`: the number of papers pubblished in the journal.
-
-### Arguments:
-- `abstract_file` path to the abstracts file
-- `outfile`: path to csv output file
-
-## `filter_paper.py`
-
-- ACTION: Modify the file produced by the `import_biblio.py` adding a field used to papers from the journals considered not relevant.
-- INPUT: the the file with the abstract (the output of `import_biblio.py`) and the list of journals (produced by `journal_lister.py`) with the journals classified.
-- OUTPUT: The file with the abstracts with a field that tells if a paper must be considered or not.
-
-This command uses the classified list of journals to filters the papers.
-The output file has a new column `status` added.
-This field contains the value `good` for all the papers pubblished in journals classified as `relevant` or `keyword`.
-All the other papers are marked with the `rejected` value.
-This field is used by `preprocess.py` and `acronyms.py` to exclude the papers marked as `rejected`.
-
-### Arguments:
-* `abstract_file`  path to the file with the abstracts of the papers 
-* `journal_file`   path to the file with the classified journals
