@@ -4,6 +4,7 @@ import dataclasses
 import logging
 import pathlib
 import random
+import shutil
 import sys
 import time
 import uuid
@@ -711,6 +712,7 @@ def lda_ga_optimization(args):
     now = datetime.now()
     result_dir = args.outdir / f'{now:%Y-%m-%d_%H%M%S}_lda_results'
     result_dir.mkdir(exist_ok=True, parents=True)
+    shutil.copy(args.ga_params, result_dir / 'ga_params.toml')
     model_dir = result_dir / 'models'
     model_dir.mkdir(exist_ok=True)
 
