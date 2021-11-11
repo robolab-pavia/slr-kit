@@ -6,7 +6,14 @@ The tool is based on a specific semi-supervised workflow that leverages automati
 
 As a byproduct, `slr-kit` can be used to derive a listo terms related on a specific topic.
 
-# Installation and usage
+# Table of contents
+
+- Installation
+- Usage
+- The proposed workflow
+- Links to other docs
+
+# Installation
 
 ## From git repository
 
@@ -22,10 +29,12 @@ Install the dependencies:
 pip install -r requirements.txt
 ```
 
-Use the `slrkit.py` command, e.g.:
+# Usage
+
+If `slr-kit` was installed from the git repository, you can launch the `slrkit.py` command:
 
 ```
-python3 slrkit.py --help
+python3 slrkit.py
 ```
 
 # Support material for the FAST SLR workflow
