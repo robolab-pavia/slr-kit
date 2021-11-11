@@ -6,7 +6,7 @@ The tool is based on a specific semi-supervised workflow that leverages automati
 
 It analyzes the abstracts of scientific papers to derive the topics associated to the papers, allowing the clustering of papers by topic.
 
-As a byproduct, `slr-kit` can be used to derive a listo terms related on a specific topic.
+As a byproduct, `slr-kit` can be used to manage a list of terms related on a specific topic, curated by an expert, which can be useful in many NLP applications.
 
 # Table of contents
 
@@ -55,6 +55,16 @@ The basic steps are:
 - topics extraction (automatic)
 - generation of reports (automatic)
 
+HINT: anytime during the various steps, you can run the command
+
+```
+slrkit record
+```
+
+that will produce a snapshot of the current information required by an slr-kit project.
+Note that the snapshots are maintained as standard git repositories.
+Therefore, you can use the regular git commands to operate on the repo (git log, git status, git checkout, etc.).
+Moreover, you can use the usual git push/pull to move the dataset to/from remotes.
 
 ## Initialization of the project (automatic)
 
@@ -152,7 +162,14 @@ In the directory, you will find some `.md`, `.tex` and `.png` files that report 
 
 # Using existing data
 
+slr-kit can be also used on an existing dataset.
+
+In this example, we assume that the dataset was properly recorded using `slrkit record`, and all the terms have been already classified.
+
 ## Clone a repository with labelled data
+
+A dataset is kept versioned using git.
+Therefore, you can simply download a dataset with
 
 ```
 git clone <repository>
@@ -160,15 +177,28 @@ git clone <repository>
 
 ## Regenerate all the necessary data
 
+First, you need to re-build all the preprocessed data.
+This is done with one single command:
+
 ```
 slrkit build
 ```
 
+At this point, if necessary, you can refine the classification of terms by running the usual command
+
+```
+slrkit fawoc terms
+```
+
 ## Generate topics and reports
+
+Now you are ready to generate the topics and the reports with the same commands explained above:
 
 ```
 slrkit topics optimize
 ```
+
+followed by
 
 ```
 slrkit report
@@ -176,8 +206,8 @@ slrkit report
 
 # Links to other docs
 
-- documentation of the commands of `slr-kit`: [slrkit command documentation](slrkit.md)
-- documentation of the scripts: TBD
-- FAWOC: TBD
-- utilities and analysis tools: TBD
+- documentation of the [commands of `slr-kit`](docs/slrkit.md)
+- documentation of the [scripts](docs/scripts.md)
+- [FAWOC](https://github.com/robolab-pavia/fawoc)
+- utilities and analysis tools: TBA
 
