@@ -476,7 +476,8 @@ def evaluate(ind: LdaIndividual):
                 result['coherence'] = -float('inf')
 
         if not np.isinf(result['coherence']):
-            output_topics(topics, docs_topics, output_dir, 'lda')
+            output_topics(topics, docs_topics, output_dir, 'lda',
+                          result['uuid'])
 
         _coherences[ind_hash] = (result['coherence'], result['uuid'])
 
@@ -727,7 +728,7 @@ def lda_ga_optimization(args):
     model = LdaModel.load(str(lda_path / 'model'))
     dictionary = Dictionary.load(str(lda_path / 'model_dictionary'))
     topics, docs_topics, _ = prepare_topics(model, docs, titles, dictionary)
-    output_topics(topics, docs_topics, args.outdir, 'lda',
+    output_topics(topics, docs_topics, args.outdir, 'lda', best,
                   use_timestamp=not args.no_timestamp)
 
     save_toml_files(args, df, result_dir)
