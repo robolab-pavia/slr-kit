@@ -50,7 +50,7 @@ def init_argparser():
                              'topics list and their keywords')
     parser.add_argument('--dir', '-d', metavar='FILENAME',
                         help='output directory where reports and files will be '
-                             'saved')
+                             'saved', cli_only=True)
     parser.add_argument('--minyear', '-m', type=int,
                         help='minimum year to be reported. '
                              'If missing, the minimum year '

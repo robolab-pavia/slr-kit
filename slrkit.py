@@ -1,4 +1,5 @@
 import argparse
+import datetime
 import importlib
 import os
 import pathlib
@@ -797,16 +798,22 @@ def run_report(args):
 
     docs_topics_file = str(results_list[0])
     import re
-    m = re.search(r'lda_docs-topics_(?P<timestamp>[-0-9_]+).json',
+    m = re.search(r'lda_docs-topics(?P<timestamp>_[-0-9_]+)?'
+                  r'(?P<uuid>_[-0-9a-f]{36})?\.json',
                   docs_topics_file)
-    if not m:
-        terms_topics_file = 'lda_terms-topics.json'
-    else:
-        terms_topics_file = ''.join(['lda_terms-topics_',
-                                     m.group('timestamp'), '.json'])
+    grp = m.groupdict()
+    if grp['timestamp'] is None:
+        grp['timestamp'] = ''
+    if grp['uuid'] is None:
+        grp['uuid'] = ''
+    terms_topics_file = ''.join(['lda_terms-topics', grp['timestamp'],
+                                 grp['uuid'], '.json'])
 
     setattr(cmd_args, 'json_file', str(path / docs_topics_file))
     setattr(cmd_args, 'topics_file', str(path / terms_topics_file))
+    timestamp = f'{datetime.datetime.now():%Y-%m-%d_%H%M%S}'
+    dirpath = args.cwd / ''.join([timestamp, grp['uuid'], '_report'])
+    setattr(cmd_args, 'dir', str(dirpath))
 
     report(cmd_args)
 
