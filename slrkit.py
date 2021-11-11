@@ -775,36 +775,36 @@ def run_report(args):
     cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
                                               script_args)
     os.chdir(args.cwd)
-    len_json_files = len(args.json_files)
-    if len_json_files >= 2:
-        setattr(cmd_args, 'json_file', args.json_files[0])
-        setattr(cmd_args, 'topics_file', args.json_files[1])
-    elif len_json_files == 1:
-        print('Error: Missing lda_terms-topics file argument')
-        sys.exit(1)
+    if args.lda_results_path is None:
+        path = args.cwd
     else:
-        # get the list of the docs topics association file created with lda
-        # this list is sorted by modification time, so results_list[0] is the
-        # most recent file
-        results_list = sorted(args.cwd.glob('lda_docs-topics*.json'),
-                              key=lambda p: p.stat().st_mtime, reverse=True)
-        if not results_list:
-            msg = "Error: No lda_docs-topics json file found. " \
-                  "Run the 'lda' command first."
-            sys.exit(msg)
+        path = args.lda_results_path
+        if not path.exists():
+            print('Error: specified lda_results_path not found')
+            sys.exit(1)
 
-        docs_topics_file = str(results_list[0])
-        import re
-        m = re.search(r'lda_docs-topics_(?P<timestamp>[-0-9_]+).json',
-                      docs_topics_file)
-        if not m:
-            terms_topics_file = 'lda_terms-topics.json'
-        else:
-            terms_topics_file = ''.join(['lda_terms-topics_',
-                                         m.group('timestamp'), '.json'])
+    # get the list of the docs topics association file created with lda
+    # this list is sorted by modification time, so results_list[0] is the
+    # most recent file
+    results_list = sorted(path.glob('lda_docs-topics*.json'),
+                          key=lambda p: p.stat().st_mtime, reverse=True)
+    if not results_list:
+        msg = "Error: No lda_docs-topics json file found in {!r}. " \
+              "Run the 'lda' command first."
+        sys.exit(msg.format(str(path)))
 
-        setattr(cmd_args, 'json_file', docs_topics_file)
-        setattr(cmd_args, 'topics_file', terms_topics_file)
+    docs_topics_file = str(results_list[0])
+    import re
+    m = re.search(r'lda_docs-topics_(?P<timestamp>[-0-9_]+).json',
+                  docs_topics_file)
+    if not m:
+        terms_topics_file = 'lda_terms-topics.json'
+    else:
+        terms_topics_file = ''.join(['lda_terms-topics_',
+                                     m.group('timestamp'), '.json'])
+
+    setattr(cmd_args, 'json_file', str(path / docs_topics_file))
+    setattr(cmd_args, 'topics_file', str(path / terms_topics_file))
 
     report(cmd_args)
 
@@ -1139,12 +1139,16 @@ def optimize_lda_subparser(subparser):
 
 def report_subparser(subparser):
     help_str = 'Run the report creation script in a slr-kit project.'
+    descr = 'Without arguments it takes the last lda results found in the ' \
+            'project. If the user specifies a path as an argument, that ' \
+            'directory is searched for lda results to use (always the last ' \
+            'in cronological order).'
     parser_report = subparser.add_parser('report', help=help_str,
-                                         description=help_str)
-    parser_report.add_argument('json_files', nargs='*',
-                               help='Path to the json file containing the LDA '
-                                    'topic-paper results and the json file file '
-                                    'containing the LDA topic-terms results.')
+                                         description=' '.join([help_str, descr]))
+    parser_report.add_argument('lda_results_path', nargs='?',
+                               help='Path to the directory where the files '
+                                    'containing the LDA results to use are '
+                                    'stored.', type=pathlib.Path)
     parser_report.set_defaults(func=run_report)
 
 
