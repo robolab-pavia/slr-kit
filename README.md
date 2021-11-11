@@ -1,3 +1,31 @@
+# slr-kit: a tool to assist the writing of Systematic Literature Reviews
+
+`slr-kit` is a tool that is intended to assist in the development of a Systematic Literature Review (SLR) of scientific papers.
+
+The tool is based on a specific semi-supervised workflow that leverages automatic techniques based on text mining to automatize key steps in the workflow, while some manual operations are necessary to provide the expert knowledge to the process. `slr-kit` aims at making the manual operations as efficient as possible.
+
+# Installation and usage
+
+## From git repository
+
+Clone the repository:
+
+```
+git clone <repository address>
+```
+
+Install the dependencies:
+
+```
+pip install -r requirements.txt
+```
+
+Use the `slrkit.py` command, e.g.:
+
+```
+python3 slrkit.py --help
+```
+
 # Support material for the FAST SLR workflow
 
 The workflow is based on the following stages:
