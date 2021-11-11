@@ -279,7 +279,8 @@ def plot_years(topics_dict, dirname, plot_size, templates):
         plt.clf()
 
     fig, ax = plt.subplots(nrows=rows, ncols=1, figsize=(8, 4*rows))
-
+    if rows == 1:
+        ax = [ax]
     for i in range(rows):
         for topic in islice(topics_dict, i * plot_size, (i + 1) * plot_size):
             sorted_dic = sorted(topics_dict[topic].items())
