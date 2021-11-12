@@ -557,6 +557,23 @@ def run_terms(args):
     script_to_run(cmd_args)
 
 
+def run_topics(args):
+    if args.topics is None:
+        print('Error: missing sub-command name for command "topics"')
+        sys.exit(1)
+    elif args.topics == 'extract':
+        run_lda(args)
+    elif args.topics == 'optimize':
+        if not args.grid_search:
+            run_optimize_lda(args)
+        else:
+            run_lda_grid_search(args)
+    else:
+        msg = 'Error: unknown sub-command {!r} for command "topics"'
+        print(msg.format(args.topics))
+        sys.exit(1)
+
+
 def run_lda(args):
     config_dir, meta = check_project(args.cwd)
     if args.directory is None and (args.uuid is not None or args.id is not None):
@@ -1106,15 +1123,6 @@ def subparser_readme(subparser):
     parser_readme.set_defaults(func=run_readme)
 
 
-def subparser_lda_grid_search(subparser):
-    help_str = 'Run an optimization phase for the lda stage in a ' \
-               'slr-kit project using a grid search method'
-    parser_lda_grid_search = subparser.add_parser('lda_grid_search',
-                                                  help=help_str,
-                                                  description=help_str)
-    parser_lda_grid_search.set_defaults(func=run_lda_grid_search)
-
-
 def subparser_record(subparser):
     help_str = 'Record a snapshot of the project in the underlying git ' \
                'repository'
@@ -1137,13 +1145,16 @@ def subparser_record(subparser):
     parser_record.set_defaults(func=run_record)
 
 
-def subparser_optimize_lda(subparser):
-    help_str = 'Run an optimization phase for the lda stage in a' \
-               'slr-kit project, using a GA.'
-    parser_optimize_lda = subparser.add_parser('optimize_lda',
+def subparser_topics_optimize(subparser):
+    help_str = 'Run an optimization phase for the topics extraction stage in ' \
+               'a slr-kit project, using a GA.'
+    parser_optimize_lda = subparser.add_parser('optimize',
                                                help=help_str,
                                                description=help_str)
-    parser_optimize_lda.set_defaults(func=run_optimize_lda)
+    parser_optimize_lda.add_argument('--grid-search', action='store_true',
+                                     help='if set, the optimization is '
+                                          'performed using a slower grid '
+                                          'search algorihtm')
 
 
 def subparser_report(subparser):
@@ -1161,18 +1172,31 @@ def subparser_report(subparser):
     parser_report.set_defaults(func=run_report)
 
 
-def subparser_lda(subparser):
-    help_str = 'Run the lda stage in a slr-kit project'
-    parser_lda = subparser.add_parser('lda', help=help_str,
+def subparser_topics(subparser):
+    help_str = 'Subcommand to extract the topics from the documents in a ' \
+               'slrkit project. This command requires a subcommand.'
+    parser_lda = subparser.add_parser('topics', help=help_str,
                                       description=help_str)
-    group = parser_lda.add_mutually_exclusive_group()
+    topics_subp = parser_lda.add_subparsers(title='topics commands',
+                                            dest='topics')
+
+    subparser_topics_extract(topics_subp)
+    subparser_topics_optimize(topics_subp)
+    parser_lda.set_defaults(func=run_topics)
+
+
+def subparser_topics_extract(topics_subp):
+    help_str = 'Extract topics from the documents in a slr-kit project'
+    extract_parser = topics_subp.add_parser('extract', help=help_str,
+                                            description=help_str)
+    group = extract_parser.add_mutually_exclusive_group()
     group.add_argument('--config', '-c',
-                       help='Path to the toml file to be usedinstead of the '
+                       help='Path to the toml file to be used instead of the '
                             'project one.')
     group.add_argument('--directory', '-d',
                        help='Path to the directory with the results of the '
                             'optimization phase.')
-    group2 = parser_lda.add_mutually_exclusive_group()
+    group2 = extract_parser.add_mutually_exclusive_group()
     group2.add_argument('--uuid', '-u',
                         help='UUID of the model stored in the result directory. '
                              'If this option is given without the --directory '
@@ -1188,7 +1212,6 @@ def subparser_lda(subparser):
                              'and this option are missing and the --directory '
                              'is present, --id is assumed with value '
                              '%(default)r')
-    parser_lda.set_defaults(func=run_lda)
 
 
 def subparser_fawoc(subparser):
@@ -1338,15 +1361,11 @@ def init_argparser():
     # fawoc
     subparser_fawoc(subparser)
     # lda
-    subparser_lda(subparser)
+    subparser_topics(subparser)
     # report
     subparser_report(subparser)
-    # optimize_lda
-    subparser_optimize_lda(subparser)
     # record
     subparser_record(subparser)
-    # lda_grid_search
-    subparser_lda_grid_search(subparser)
     # stopwords
     subparser_stopword(subparser)
     # build
