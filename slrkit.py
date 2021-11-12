@@ -1151,10 +1151,11 @@ def subparser_topics_optimize(subparser):
     parser_optimize_lda = subparser.add_parser('optimize',
                                                help=help_str,
                                                description=help_str)
-    parser_optimize_lda.add_argument('--grid-search', action='store_true',
-                                     help='if set, the optimization is '
-                                          'performed using a slower grid '
-                                          'search algorihtm')
+    # parser_optimize_lda.add_argument('--grid-search', action='store_true',
+    #                                  help='if set, the optimization is '
+    #                                       'performed using a slower grid '
+    #                                       'search algorithm')
+    parser_optimize_lda.set_defaults(grid_search=False)
 
 
 def subparser_report(subparser):
