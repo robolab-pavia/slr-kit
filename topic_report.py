@@ -50,7 +50,7 @@ def init_argparser():
                              'topics list and their keywords')
     parser.add_argument('--dir', '-d', metavar='FILENAME',
                         help='output directory where reports and files will be '
-                             'saved')
+                             'saved', cli_only=True)
     parser.add_argument('--minyear', '-m', type=int,
                         help='minimum year to be reported. '
                              'If missing, the minimum year '
@@ -279,7 +279,8 @@ def plot_years(topics_dict, dirname, plot_size, templates):
         plt.clf()
 
     fig, ax = plt.subplots(nrows=rows, ncols=1, figsize=(8, 4*rows))
-
+    if rows == 1:
+        ax = [ax]
     for i in range(rows):
         for topic in islice(topics_dict, i * plot_size, (i + 1) * plot_size):
             sorted_dic = sorted(topics_dict[topic].items())
@@ -499,8 +500,8 @@ def report(args):
     if args.dir is not None:
         dirname = cwd / args.dir
     else:
-        timestamp = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-        dirname = cwd / ('report' + timestamp)
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d-%H%M%S')
+        dirname = cwd / f'{timestamp}_report'
 
     dirname.mkdir(exist_ok=True)
 

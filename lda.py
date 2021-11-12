@@ -7,6 +7,8 @@ Introduces Gensim's LDA model and demonstrates its use on the NIPS corpus.
 """
 import re
 import sys
+import uuid
+
 import tomlkit
 
 from join_lda_info import join_lda_info
@@ -438,7 +440,8 @@ def load_documents(preproc_file, target_col, title_col, delimiter):
     return documents, titles
 
 
-def output_topics(topics, docs_topics, outdir, file_prefix, use_timestamp=True):
+def output_topics(topics, docs_topics, outdir, file_prefix, uid,
+                  use_timestamp=True):
     """
     Saves the topics and docs-topics association to json files
 
@@ -456,6 +459,8 @@ def output_topics(topics, docs_topics, outdir, file_prefix, use_timestamp=True):
     :type outdir: Path
     :param file_prefix: prefix of the files
     :type file_prefix: str
+    :param uid: uuid associated to the generated topics
+    :type uid: str
     :param use_timestamp: if True (the default) add a timestamp to file names
     :type use_timestamp: bool
     """
@@ -464,17 +469,17 @@ def output_topics(topics, docs_topics, outdir, file_prefix, use_timestamp=True):
         timestamp = f'{now:_%Y-%m-%d_%H%M%S}'
     else:
         timestamp = ''
-    name = f'{file_prefix}_terms-topics{timestamp}.json'
+    name = f'{file_prefix}_terms-topics{timestamp}_{uid}.json'
     topic_file = outdir / name
     with open(topic_file, 'w') as file:
         json.dump(topics, file, indent='\t')
 
-    name = f'{file_prefix}_docs-topics{timestamp}.json'
+    name = f'{file_prefix}_docs-topics{timestamp}_{uid}.json'
     docs_file = outdir / name
     with open(docs_file, 'w') as file:
         json.dump(docs_topics, file, indent='\t')
 
-    info_file = outdir / f'{file_prefix}_info{timestamp}.txt'
+    info_file = outdir / f'{file_prefix}_info{timestamp}_{uid}.txt'
     join_lda_info(topics, docs_topics, str(info_file))
 
 
@@ -576,7 +581,8 @@ def lda(args):
                                                               dictionary)
 
     print(f'Average topic coherence: {avg_topic_coherence:.4f}.')
-    output_topics(topics, docs_topics, output_dir, 'lda',
+    u = str(uuid.uuid4())
+    output_topics(topics, docs_topics, output_dir, 'lda', u,
                   use_timestamp=not args.no_timestamp)
 
     if args.model:

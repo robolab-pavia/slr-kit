@@ -74,11 +74,9 @@ The sub-commands are:
 * [`preprocess`](#preprocess): run the preprocess stage in a slr-kit project
 * [`terms`](#terms): sub-command to extract and handle lists of terms in a slr-kit project. Requires a sub-command
 * [`fawoc`](#fawoc): run fawoc in a slr-kit project.
-* [`lda`](#lda): run the lda stage in a slr-kit project.
+* [`topics`](#topics): extract topic from the documents of a slr-kit project.
 * [`report`](#report): run the report creation script in a slr-kit project.
-* [`optimize_lda`](#optimize_lda): run an optimization phase for the lda stage in a slr-kit project, using a GA.
 * [`record`](#record): record a snapshot of the project in the underlying git repository.
-* [`lda_grid_search`](#lda_grid_search): run an optimization phase for the lda stage in a slr-kit project using a grid search method.
 * [`stopwords`](#stopwords): extracts a list of terms classified as stopwords from the terms file.
 * [`build`](#build): re-create the not versioned files after a git clone.
 
@@ -393,12 +391,22 @@ The only difference is that the `datafile` field is pre-filled with `<project-na
 
 The profiler file for this sub-command is `fawoc_acronyms_profiler.log` in the `log` directory of the project.
 
-### lda
-The `lda` command trains an LDA model and outputs the extracted topics and the association between topics and documents.
+### topics
+The `topics` command extracts topics from the documents of the project.
+
+This command accepts the following sub-commands:
+
+* `extract`: extracts topics from the documents;
+* `optimize`: optimizes the parameter of the topic extraction algorithm and uses that parameters to extract topics.
+
+The sub-command is always required.
+
+#### topics extract
+This sub-command trains an LDA model and outputs the extracted topics and the association between topics and documents.
 
 Usage:
 
-    python3 slrkit.py lda [--config CONFIG | --directory DIRECTORY] [--uuid UUID] [--id ID]
+    python3 slrkit.py topics extract [--config CONFIG | --directory DIRECTORY] [--uuid UUID] [--id ID]
 
 Optional arguments:
 
@@ -413,7 +421,7 @@ The `--directory`, in conjunction with the `--uuid` or the `--id`, allows the us
 If one of the `--uuid/--id` option is present, the `--directory` is required, otherwise the command ends with an error.
 
 This command runs the `lda.py` script.
-The `lda` sub-command uses, by default, the `lda.toml` configuration file that has the following structure:
+The `topicws extract` sub-command uses, by default, the `lda.toml` configuration file that has the following structure:
 
 * `preproc_file`: name of the *preprocess* file. Pre-filled with `<project-name>_preproc.csv`;
 * `terms_file`: name of the *terms* file. Pre-filled with `<project-name>_terms.csv`;
@@ -437,51 +445,15 @@ The command manage to set the `PYTHONHASHSEED` to 0 so setting the `seed` value 
 
 More information on the `PYTHONHASHSEED` variable can be found [here](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED).
 
-### report
+#### topics optimize
 
-The `report` command produces some reports with statistics about the papers analyzed by the `lda` command.
-This command runs the `topic_report.py` script.
-
-Usage:
-
-    python3 slrkit.py report [docs_topics_file terms_topics_file]
-
-With no arguments, the command searches all the `lda_docs-topics*.json` and `lda_terms-topics*.json` files in the current directory and uses the most recent one for each type.
-Files with that names are the ones produced by the `lda` command and contains the association between documents and topics and the association between terms and topics.
-The  `docs_topics_file` and `terms_topic_file` options, allow the user to select a different set of JSON files.
-
-The command uses the `report.toml` configuration file that has the following structure:
-
-* `abstract_file`: name of the *abstracts* file of the project. It is pre-filled with `<project-name>_abstarcts.csv`;
-* `dir`: output directory where the templates and the reports are saved. If empty, the current directory is used;
-* `minyear`: minimum year to consider. If empty, the minimum year found in the data is used;
-* `maxyear`: maximum year to consider. If empty, the maximum year found in the data is used.
-* `plotsize`: number of topics to be displayed in each subplot saved in the report directory;
-* `compact`: if true the command creates a compact table for the topics;
-* `no_stats`: if true the topics table do not show the statistics about terms.
-
-On the first run, the command copies the `report_template.md` and `report_template.tex` from the `report_template` directory inside this repository, to the current project.
-These two files are used to create the reports.
-The user can customize the two copied template as he wishes.
-
-The command creates a directory named `report<timestamp>` containing:
-
-* the report (called `report.md`) in markdown format;
-* the report (called `report.tex`) in LaTeX format;
-* a figure in png format (called `reportyear.png`) used by the two reports above;
-* a directory `tables` with some LaTeX files used by the LaTeX report.
-
-For information about the statistics reported, refer to the `topic_report.py` documentation in the [README](README.md) file.
-
-### optimize_lda
-
-The `optimize_lda` command runs the `lda_ga.py` script to find the best combination of parameters for an LDA model.
+This sub-command runs the `lda_ga.py` script to find the best combination of parameters for an LDA model.
 
 Usage:
 
-    python3 slrkit.py optimize_lda
+    python3 slrkit.py topics optimize
 
-The `optimize_lda` sub-command uses the `optimize_lda.toml` configuration file that has the following structure:
+The `topics optimize` sub-command uses the `optimize_lda.toml` configuration file that has the following structure:
 
 * `preproc_file`: name of the *preprocess* file. Pre-filled with `<project-name>_preproc.csv`;
 * `terms_file`: name of the *terms* file. Pre-filled with `<project-name>_terms.csv`;
@@ -526,7 +498,7 @@ The script outputs all the trained models in `<outdir>/<date>_<time>_lda_results
 The command outputs also the topics and the documents topics correspondence for each trained model.
 
 For each trained model is it produced a `toml` file with all the parameter already set to use the corresponding model with the `lda.py` script or the `lda` command.
-These `toml` files are saved in `<outdir>/<date>_<time>_lda_results/toml/<UUID>.toml`, and can be loaded in the `lda.py` script or the `lda` command using its `--config` option.
+These `toml` files are saved in `<outdir>/<date>_<time>_lda_results/toml/<UUID>.toml`, and can be loaded in the `lda.py` script or the `topics extract` command using its `--config` option.
 It also outputs a tsv file in `<outdir>/<date>_<time>_lda_results/results.csv` with the following format:
 
 * `id`: progressive identification number;
@@ -547,10 +519,46 @@ The topics are output in `<outdir>/lda_terms-topics_<date>_<time>.json` and the 
 to each document in `<outdir>/lda_docs-topics_<date>_<time>.json`.
 A txt file with a summary of the results is also produced with name `<outdir>/lda_info_<date>_<time>.txt`.
 
-
 The command manage to set the `PYTHONHASHSEED` to 0 so setting the `seed` value is enough to have reproducible runs.
 
 More information on the `PYTHONHASHSEED` variable can be found [here](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED).
+
+### report
+
+The `report` command produces some reports with statistics about the papers analyzed by the `lda` command.
+This command runs the `topic_report.py` script.
+
+Usage:
+
+    python3 slrkit.py report [docs_topics_file terms_topics_file]
+
+With no arguments, the command searches all the `lda_docs-topics*.json` and `lda_terms-topics*.json` files in the current directory and uses the most recent one for each type.
+Files with that names are the ones produced by the `lda` command and contains the association between documents and topics and the association between terms and topics.
+The  `docs_topics_file` and `terms_topic_file` options, allow the user to select a different set of JSON files.
+
+The command uses the `report.toml` configuration file that has the following structure:
+
+* `abstract_file`: name of the *abstracts* file of the project. It is pre-filled with `<project-name>_abstarcts.csv`;
+* `dir`: output directory where the templates and the reports are saved. If empty, the current directory is used;
+* `minyear`: minimum year to consider. If empty, the minimum year found in the data is used;
+* `maxyear`: maximum year to consider. If empty, the maximum year found in the data is used.
+* `plotsize`: number of topics to be displayed in each subplot saved in the report directory;
+* `compact`: if true the command creates a compact table for the topics;
+* `no_stats`: if true the topics table do not show the statistics about terms.
+
+On the first run, the command copies the `report_template.md` and `report_template.tex` from the `report_template` directory inside this repository, to the current project.
+These two files are used to create the reports.
+The user can customize the two copied template as he wishes.
+
+The command creates a directory named `report<timestamp>` containing:
+
+* the report (called `report.md`) in markdown format;
+* the report (called `report.tex`) in LaTeX format;
+* a figure in png format (called `reportyear.png`) used by the two reports above;
+* a directory `tables` with some LaTeX files used by the LaTeX report.
+
+For information about the statistics reported, refer to the `topic_report.py` documentation in the [README](README.md) file.
+
 
 ### record
 The `record` command creates a commit in the git repository of the project.
@@ -598,54 +606,6 @@ The function must return a list of file names to record.
 If there is something wrong in the configuration data, the function must raise a `ValueError` exception with the reason of the error.
 The message of the exception is used by the `record` command to create the error message to show to the user.
 
-### lda_grid_search
-
-The `lda_grid_search` command performs a grid search on the LDA model parameters and outputs all the trained models.
-
-The command searches the best combination (in terms of coherence) of number of topics, alpha, beta, no-below and no-above parameters.
-It searches all the possible combinations of parameters, discarding all the cases that results with all the documents empty.
-
-This command uses the `lda_grid_search.toml` configuration file that has the following format:
-
-
-* `preproc_file`: name of the *preprocess* file. Pre-filled with `<project-name>_preproc.csv`;
-* `terms_file`: name of the *terms* file. Pre-filled with `<project-name>_terms.csv`;
-* `outdir`: path to the directory where to save the results. Pre-filled with the path to project directory;
-* `text-column`: column of the *preprocess* file to elaborate. Pre-filled with `abstract_lem`;
-* `title-column`: column in the *preprocess* file to use as document title. Pre-filled with `title`;
-* `min-topics`: minimum number of topics to test. Pre-filled with 5;
-* `max-topics`: maximum number of topics to test. Pre-filled with 20;
-* `step-topics`: step used to create the grid of topics values. Pre-filled with 1;
-* `seed`: seed to be use in training;
-* `plot-show`: if `true`, a plot of the coherence is shown;
-* `plot-save`: if `true` the plot of the coherence is saved as `<outdir>/lda_plot.pdf`;
-* `placeholder`: placeholder for the barriers. Pre-filled with `@`;
-* `delimiter`: field delimiter used in the *preprocess* file. Pre-filled with `\t`.
-
-The command runs the `lda_grid_search.py` script.
-Refer to its documentation in the [README](README.md) for the criteria used to set up the grid of parameters.
-
-To each trained model it is assigned an UUID.
-The command outputs all the models in `<outdir>/<date>_<time>_lda_results/<UUID>`.
-It also outputs a tsv file in `<outdir>/<date>_<time>_lda_results/results.csv` with the following format:
-
-* `id`: progressive identification number;
-* `corpus`: descriptor of the corpus used. It has the form `(labels, no_below, no_above)`, with labels the list of labels considered when filtering the documents (`relevant` and `keyword` or `keyword` alone). `no_below` and `no_above` have the same meaning as below;
-* `no_below`: no-below value;
-* `no_above`: no-above value;
-* `topics`: number of topics;
-* `alpha`: alpha value;
-* `beta`: beta value;
-* `coherence`: coherence score of the model;
-* `times`: time spent evaluating this model;
-* `seed`: seed used;
-* `uuid`: UUID of the model;
-* `num_docs`: number of document;
-* `num_not_empty`: number of documents not empty after filtering.
-
-The command manage to set the `PYTHONHASHSEED` to 0 so setting the `seed` value is enough to have reproducible runs.
-
-More information on the `PYTHONHASHSEED` variable can be found [here](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED).
 
 ### stopwords
 The `stopwords` command extracts a list of terms classified as stopwords from the terms file.
@@ -693,6 +653,70 @@ After the README is created, it is committed to the git repository.
 Usage:
 
     python3 slrkit.py readme
+
+### Commands not available
+
+This section documents some commands that are not directly available.
+They can be activated and used modifying the code of the `slrkit` command.
+
+They are:
+
+* `lda_grid_search`: grid search optimization of the LDA parameters.
+
+#### lda_grid_search
+
+##### How to activate
+Modify the `argparse` sub-parser of the `topics optimize` sub-command to accept a boolean option named `grid-search`.
+All the other code is ready.
+
+##### How it works
+
+The `lda_grid_search` command performs a grid search on the LDA model parameters and outputs all the trained models.
+
+The command searches the best combination (in terms of coherence) of number of topics, alpha, beta, no-below and no-above parameters.
+It searches all the possible combinations of parameters, discarding all the cases that results with all the documents empty.
+
+This command uses the `lda_grid_search.toml` configuration file that has the following format:
+
+
+* `preproc_file`: name of the *preprocess* file. Pre-filled with `<project-name>_preproc.csv`;
+* `terms_file`: name of the *terms* file. Pre-filled with `<project-name>_terms.csv`;
+* `outdir`: path to the directory where to save the results. Pre-filled with the path to project directory;
+* `text-column`: column of the *preprocess* file to elaborate. Pre-filled with `abstract_lem`;
+* `title-column`: column in the *preprocess* file to use as document title. Pre-filled with `title`;
+* `min-topics`: minimum number of topics to test. Pre-filled with 5;
+* `max-topics`: maximum number of topics to test. Pre-filled with 20;
+* `step-topics`: step used to create the grid of topics values. Pre-filled with 1;
+* `seed`: seed to be use in training;
+* `plot-show`: if `true`, a plot of the coherence is shown;
+* `plot-save`: if `true` the plot of the coherence is saved as `<outdir>/lda_plot.pdf`;
+* `placeholder`: placeholder for the barriers. Pre-filled with `@`;
+* `delimiter`: field delimiter used in the *preprocess* file. Pre-filled with `\t`.
+
+The command runs the `lda_grid_search.py` script.
+Refer to its documentation in the [README](README.md) for the criteria used to set up the grid of parameters.
+
+To each trained model it is assigned an UUID.
+The command outputs all the models in `<outdir>/<date>_<time>_lda_results/<UUID>`.
+It also outputs a tsv file in `<outdir>/<date>_<time>_lda_results/results.csv` with the following format:
+
+* `id`: progressive identification number;
+* `corpus`: descriptor of the corpus used. It has the form `(labels, no_below, no_above)`, with labels the list of labels considered when filtering the documents (`relevant` and `keyword` or `keyword` alone). `no_below` and `no_above` have the same meaning as below;
+* `no_below`: no-below value;
+* `no_above`: no-above value;
+* `topics`: number of topics;
+* `alpha`: alpha value;
+* `beta`: beta value;
+* `coherence`: coherence score of the model;
+* `times`: time spent evaluating this model;
+* `seed`: seed used;
+* `uuid`: UUID of the model;
+* `num_docs`: number of document;
+* `num_not_empty`: number of documents not empty after filtering.
+
+The command manage to set the `PYTHONHASHSEED` to 0 so setting the `seed` value is enough to have reproducible runs.
+
+More information on the `PYTHONHASHSEED` variable can be found [here](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED).
 
 ## Exchanging slrkit projects with git
 A slrkit project is a git repository, so it is possible to record the work done and exchange it using a remote repository.
