@@ -1,0 +1,29 @@
+# general stop words
+using
+show
+result
+large
+also
+iv
+one
+two
+new
+previously
+shown
+# domain specific stop words
+kluwer
+paper
+present
+academic
+ieee
+press
+springer
+verlag
+berlin
+heidelberg
+interacting
+xfel
+business
+medium 
+elsevier
+copyright
