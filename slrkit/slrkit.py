@@ -12,6 +12,7 @@ import pandas as pd
 from slrkit_utils.argument_parser import ArgParse
 
 from utils import assert_column
+from version import __slrkit_version__
 
 SLRKIT_DIR = pathlib.Path(__file__).parent
 SCRIPTS = {
@@ -1344,6 +1345,8 @@ def init_argparser():
                         default=pathlib.Path.cwd(), metavar='path',
                         help='Change directory to %(metavar)r before running '
                              'the specified command.')
+    parser.add_argument('--version', '-V', action='version',
+                        version=f'%(prog)r version: {__slrkit_version__}')
     # dest is required to avoid a crash when the user inputs no command
     subparser = parser.add_subparsers(title='slrkit commands',
                                       required=True, dest='command')
