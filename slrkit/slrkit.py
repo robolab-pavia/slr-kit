@@ -11,8 +11,8 @@ import tomlkit
 import pandas as pd
 from slrkit_utils.argument_parser import ArgParse
 
-from utils import assert_column
-from version import __slrkit_version__
+from .utils import assert_column
+from .version import __slrkit_version__
 
 SLRKIT_DIR = pathlib.Path(__file__).parent
 SCRIPTS = {
