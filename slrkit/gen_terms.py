@@ -6,7 +6,7 @@ import sys
 import pandas
 
 from slrkit_utils.argument_parser import ArgParse
-from utils import setup_logger, STOPWORD_PLACEHOLDER, assert_column
+from .utils import setup_logger, STOPWORD_PLACEHOLDER, assert_column
 
 
 def to_record(config):

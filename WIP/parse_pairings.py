@@ -5,7 +5,7 @@ import re
 from collections import defaultdict
 from pprint import pprint
 
-from utils import setup_logger
+from slrkit.utils import setup_logger
 
 debug_logger = setup_logger('debug_logger', 'slr-kit.log', level=logging.DEBUG)
 

@@ -16,18 +16,18 @@ from .version import __slrkit_version__
 
 SLRKIT_DIR = pathlib.Path(__file__).parent
 SCRIPTS = {
-    'import': {'module': 'import_biblio', 'depends': [],
+    'import': {'module': '.import_biblio', 'depends': [],
                'additional_init': False, 'no_config': False},
-    'journals_extract': {'module': 'journal_lister', 'depends': ['import'],
+    'journals_extract': {'module': '.journal_lister', 'depends': ['import'],
                          'additional_init': False, 'no_config': False},
-    'journals_filter': {'module': 'filter_paper',
+    'journals_filter': {'module': '.filter_paper',
                         'depends': ['import', 'journals_extract'],
                         'additional_init': False, 'no_config': False},
-    'acronyms': {'module': 'acronyms', 'depends': ['import'],
+    'acronyms': {'module': '.acronyms', 'depends': ['import'],
                  'additional_init': False, 'no_config': False},
-    'preprocess': {'module': 'preprocess', 'depends': ['import'],
+    'preprocess': {'module': '.preprocess', 'depends': ['import'],
                    'additional_init': False, 'no_config': False},
-    'terms_generate': {'module': 'gen_terms', 'depends': ['preprocess'],
+    'terms_generate': {'module': '.gen_terms', 'depends': ['preprocess'],
                        'additional_init': False, 'no_config': False},
     'fawoc_terms': {'module': 'fawoc.fawoc', 'depends': ['terms_generate'],
                     'additional_init': False, 'no_config': False},
@@ -35,17 +35,17 @@ SCRIPTS = {
                        'additional_init': False, 'no_config': False},
     'fawoc_journals': {'module': 'fawoc.fawoc', 'depends': ['journals_extract'],
                        'additional_init': False, 'no_config': False},
-    'lda': {'module': 'lda', 'depends': ['preprocess', 'terms_generate'],
+    'lda': {'module': '.lda', 'depends': ['preprocess', 'terms_generate'],
             'additional_init': False, 'no_config': False},
-    'report': {'module': 'topic_report', 'depends': ['import'],
+    'report': {'module': '.topic_report', 'depends': ['import'],
                'additional_init': False, 'no_config': False},
-    'optimize_lda': {'module': 'lda_ga',
+    'optimize_lda': {'module': '.lda_ga',
                      'depends': ['preprocess', 'terms_generate'],
                      'additional_init': True, 'no_config': False},
-    'lda_grid_search': {'module': 'lda_grid_search',
+    'lda_grid_search': {'module': '.lda_grid_search',
                         'depends': ['preprocess', 'terms_generate'],
                         'additional_init': False, 'no_config': False},
-    'stopwords': {'module': 'stopword_extractor',
+    'stopwords': {'module': '.stopword_extractor',
                   'depends': ['terms_generate'],
                   'additional_init': False, 'no_config': True},
 }
@@ -126,7 +126,8 @@ def create_meta(args):
 
 
 def prepare_configfile(modulename, metafile, project_dir):
-    module = importlib.import_module(modulename)
+    module = importlib.import_module(modulename, 'slrkit')
+    # noinspection PyUnresolvedReferences
     args = module.init_argparser().slrkit_arguments
     conf = tomlkit.document()
     for arg_name, arg in args.items():
@@ -261,11 +262,11 @@ def run_init(slrkit_args):
 
                 conf[inputs[i]] = ''.join([meta['Project']['Name'],
                                            outputs[0]['suggest-suffix']])
-        mod = importlib.import_module(SCRIPTS[configname]['module'])
+        mod = importlib.import_module(SCRIPTS[configname]['module'], 'slrkit')
         if hasattr(mod, 'to_ignore') and callable(mod.to_ignore):
             try:
                 ignore_list.extend(mod.to_ignore(conf))
-            except ValueError as e:
+            except ValueError:
                 pass  # at this stage the config files can be incomplete
 
         p = (config_dir / configname).with_suffix('.toml')
@@ -401,7 +402,7 @@ def load_configfile(filename):
     return config
 
 
-def _argparse_exit(status=0, message=None):
+def _argparse_exit(_=0, message=None):
     raise ArgParseActionError(message)
 
 
@@ -520,7 +521,7 @@ def run_preproc(args):
     confname = 'preprocess.toml'
     config_dir, meta = check_project(args.cwd)
     config = load_configfile(config_dir / confname)
-    from preprocess import preprocess, init_argparser as preproc_argparse
+    from .preprocess import preprocess, init_argparser as preproc_argparse
     script_args = preproc_argparse().slrkit_arguments
     cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
                                                    script_args)
@@ -537,8 +538,8 @@ def run_preproc(args):
 def run_terms(args):
     if args.terms_operation is None or args.terms_operation == 'generate':
         confname = 'terms_generate.toml'
-        from gen_terms import (gen_terms as script_to_run,
-                               init_argparser as argparser)
+        from .gen_terms import (gen_terms as script_to_run,
+                                init_argparser as argparser)
     else:
         msg = 'Unexpected subcommand {!r} for command terms: Aborting'
         sys.exit(msg.format(args.journals_operation))
@@ -626,7 +627,7 @@ def run_lda(args):
 
     os.chdir(args.cwd)
     config = load_configfile(confname)
-    from lda import lda, init_argparser as lda_argparse
+    from .lda import lda, init_argparser as lda_argparse
     script_args = lda_argparse().slrkit_arguments
     cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
                                                    script_args)
@@ -655,7 +656,7 @@ def run_optimize_lda(args):
     confname = 'optimize_lda.toml'
     config_dir, meta = check_project(args.cwd)
     config = load_configfile(config_dir / confname)
-    from lda_ga import lda_ga_optimization, init_argparser as lda_ga_argparse
+    from .lda_ga import lda_ga_optimization, init_argparser as lda_ga_argparse
     script_args = lda_ga_argparse().slrkit_arguments
     cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
                                                    script_args)
@@ -687,7 +688,7 @@ def run_lda_grid_search(args):
     confname = 'lda_grid_search.toml'
     config_dir, meta = check_project(args.cwd)
     config = load_configfile(config_dir / confname)
-    from lda_grid_search import lda_grid_search, init_argparser as lda_gs_argparse
+    from .lda_grid_search import lda_grid_search, init_argparser as lda_gs_argparse
     script_args = lda_gs_argparse().slrkit_arguments
     cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
                                                    script_args)
@@ -751,7 +752,7 @@ def run_import(args):
     confname = 'import.toml'
     config_dir, meta = check_project(args.cwd)
     config = load_configfile(config_dir / confname)
-    from import_biblio import import_data, init_argparser as import_argparse
+    from .import_biblio import import_data, init_argparser as import_argparse
     script_args = import_argparse().slrkit_arguments
     cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
                                                    script_args)
@@ -766,7 +767,7 @@ def run_acronyms(args):
     confname = 'acronyms.toml'
     config_dir, meta = check_project(args.cwd)
     config = load_configfile(config_dir / confname)
-    from acronyms import acronyms, init_argparser as acro_argparse
+    from .acronyms import acronyms, init_argparser as acro_argparse
     script_args = acro_argparse().slrkit_arguments
     cmd_args, inputs, outputs = prepare_script_arguments(config, config_dir, confname,
                                                          script_args)
@@ -791,7 +792,7 @@ def run_report(args):
     confname = 'report.toml'
     config_dir, meta = check_project(args.cwd)
     config = load_configfile(config_dir / confname)
-    from topic_report import report, init_argparser as report_argparse
+    from .topic_report import report, init_argparser as report_argparse
     script_args = report_argparse().slrkit_arguments
     cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
                                               script_args)
@@ -858,12 +859,12 @@ def run_journals(args):
     """
     if args.journals_operation is None or args.journals_operation == 'extract':
         confname = 'journals_extract.toml'
-        from journal_lister import (journal_lister as script_to_run,
-                                    init_argparser as argparser)
+        from .journal_lister import (journal_lister as script_to_run,
+                                     init_argparser as argparser)
     elif args.journals_operation == 'filter':
         confname = 'journals_filter.toml'
-        from filter_paper import (filter_paper as script_to_run,
-                                  init_argparser as argparser)
+        from .filter_paper import (filter_paper as script_to_run,
+                                   init_argparser as argparser)
     else:
         msg = 'Unexpected subcommand {!r} for command journals: Aborting'
         sys.exit(msg.format(args.journals_operation))
@@ -896,9 +897,9 @@ def run_stopwords(args):
     config_dir, meta = check_project(args.cwd)
     confname = 'terms_generate.toml'
     config = load_configfile(config_dir / confname)
-    from stopword_extractor import (stopword_extractor,
-                                    init_argparser as argparser)
-    from gen_terms import init_argparser as gen_terms_argparse
+    from .stopword_extractor import (stopword_extractor,
+                                     init_argparser as argparser)
+    from .gen_terms import init_argparser as gen_terms_argparse
     script_args = argparser().slrkit_arguments
     gen_terms_args = gen_terms_argparse().slrkit_arguments
     del gen_terms_argparse
@@ -988,7 +989,7 @@ def run_record(args):
     for k, v in SCRIPTS.items():
         if v['no_config']:
             continue
-        mod = importlib.import_module(v['module'])
+        mod = importlib.import_module(v['module'], 'slrkit')
         config_file = (config_dir / k).with_suffix('.toml')
         config = load_configfile(config_file)
         if hasattr(mod, 'to_record') and callable(mod.to_record):

@@ -29,9 +29,9 @@ from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel, LdaModel
 
 from slrkit_utils.argument_parser import ArgParse
-from lda import (PHYSICAL_CPUS, MIN_ALPHA_VAL, prepare_documents,
-                 prepare_topics, output_topics, save_toml_files)
-from utils import STOPWORD_PLACEHOLDER, setup_logger
+from .lda import (PHYSICAL_CPUS, MIN_ALPHA_VAL, prepare_documents,
+                  prepare_topics, output_topics, save_toml_files)
+from .utils import STOPWORD_PLACEHOLDER, setup_logger
 
 EPSILON = 1e-7
 

@@ -12,7 +12,7 @@ from itertools import islice
 from jinja2 import Environment, FileSystemLoader
 from matplotlib import pyplot as plt
 from tabulate import tabulate
-from utils import assert_column
+from .utils import assert_column
 
 from slrkit_utils.argument_parser import ArgParse
 
