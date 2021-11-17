@@ -15,6 +15,7 @@ from .utils import assert_column
 from .version import __slrkit_version__
 
 SLRKIT_DIR = pathlib.Path(__file__).parent
+STOPWORDS_DIR = SLRKIT_DIR / 'default_stopwords'
 SCRIPTS = {
     'import': {'module': '.import_biblio', 'depends': [],
                'additional_init': False, 'no_config': False},
@@ -26,7 +27,7 @@ SCRIPTS = {
     'acronyms': {'module': '.acronyms', 'depends': ['import'],
                  'additional_init': False, 'no_config': False},
     'preprocess': {'module': '.preprocess', 'depends': ['import'],
-                   'additional_init': False, 'no_config': False},
+                   'additional_init': True, 'no_config': False},
     'terms_generate': {'module': '.gen_terms', 'depends': ['preprocess'],
                        'additional_init': False, 'no_config': False},
     'fawoc_terms': {'module': 'fawoc.fawoc', 'depends': ['terms_generate'],
@@ -286,6 +287,13 @@ def run_init(slrkit_args):
                     shutil.copy2(SLRKIT_DIR / 'ga_param.toml', ga_params)
 
                 conf['ga_params'] = str(ga_params.relative_to(slrkit_args.cwd))
+            elif configname == 'preprocess':
+                stopwords = STOPWORDS_DIR.glob('*')
+                for f in stopwords:
+                    sw = pathlib.Path.cwd() / f.name
+                    if not sw.exists():
+                        shutil.copy2(f, sw)
+                    conf['stop-words'].append(f.name)
             else:  # if here, no code for the additional init
                 raise AddionalInitNotProvvidedError(configname)
         with open(p, 'w') as file:
