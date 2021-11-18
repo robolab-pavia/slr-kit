@@ -629,6 +629,8 @@ usage: merge_labels.py [-h] old new FILENAME
 
 This script is used to recover a classification already done.
 If a new list of terms is produced (maybe changing some parameters in `preprocess.py`), this script allows to recover an old classification taking the label of the already classified terms and applying them to the new list.
+This script also searches for a `fawoc_data.tsv` file associated with the new classification.
+If this file is found it is used to create a `fawoc_data.tsv` file associated with the merged classification.
 
 Positional arguments:
 * `old`: old CSV data file partially classified
