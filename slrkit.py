@@ -826,8 +826,8 @@ def run_report(args):
     terms_topics_file = ''.join(['lda_terms-topics', grp['timestamp'],
                                  grp['uuid'], '.json'])
 
-    setattr(cmd_args, 'json_file', str(path / docs_topics_file))
-    setattr(cmd_args, 'topics_file', str(path / terms_topics_file))
+    setattr(cmd_args, 'docs_topics_file', str(docs_topics_file))
+    setattr(cmd_args, 'terms_topics_file', str(path / terms_topics_file))
     timestamp = f'{datetime.datetime.now():%Y-%m-%d_%H%M%S}'
     dirpath = args.cwd / ''.join([timestamp, grp['uuid'], '_report'])
     setattr(cmd_args, 'dir', str(dirpath))
