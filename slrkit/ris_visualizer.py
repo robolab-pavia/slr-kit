@@ -4,7 +4,7 @@ import string
 import tkinter as tk
 from tkinter import ttk
 import pandas as pd
-import utils
+from .utils import substring_index, substring_check
 
 WORD_DELIMITERS = string.whitespace + ',;.:"\'()\\/-'
 
@@ -155,7 +155,7 @@ class TextWrapper(tk.Text):
                 s = s.lower()
                 w = w.lower()
 
-            idx += list(utils.substring_index(s, w, delim=WORD_DELIMITERS))
+            idx += list(substring_index(s, w, delim=WORD_DELIMITERS))
 
         for start, end in idx:
             sstart = '1.{}'.format(start)
@@ -389,7 +389,7 @@ class Gui:
             else:
                 txt = self.filter_txt
 
-            return utils.substring_check(v, txt, delim=delim)
+            return substring_check(v, txt, delim=delim)
 
         cond = self.df[self.filter_field].apply(func)
         return cond

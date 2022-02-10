@@ -22,8 +22,8 @@ from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel, LdaModel
 
 from slrkit_utils.argument_parser import ArgParse, ValidateInt
-from lda import PHYSICAL_CPUS, prepare_documents, prepare_corpus, save_toml_files
-from utils import STOPWORD_PLACEHOLDER, setup_logger
+from .lda import PHYSICAL_CPUS, prepare_documents, prepare_corpus, save_toml_files
+from .utils import STOPWORD_PLACEHOLDER, setup_logger
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
 _corpora: Optional[Dict[Tuple[str], Tuple[List[Tuple[int, int]],

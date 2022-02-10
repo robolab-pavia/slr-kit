@@ -1,0 +1,5 @@
+include LICENSE
+include README.md
+include slrkit/ga_param.toml
+include slrkit/default_stopwords/*
+include slrkit/report_templates/*

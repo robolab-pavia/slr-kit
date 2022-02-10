@@ -1,16 +1,10 @@
 gensim
-tqdm
 matplotlib
 nltk
 numpy
 pandas
 RISparser
-scikit-learn
 regex
-scipy
-joblib
-seaborn
-active-semi-supervised-clustering
 psutil
 treetaggerwrapper
 git+https://github.com/robolab-pavia/fawoc.git
