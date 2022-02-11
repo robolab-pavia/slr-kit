@@ -7,10 +7,10 @@ RISparser
 regex
 psutil
 treetaggerwrapper
-git+https://github.com/robolab-pavia/fawoc.git
+fawoc
 tabulate
 Jinja2
 tomlkit
-git+https://github.com/robolab-pavia/slr-kit-utils.git
+slr-kit-utils
 deap
 GitPython
