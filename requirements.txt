@@ -11,6 +11,6 @@ fawoc
 tabulate
 Jinja2
 tomlkit
-slr-kit-utils
+slrkit-utils
 deap
 GitPython
