@@ -188,7 +188,7 @@ def gen_terms(args):
                 })
                 index += 1
 
-    with open(path.parent / name, 'w') as fawoc_file:
+    with open(path.parent / name, 'w', encoding="utf-8") as fawoc_file:
         fawoc_data_writer = csv.DictWriter(fawoc_file, delimiter='\t',
                                            quotechar='"',
                                            quoting=csv.QUOTE_MINIMAL,
