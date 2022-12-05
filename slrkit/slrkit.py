@@ -11,8 +11,8 @@ import tomlkit
 import pandas as pd
 from slrkit_utils.argument_parser import ArgParse
 
-from .utils import assert_column
-from .version import __slrkit_version__
+from utils import assert_column
+from version import __slrkit_version__
 
 SLRKIT_DIR = pathlib.Path(__file__).parent
 STOPWORDS_DIR = SLRKIT_DIR / 'default_stopwords'
@@ -529,7 +529,7 @@ def run_preproc(args):
     confname = 'preprocess.toml'
     config_dir, meta = check_project(args.cwd)
     config = load_configfile(config_dir / confname)
-    from .preprocess import preprocess, init_argparser as preproc_argparse
+    from preprocess import preprocess, init_argparser as preproc_argparse
     script_args = preproc_argparse().slrkit_arguments
     cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
                                                    script_args)
@@ -546,7 +546,7 @@ def run_preproc(args):
 def run_terms(args):
     if args.terms_operation is None or args.terms_operation == 'generate':
         confname = 'terms_generate.toml'
-        from .gen_terms import (gen_terms as script_to_run,
+        from gen_terms import (gen_terms as script_to_run,
                                 init_argparser as argparser)
     else:
         msg = 'Unexpected subcommand {!r} for command terms: Aborting'
@@ -635,7 +635,7 @@ def run_lda(args):
 
     os.chdir(args.cwd)
     config = load_configfile(confname)
-    from .lda import lda, init_argparser as lda_argparse
+    from lda import lda, init_argparser as lda_argparse
     script_args = lda_argparse().slrkit_arguments
     cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
                                                    script_args)
@@ -664,7 +664,7 @@ def run_optimize_lda(args):
     confname = 'optimize_lda.toml'
     config_dir, meta = check_project(args.cwd)
     config = load_configfile(config_dir / confname)
-    from .lda_ga import lda_ga_optimization, init_argparser as lda_ga_argparse
+    from lda_ga import lda_ga_optimization, init_argparser as lda_ga_argparse
     script_args = lda_ga_argparse().slrkit_arguments
     cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
                                                    script_args)
@@ -696,7 +696,7 @@ def run_lda_grid_search(args):
     confname = 'lda_grid_search.toml'
     config_dir, meta = check_project(args.cwd)
     config = load_configfile(config_dir / confname)
-    from .lda_grid_search import lda_grid_search, init_argparser as lda_gs_argparse
+    from lda_grid_search import lda_grid_search, init_argparser as lda_gs_argparse
     script_args = lda_gs_argparse().slrkit_arguments
     cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
                                                    script_args)
@@ -760,7 +760,7 @@ def run_import(args):
     confname = 'import.toml'
     config_dir, meta = check_project(args.cwd)
     config = load_configfile(config_dir / confname)
-    from .import_biblio import import_data, init_argparser as import_argparse
+    from import_biblio import import_data, init_argparser as import_argparse
     script_args = import_argparse().slrkit_arguments
     cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
                                                    script_args)
@@ -775,7 +775,7 @@ def run_acronyms(args):
     confname = 'acronyms.toml'
     config_dir, meta = check_project(args.cwd)
     config = load_configfile(config_dir / confname)
-    from .acronyms import acronyms, init_argparser as acro_argparse
+    from acronyms import acronyms, init_argparser as acro_argparse
     script_args = acro_argparse().slrkit_arguments
     cmd_args, inputs, outputs = prepare_script_arguments(config, config_dir, confname,
                                                          script_args)
@@ -800,7 +800,7 @@ def run_report(args):
     confname = 'report.toml'
     config_dir, meta = check_project(args.cwd)
     config = load_configfile(config_dir / confname)
-    from .topic_report import report, init_argparser as report_argparse
+    from topic_report import report, init_argparser as report_argparse
     script_args = report_argparse().slrkit_arguments
     cmd_args, _, _ = prepare_script_arguments(config, config_dir, confname,
                                               script_args)
@@ -867,11 +867,11 @@ def run_journals(args):
     """
     if args.journals_operation is None or args.journals_operation == 'extract':
         confname = 'journals_extract.toml'
-        from .journal_lister import (journal_lister as script_to_run,
+        from journal_lister import (journal_lister as script_to_run,
                                      init_argparser as argparser)
     elif args.journals_operation == 'filter':
         confname = 'journals_filter.toml'
-        from .filter_paper import (filter_paper as script_to_run,
+        from filter_paper import (filter_paper as script_to_run,
                                    init_argparser as argparser)
     else:
         msg = 'Unexpected subcommand {!r} for command journals: Aborting'
@@ -905,9 +905,9 @@ def run_stopwords(args):
     config_dir, meta = check_project(args.cwd)
     confname = 'terms_generate.toml'
     config = load_configfile(config_dir / confname)
-    from .stopword_extractor import (stopword_extractor,
+    from stopword_extractor import (stopword_extractor,
                                      init_argparser as argparser)
-    from .gen_terms import init_argparser as gen_terms_argparse
+    from gen_terms import init_argparser as gen_terms_argparse
     script_args = argparser().slrkit_arguments
     gen_terms_args = gen_terms_argparse().slrkit_arguments
     del gen_terms_argparse

@@ -16,8 +16,7 @@ from psutil import cpu_count
 from slrkit_utils.argument_parser import (AppendMultipleFilesAction,
                                           AppendMultiplePairsAction,
                                           ArgParse)
-from .utils import (setup_logger, assert_column,
-                   log_end, log_start, STOPWORD_PLACEHOLDER, RELEVANT_PREFIX)
+import utils
 
 PHYSICAL_CPUS = cpu_count(logical=False)
 

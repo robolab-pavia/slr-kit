@@ -4,7 +4,7 @@ import string
 import tkinter as tk
 from tkinter import ttk
 import pandas as pd
-from .utils import substring_index, substring_check
+from utils import substring_index, substring_check
 
 WORD_DELIMITERS = string.whitespace + ',;.:"\'()\\/-'
 

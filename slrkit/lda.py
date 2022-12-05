@@ -31,8 +31,8 @@ from gensim.models.coherencemodel import CoherenceModel
 from psutil import cpu_count
 
 from slrkit_utils.argument_parser import ArgParse
-from .utils import substring_index, STOPWORD_PLACEHOLDER, assert_column
-from .join_lda_info import join_lda_info
+from utils import substring_index, STOPWORD_PLACEHOLDER, assert_column
+from join_lda_info import join_lda_info
 
 PHYSICAL_CPUS = cpu_count(logical=False)
 MIN_ALPHA_VAL = 1e-20

@@ -3,7 +3,7 @@ import sys
 
 import pandas as pd
 from slrkit_utils.argument_parser import ArgParse
-from .utils import assert_column
+from utils import assert_column
 
 
 def init_argparser():

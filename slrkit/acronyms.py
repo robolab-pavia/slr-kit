@@ -4,8 +4,8 @@ import logging
 import pandas as pd
 
 from slrkit_utils.argument_parser import ArgParse
-from .schwartz_hearst import extract_abbreviation_definition_pairs
-from .utils import setup_logger, assert_column
+from schwartz_hearst import extract_abbreviation_definition_pairs
+from utils import setup_logger, assert_column
 
 
 def to_record(config):
