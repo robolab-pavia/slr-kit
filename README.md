@@ -18,6 +18,16 @@ As a byproduct, `slr-kit` can be used to manage a list of terms related on a spe
 
 # Installation
 
+## Using pip
+
+`slrkit` is available on PyPi and can thus be installed as
+
+```
+pip install slrkit
+```
+
+The documentation below refers to the installed program though pip.
+
 ## From git repository
 
 Clone the repository:
@@ -30,6 +40,21 @@ Install the dependencies:
 
 ```
 pip install -r requirements.txt
+```
+
+In this case, the command can be run, from within the repository directory, as
+
+```
+python3 slrkit/slrkit.py
+```
+
+# Install `nltk` corpora
+
+After installing `slrkit` and its dependencies, the corpora for `NLTK` must be downloaded.
+The following command can be used:
+
+```
+python -m nltk.downloader popular
 ```
 
 # Usage
