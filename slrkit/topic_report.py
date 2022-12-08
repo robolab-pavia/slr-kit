@@ -402,7 +402,7 @@ def compact_topic_terms(topic_file, no_stats):
 
 def save_markdown_report(topic_year_list, journal_topic_list, journal_year_list,
                          topic_terms_list, md_filename, template_path):
-    env = Environment(loader=FileSystemLoader(template_path), autoescape=True)
+    env = Environment(loader=FileSystemLoader(str(template_path)), autoescape=True)
     template = env.get_template(MD_TEMPLATE)
     topic_terms_table = tabulate(topic_terms_list, headers='firstrow',
                                  floatfmt='.3f', tablefmt='github')
