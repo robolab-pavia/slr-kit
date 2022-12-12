@@ -21,6 +21,9 @@ import utils
 PHYSICAL_CPUS = cpu_count(logical=False)
 
 
+barrier_string = '%%%%%'
+
+
 class Lemmatizer(abc.ABC):
     @abc.abstractmethod
     def lemmatize(self, text: Sequence[str]) -> Generator[Tuple[str, str], None, None]:
@@ -305,10 +308,10 @@ def language_specific_regex(text, lang='en'):
     """
     Applies some regex specific for a language
 
-    This function marks everything that is a barrier with '---'. This is done
-    because the regex may delete all special character included the ones in the
-    barrier placeholder, but the '-' is always preserved.
-    Remember to change the '---' with the barrier.
+    This function marks everything that is a barrier with barrier_string. This
+    is done because the regex may delete all special character included the
+    ones in the barrier placeholder, but the '-' is always preserved.
+    Remember to change the barrier_string with the barrier.
     :param text: text to elaborate
     :type text: str
     :param lang: code of the language (e.g. 'en' for english)
@@ -319,13 +322,13 @@ def language_specific_regex(text, lang='en'):
     # The first step in every language is to change punctuations to the stop-word
     # placeholder. The stop-word placeholder can be anything, so we have to change
     # the punctuation with something that will survive the special char removal.
-    # '---' it's ok because hyphens are preserved in every language.
+    # barrier_string it's ok because hyphens are preserved in every language.
     if lang == 'en':
         # punctuation
         # remove commas
         out_text = re.sub(',', ' ', text)
         # other punctuation is considered as a barrier
-        out_text = re.sub('[.;:!?()"\']', ' --- ', out_text)
+        out_text = re.sub('[.;:!?()"\']', ' ' + barrier_string + ' ', out_text)
         # Remove special characters (not the hyphen) and digits
         # also preserve the '__' used by some placeholders
         return re.sub(r'(\d|[^-\w])+|(?<=[^_])_(?=[^_])', ' ', out_text)
@@ -334,7 +337,7 @@ def language_specific_regex(text, lang='en'):
         # remove commas
         out_text = re.sub(',', ' ', text)
         # preserve "'" but other punctuation is considered as a barrier
-        out_text = re.sub('[,.;:!?()"]', ' --- ', out_text)
+        out_text = re.sub('[,.;:!?()"]', ' ' + barrier_string + ' ', out_text)
         # Remove special characters (not the hyphen) and digits. but preserve
         # accented letters. Also preserve "'" if surrounded by non blank chars
         # and the '__' used by some placeholders
@@ -351,7 +354,7 @@ def regex(text, stopword_placeholder=STOPWORD_PLACEHOLDER, lang='en',
 
     This function applies the regex defined in the regex_df.
     It also applies the language specific regex and some standard regex and it
-    changes the '---' with the barrier.
+    changes the barrier_string with the barrier.
     :param text: text to elaborate
     :type text: str
     :param stopword_placeholder: string used as placeholder for the stopwords
@@ -391,9 +394,9 @@ def regex(text, stopword_placeholder=STOPWORD_PLACEHOLDER, lang='en',
     # digits. The definition of special character and punctuation, changes with
     # the language
     text = language_specific_regex(text, lang)
-    # now we can search for ' --- ' and place the stop-word placeholder
+    # now we can search for ' barrier_string ' and place the stop-word placeholder
     # the positive look-ahead and look-behind are to preserve the spaces
-    text = re.sub(r'---', stopword_placeholder, text)
+    text = re.sub(barrier_string, stopword_placeholder, text)
     # remove any run of hyphens not surrounded by non space
     text = re.sub(r'(\s+-+\s+|(?<=\S)-+\s+|\s+-+(?=\S))|(-{2,})', ' ', text)
 
@@ -454,12 +457,12 @@ def preprocess_item(item, relevant_terms, stopwords, acronyms, language='en',
     """
     lem = get_lemmatizer(language)
     # replace acronym abbreviation - it's done here because we need to search
-    # the abbreviation in case sensitive mode. To mark the barrier, we use '---'
-    # as placeholder because is preserved and substituted with the proper string
-    # by the regex function
+    # the abbreviation in case sensitive mode. To mark the barrier, we use
+    # barrier_string as placeholder because is preserved and substituted with
+    # the proper string by the regex function
     text = item
     pl_list = []
-    for i, (pl, abbr) in enumerate(acronyms_abbr_generator(acronyms, '---')):
+    for i, (pl, abbr) in enumerate(acronyms_abbr_generator(acronyms, barrier_string)):
         text = re.sub(rf'\b{abbr[0]}\b', f'@{i}@', text)
         pl_list.append(pl)
 
