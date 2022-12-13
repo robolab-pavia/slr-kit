@@ -259,8 +259,11 @@ def prepare_documents(preproc_file, terms_file, labels,
     :rtype: tuple[list[list[str]], list[str]]
     """
     ret = generate_filtered_docs_ngrams(terms_file, preproc_file,
-                                        target_col, title_col, delimiter,
-                                        labels, placeholder=placeholder,
+                                        target_col=target_col,
+                                        title_col=title_col,
+                                        delimiter=delimiter,
+                                        labels=labels,
+                                        placeholder=placeholder,
                                         relevant_prefix=relevant_prefix)
     docs, titles = ret
     return docs, titles
