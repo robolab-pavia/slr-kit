@@ -725,11 +725,14 @@ def lda_ga_optimization(args):
 
     best = df.at[0, 'uuid']
     lda_path = model_dir / best
-    model = LdaModel.load(str(lda_path / 'model'))
-    dictionary = Dictionary.load(str(lda_path / 'model_dictionary'))
-    topics, docs_topics, _ = prepare_topics(model, docs, titles, dictionary)
-    output_topics(topics, docs_topics, args.outdir, 'lda', best,
-                  use_timestamp=not args.no_timestamp)
+    if Path(lda_path / 'model').is_file():
+        model = LdaModel.load(str(lda_path / 'model'))
+        if Path(lda_path / 'model_dictionary').is_file():
+            dictionary = Dictionary.load(str(lda_path / 'model_dictionary'))
+            topics, docs_topics, _ = prepare_topics(model, docs,
+                                                    titles, dictionary)
+            output_topics(topics, docs_topics, args.outdir, 'lda', best,
+                          use_timestamp=not args.no_timestamp)
 
     save_toml_files(args, df, result_dir)
     df.to_csv(result_dir / 'results.csv', sep='\t', index_label='id')
