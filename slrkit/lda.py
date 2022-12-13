@@ -167,8 +167,11 @@ def filter_doc(d: str, ngram_len, terms, placeholder, relevant_prefix):
             end = True
         else:
             stop = d.find(relevant_prefix, i+1)
-            additional.append(((i+1, stop), d[i+1:stop]))
-            idx = stop + 1
+            if stop > 0:
+                additional.append(((i+1, stop), d[i+1:stop]))
+                idx = stop + 1
+            else:
+                end = True
 
     doc = []
     flag = False
