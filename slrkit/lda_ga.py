@@ -35,6 +35,7 @@ from utils import STOPWORD_PLACEHOLDER, setup_logger
 
 EPSILON = 1e-7
 
+logger = None
 
 # these globals are used by the multiprocess workers used in compute_optimal_model
 _corpus: Optional[List[List[str]]] = None
@@ -398,6 +399,9 @@ def load_additional_terms(input_file):
 # topics, alpha, beta, no_above, no_below label
 def evaluate(ind: LdaIndividual):
     global _corpus, _titles, _seed, _modeldir, _coherences
+    logger = logging.getLogger('debug_logger')
+    u = str(uuid.uuid4())
+    logger.debug(f'{u}: started evaluation')
     # unpack parameter
     n_topics = int(ind.topics)
     alpha = ind.alpha
@@ -405,7 +409,6 @@ def evaluate(ind: LdaIndividual):
     no_above = ind.no_above
     no_below = int(ind.no_below)
     result = {}
-    u = str(uuid.uuid4())
     result['uuid'] = u
     result['coherence'] = -float('inf')
     result['seed'] = _seed
@@ -484,6 +487,7 @@ def evaluate(ind: LdaIndividual):
         model.save(str(output_dir / 'model'))
         dictionary.save(str(output_dir / 'model_dictionary'))
         result['saved_model'] = True
+        logger.debug(f"{u}: evaluation completed")
 
     with open(output_dir / 'results.csv', 'w') as file:
         writer = csv.DictWriter(file, fieldnames=list(result.keys()))
@@ -614,6 +618,7 @@ def optimization(documents, titles, params, toolbox, args, model_dir):
     stats.register('std', np.std)
     stats.register('min', np.min)
     stats.register('max', np.max)
+    print('Starting GA optimization')
     with Manager() as m:
         coherence_cache = m.dict()
         with Pool(processes=PHYSICAL_CPUS, initializer=init_train,
@@ -668,6 +673,7 @@ def prepare_ga_toolbox(max_no_below, params):
 
 
 def lda_ga_optimization(args):
+    global logger
     logger = setup_logger('debug_logger', args.logfile, level=logging.DEBUG)
     logger.info('==== lda_ga_grid_search started ====')
 
