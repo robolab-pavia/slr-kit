@@ -247,6 +247,13 @@ def generate_filtered_docs_ngrams(terms_file, preproc_file,
                                                      title_col,
                                                      optional_filtered_col,
                                                      delimiter)
+    # TODO: the logic should be improved to regenerate the filtered text
+    # if the terms file is newer that the preproc file; otherwise this
+    # would require the user to manually delete the column from the
+    # preproc file to trigger the regeneration of the filtered text
+    # MAYBE this could be made interactive, or at least an alert
+    # could be printed and an option to force the re-generation
+    # could be provided
     if filtered_docs is not None:
         docs = filtered_docs
         msg = (
