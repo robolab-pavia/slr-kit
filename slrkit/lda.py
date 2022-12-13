@@ -12,6 +12,7 @@ if not sys.warnoptions:
 
 import json
 import math
+import logging
 from datetime import datetime
 from itertools import repeat
 from multiprocessing import Pool
@@ -194,20 +195,80 @@ def load_terms(terms_file, labels=('keyword', 'relevant')):
     return good_set
 
 
+def save_filtered_column(preproc_file, filtered_list, optional_filtered_col,
+                         delimiter='\t'):
+    try:
+        dataset = pd.read_csv(preproc_file,
+                              delimiter=delimiter,
+                              encoding='utf-8')
+    except FileNotFoundError as err:
+        msg = 'Error: file {!r} not found'
+        sys.exit(msg.format(err.filename))
+    joined = []
+    for elem in filtered_list:
+        joined.append(' '.join(elem))
+    dataset[optional_filtered_col] = joined
+    dataset.to_csv(preproc_file, sep=delimiter, index_label='id')
+
+
+def linear_filtering(documents, ngram_len, terms, placeholder, relevant_prefix):
+    logger = logging.getLogger('debug_logger')
+    docs = []
+    for i, d in enumerate(documents):
+        result = filter_doc(d, ngram_len, terms, placeholder, relevant_prefix)
+        docs.append(result)
+        logger.debug(f'Completed document: {i}/{len(documents)}')
+    return docs
+
+
+def parallel_filtering(documents, ngram_len, terms, placeholder, relevant_prefix):
+    with Pool(processes=PHYSICAL_CPUS) as pool:
+        docs = pool.starmap(filter_doc,
+                            zip(documents,
+                                repeat(ngram_len),
+                                repeat(terms),
+                                repeat(placeholder),
+                                repeat(relevant_prefix)))
+    return docs
+
+
 def generate_filtered_docs_ngrams(terms_file, preproc_file,
                                   target_col='abstract_lem', title_col='title',
-                                  delimiter='\t', labels=('keyword', 'relevant'),
+                                  optional_filtered_col='abstract_filtered',
+                                  delimiter='\t',
+                                  labels=('keyword', 'relevant'),
                                   placeholder=STOPWORD_PLACEHOLDER,
                                   relevant_prefix=STOPWORD_PLACEHOLDER):
+    logger = logging.getLogger('debug_logger')
     terms = load_ngrams(terms_file, labels)
     ngram_len = sorted(terms, reverse=True)
-    documents, titles = load_documents(preproc_file, target_col,
-                                       title_col, delimiter)
-    with Pool(processes=PHYSICAL_CPUS) as pool:
-        docs = pool.starmap(filter_doc, zip(documents, repeat(ngram_len),
-                                            repeat(terms), repeat(placeholder),
-                                            repeat(relevant_prefix)))
-
+    src_docs, titles, filtered_docs = load_documents(preproc_file,
+                                                     target_col,
+                                                     title_col,
+                                                     optional_filtered_col,
+                                                     delimiter)
+    if filtered_docs is not None:
+        docs = filtered_docs
+        msg = (
+            f"Using data from column "
+            f"'{optional_filtered_col}' in {preproc_file}"
+        )
+        print(msg)
+        logger.debug(msg)
+    else:
+        msg = f"Filtering data from '{target_col}' in {preproc_file}"
+        print(msg)
+        logger.debug(msg)
+        docs = linear_filtering(src_docs, ngram_len, terms, placeholder, relevant_prefix)
+        # docs = parallel_filtering(src_docs, ngram_len, terms, placeholder, relevant_prefix)
+        msg = (
+            f"Saving filtered data in column "
+            f"'{optional_filtered_col}' of {preproc_file}"
+        )
+        print(msg)
+        logger.debug(msg)
+        save_filtered_column(preproc_file, docs, optional_filtered_col,
+                             delimiter=delimiter)
     return docs, titles
 
 
@@ -425,9 +486,12 @@ def prepare_topics(model, docs, titles, dictionary):
     return topics, docs_topics, avg_topic_coherence
 
 
-def load_documents(preproc_file, target_col, title_col, delimiter):
+def load_documents(preproc_file, target_col, title_col, optional_filtered_col,
+                   delimiter):
     try:
-        dataset = pd.read_csv(preproc_file, delimiter=delimiter, encoding='utf-8')
+        dataset = pd.read_csv(preproc_file,
+                              delimiter=delimiter,
+                              encoding='utf-8')
     except FileNotFoundError as err:
         msg = 'Error: file {!r} not found'
         sys.exit(msg.format(err.filename))
@@ -436,7 +500,16 @@ def load_documents(preproc_file, target_col, title_col, delimiter):
     dataset.fillna('', inplace=True)
     titles = dataset[title_col].to_list()
     documents = dataset[target_col].to_list()
-    return documents, titles
+    # processes the optional_filtered_col if present
+    if optional_filtered_col in dataset:
+        filtered_list = dataset[optional_filtered_col].to_list()
+        filtered_split = []
+        for s in filtered_list:
+            s_split = s.split(' ')
+            filtered_split.append(s_split)
+    else:
+        filtered_split = None
+    return documents, titles, filtered_split
 
 
 def output_topics(topics, docs_topics, outdir, file_prefix, uid,
