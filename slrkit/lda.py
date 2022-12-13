@@ -1,10 +1,3 @@
-r"""
-LDA Model
-=========
-
-Introduces Gensim's LDA model and demonstrates its use on the NIPS corpus.
-
-"""
 import re
 import sys
 import uuid
