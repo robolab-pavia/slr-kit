@@ -590,7 +590,8 @@ def collect_results(outdir):
         p.unlink()
 
     df = pd.concat(results)
-    df.sort_values(by='coherence', ascending=False, inplace=True)
+    df.sort_values(by=['saved_model', 'coherence'],
+                   ascending=[False, False], inplace=True)
     df.reset_index(drop=True, inplace=True)
     return df
 
