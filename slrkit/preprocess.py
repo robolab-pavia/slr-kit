@@ -18,6 +18,14 @@ from slrkit_utils.argument_parser import (AppendMultipleFilesAction,
                                           ArgParse)
 import utils
 
+
+setup_logger = utils.setup_logger
+assert_column = utils.assert_column
+log_end = utils.log_end
+log_start = utils.log_start
+STOPWORD_PLACEHOLDER = utils.STOPWORD_PLACEHOLDER
+RELEVANT_PREFIX = utils.RELEVANT_PREFIX
+
 PHYSICAL_CPUS = cpu_count(logical=False)
 
 
@@ -482,8 +490,16 @@ def preprocess_item(item, relevant_terms, stopwords, acronyms, language='en',
     text2 = [lem_word for _, lem_word in lem.lemmatize(text)]
 
     # mark relevant terms
-    text2 = replace_ngram(text2,
-                          relevant_generator(relevant_terms, relevant_prefix))
+    if len(relevant_terms) > 0:
+        i = 0
+        while i < len(text2):
+            n, replacement_string = find_replacement(text2[i:], relevant_terms, relevant_prefix)
+            if n > 0:
+                text3 = text2[:i]
+                text3.append(replacement_string)
+                text3.extend(text2[i+n:])
+                text2 = text3
+            i += 1
 
     if len(stopwords) != 0:
         for i, word in enumerate(text2):
@@ -492,6 +508,24 @@ def preprocess_item(item, relevant_terms, stopwords, acronyms, language='en',
 
     text2 = ' '.join(text2)
     return text2
+
+
+def find_replacement(text, replacements, relevant_prefix):
+    maxreplen = 0
+    replacement_string = f'{relevant_prefix}{relevant_prefix}'
+    for rep_dict, ph in replacements:
+        dict_to_check = rep_dict
+        count = 0
+        while text[count] in dict_to_check:
+            dict_to_check = dict_to_check[text[count]]
+            count += 1
+            if count > maxreplen:
+                if count > 0 and None in dict_to_check:
+                    replacement_string = f'{relevant_prefix}{"_".join(text[:count])}{relevant_prefix}'
+                    maxreplen = count
+            if count >= len(text):
+                break
+    return maxreplen, replacement_string
 
 
 def process_corpus(dataset, relevant_terms, stopwords, acronyms, language='en',
@@ -535,6 +569,31 @@ def process_corpus(dataset, relevant_terms, stopwords, acronyms, language='en',
     return corpus
 
 
+def tuple_to_nested_dict(rel_words_list):
+    """Generates the data struct made by nested dicts from the tuples.
+    E.g., if the tuples with the words are
+    ('a')
+    ('a', 'b')
+    ('a', 'b', 'c')
+    ('a', 'z')
+    ('b', 'c')
+    the nested dict is
+    {'a': {'b': {'c': {}}, 'z': {}}, 'b': {'c': {}}}
+
+    This data structure should speed up the look up of consecutive words
+    when finding the words to replace in the text.
+    """
+    words = {}
+    for tup in rel_words_list:
+        dict_to_update = words
+        for w in tup:
+            if w not in dict_to_update:
+                dict_to_update[w] = {}
+            dict_to_update = dict_to_update[w]
+        dict_to_update[None] = None
+    return words
+
+
 def load_relevant_terms(input_file):
     """
     Loads a list of relevant terms from a file
@@ -558,7 +617,9 @@ def load_relevant_terms(input_file):
                       for w in rel_words_list
                       if w != '' and w[0] != '#'}
 
-    return rel_words_list
+    words = tuple_to_nested_dict(rel_words_list)
+
+    return words
 
 
 def prepare_acronyms(acronym):
