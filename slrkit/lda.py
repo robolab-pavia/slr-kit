@@ -14,8 +14,6 @@ import json
 import math
 import logging
 from datetime import datetime
-from itertools import repeat
-from multiprocessing import Pool
 from pathlib import Path
 
 import pandas as pd
@@ -25,7 +23,7 @@ from gensim.models.coherencemodel import CoherenceModel
 from psutil import cpu_count
 
 from slrkit_utils.argument_parser import ArgParse
-from utils import substring_index, STOPWORD_PLACEHOLDER, assert_column
+from utils import assert_column
 from join_lda_info import join_lda_info
 
 PHYSICAL_CPUS = cpu_count(logical=False)
@@ -117,176 +115,6 @@ def load_term_data(terms_file):
         terms = words_dataset['keyword'].to_list()
     term_labels = words_dataset['label'].to_list()
     return term_labels, terms
-
-
-def load_ngrams(terms_file, labels=('keyword', 'relevant')):
-    term_labels, terms = load_term_data(terms_file)
-    zipped = zip(terms, term_labels)
-    good = [x[0] for x in zipped if x[1] in labels]
-    ngrams = {1: set()}
-    for x in good:
-        n = x.count(' ') + 1
-        try:
-            ngrams[n].add(x)
-        except KeyError:
-            ngrams[n] = {x}
-
-    return ngrams
-
-
-def check_ngram(doc, idx):
-    for dd in doc:
-        r = range(dd[0][0], dd[0][1])
-        yield idx[0] in r or idx[1] in r
-
-
-def filter_doc(d: str, ngram_len, terms, placeholder, relevant_prefix):
-    additional = []
-    end = False
-    idx = 0
-    d = re.sub(rf'\B{placeholder}\B', ' ', d)
-    while not end:
-        i = d.find(relevant_prefix, idx)
-        if i < 0:
-            end = True
-        else:
-            stop = d.find(relevant_prefix, i+1)
-            if stop > 0:
-                additional.append(((i+1, stop), d[i+1:stop]))
-                idx = stop + 1
-            else:
-                end = True
-
-    doc = []
-    flag = False
-    for n in ngram_len:
-        for t in terms[n]:
-            for idx in substring_index(d, t):
-                if flag and any(check_ngram(doc, idx)):
-                    continue
-
-                doc.append((idx, t.replace(' ', '_')))
-
-        flag = True
-
-    doc.extend(additional)
-    doc.sort(key=lambda dd: dd[0])
-    return [t[1] for t in doc]
-
-
-def load_terms(terms_file, labels=('keyword', 'relevant')):
-    term_labels, terms = load_term_data(terms_file)
-    zipped = zip(terms, term_labels)
-    good = [x for x in zipped if x[1] in labels]
-    good_set = set()
-    for x in good:
-        good_set.add(x[0])
-
-    return good_set
-
-
-def save_filtered_column(preproc_file, filtered_list, optional_filtered_col,
-                         delimiter='\t'):
-    try:
-        dataset = pd.read_csv(preproc_file,
-                              delimiter=delimiter,
-                              encoding='utf-8')
-    except FileNotFoundError as err:
-        msg = 'Error: file {!r} not found'
-        sys.exit(msg.format(err.filename))
-    joined = []
-    for elem in filtered_list:
-        joined.append(' '.join(elem))
-    dataset[optional_filtered_col] = joined
-    dataset.to_csv(preproc_file, sep=delimiter, index_label='id')
-
-
-def linear_filtering(documents, ngram_len, terms, placeholder, relevant_prefix):
-    logger = logging.getLogger('debug_logger')
-    docs = []
-    for i, d in enumerate(documents):
-        result = filter_doc(d, ngram_len, terms, placeholder, relevant_prefix)
-        docs.append(result)
-        logger.debug(f'Completed document: {i}/{len(documents)}')
-    return docs
-
-
-def parallel_filtering(documents, ngram_len, terms, placeholder, relevant_prefix):
-    with Pool(processes=PHYSICAL_CPUS) as pool:
-        docs = pool.starmap(filter_doc,
-                            zip(documents,
-                                repeat(ngram_len),
-                                repeat(terms),
-                                repeat(placeholder),
-                                repeat(relevant_prefix)))
-    return docs
-
-
-def generate_filtered_docs_ngrams(terms_file, preproc_file,
-                                  target_col='abstract_lem', title_col='title',
-                                  optional_filtered_col='abstract_filtered',
-                                  delimiter='\t',
-                                  labels=('keyword', 'relevant'),
-                                  placeholder=STOPWORD_PLACEHOLDER,
-                                  relevant_prefix=STOPWORD_PLACEHOLDER):
-    logger = logging.getLogger('debug_logger')
-    terms = load_ngrams(terms_file, labels)
-    ngram_len = sorted(terms, reverse=True)
-    src_docs, titles, filtered_docs = load_documents(preproc_file,
-                                                     target_col,
-                                                     title_col,
-                                                     delimiter)
-    # TODO: the logic should be improved to regenerate the filtered text
-    # if the terms file is newer that the preproc file; otherwise this
-    # would require the user to manually delete the column from the
-    # preproc file to trigger the regeneration of the filtered text
-    # MAYBE this could be made interactive, or at least an alert
-    # could be printed and an option to force the re-generation
-    # could be provided
-    if filtered_docs is not None:
-        docs = filtered_docs
-        msg = (
-            f"Using data from column "
-            f"'{optional_filtered_col}' in {preproc_file}"
-        )
-        print(msg)
-        logger.debug(msg)
-    else:
-        msg = f"Filtering data from '{target_col}' in {preproc_file}"
-        print(msg)
-        logger.debug(msg)
-        docs = linear_filtering(src_docs, ngram_len, terms, placeholder, relevant_prefix)
-        # docs = parallel_filtering(src_docs, ngram_len, terms, placeholder, relevant_prefix)
-        msg = (
-            f"Saving filtered data in column "
-            f"'{optional_filtered_col}' of {preproc_file}"
-        )
-        print(msg)
-        logger.debug(msg)
-        save_filtered_column(preproc_file, docs, optional_filtered_col,
-                             delimiter=delimiter)
-    return docs, titles
-
-
-def load_additional_terms(input_file):
-    """
-    Loads a list of keyword terms from a file
-
-    This functions skips all the lines that starts with a '#'.
-    Each term is split in a tuple of strings
-
-    :param input_file: file to read
-    :type input_file: str
-    :return: the loaded terms as a set of strings
-    :rtype: set[str]
-    """
-    with open(input_file, 'r', encoding='utf-8') as f:
-        rel_words_list = f.read().splitlines()
-
-    rel_words_list = {w.replace(' ', '_')
-                      for w in rel_words_list
-                      if w != '' and w[0] != '#'}
-    return rel_words_list
 
 
 def prepare_corpus(docs, no_above, no_below):

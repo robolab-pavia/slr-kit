@@ -366,26 +366,6 @@ def init_train(corpora, titles, seed, modeldir, coherences):
     _coherences = coherences
 
 
-def load_additional_terms(input_file):
-    """
-    Loads a list of keyword terms from a file
-
-    This functions skips all the lines that starts with a '#'.
-    Each term is split in a tuple of strings
-
-    :param input_file: file to read
-    :type input_file: str
-    :return: the loaded terms as a set of strings
-    :rtype: set[str]
-    """
-    with open(input_file, 'r', encoding='utf-8') as f:
-        rel_words_list = f.read().splitlines()
-
-    rel_words_list = {w for w in rel_words_list if w != '' and w[0] != '#'}
-
-    return rel_words_list
-
-
 # topics, alpha, beta, no_above, no_below label
 def evaluate(ind: LdaIndividual):
     global _corpus, _titles, _seed, _modeldir, _coherences
