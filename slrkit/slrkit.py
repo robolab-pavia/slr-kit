@@ -1361,10 +1361,10 @@ def init_argparser():
     subparser_terms(subparser)
     # fawoc
     subparser_fawoc(subparser)
-    # lda
-    subparser_topics(subparser)
     # postprocess
     subparser_postproc(subparser)
+    # lda
+    subparser_topics(subparser)
     # report
     subparser_report(subparser)
     # record
