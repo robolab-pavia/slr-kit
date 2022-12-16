@@ -1,4 +1,3 @@
-import argparse
 import csv
 import dataclasses
 import logging
@@ -342,12 +341,12 @@ def init_argparser():
                              'Default: %(default)r.')
     parser.add_argument('--title-column', action='store', type=str,
                         default='title', dest='title',
-                        help='Column in preproc_file to use as document title. '
-                             'If omitted %(default)r is used.')
+                        help='Column in postproc_file to use as '
+                             'document title. Default: %(default)r.')
     parser.add_argument('--seed', type=int, default=123,
                         help='Seed used for training. Default %(default)r')
     parser.add_argument('--delimiter', action='store', type=str,
-                        default='\t', help='Delimiter used in preproc_file. '
+                        default='\t', help='Delimiter used in postproc_file. '
                                            'Default %(default)r')
     parser.add_argument('--no_timestamp', action='store_true',
                         help='if set, no timestamp is added to the '
