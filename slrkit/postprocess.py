@@ -85,29 +85,17 @@ def init_argparser():
     return parser
 
 
-def load_term_data(terms_file):
+def load_keywords(terms_file, labels=('keyword', 'relevant')):
     words_dataset = pd.read_csv(terms_file, delimiter='\t',
                                 encoding='utf-8')
-    try:
-        terms = words_dataset['term'].to_list()
-    except KeyError:
-        terms = words_dataset['keyword'].to_list()
-    term_labels = words_dataset['label'].to_list()
-    return term_labels, terms
-
-
-def load_ngrams(terms_file, labels=('keyword', 'relevant')):
-    term_labels, terms = load_term_data(terms_file)
-    zipped = zip(terms, term_labels)
-    good = [x[0] for x in zipped if x[1] in labels]
+    good = words_dataset.query(f'label in {labels}')['term'].to_list()
     ngrams = {1: set()}
-    for x in good:
-        n = x.count(' ') + 1
+    for term in good:
+        n = term.count(' ') + 1
         try:
-            ngrams[n].add(x)
+            ngrams[n].add(term)
         except KeyError:
-            ngrams[n] = {x}
-
+            ngrams[n] = {term}
     return ngrams
 
 
@@ -205,7 +193,7 @@ def filter_docs(terms_file, preproc_file,
                 placeholder=STOPWORD_PLACEHOLDER,
                 relevant_prefix=STOPWORD_PLACEHOLDER):
     logger = logging.getLogger('debug_logger')
-    terms = load_ngrams(terms_file, labels)
+    terms = load_keywords(terms_file, labels)
     ngram_len = sorted(terms, reverse=True)
     docs = load_documents(preproc_file, target_col, delimiter)
     msg = f"Filtering data from '{target_col}' in {preproc_file}"
