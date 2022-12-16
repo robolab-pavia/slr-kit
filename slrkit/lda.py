@@ -56,12 +56,12 @@ def init_argparser():
                                                  'to save the results.')
     parser.add_argument('--text-column', '-t', action='store', type=str,
                         default='abstract_lem', dest='target_column',
-                        help='Column in preproc_file to process. '
-                             'If omitted %(default)r is used.')
+                        help='Column to process in input file. '
+                             'Default: %(default)r.')
     parser.add_argument('--title-column', action='store', type=str,
                         default='title', dest='title',
-                        help='Column in preproc_file to use as document title. '
-                             'If omitted %(default)r is used.')
+                        help='Column in the input file to use as document title. '
+                             'Default: %(default)r.')
     parser.add_argument('--topics', action='store', type=int,
                         default=20, help='Number of topics. If omitted '
                                          '%(default)s is used')
