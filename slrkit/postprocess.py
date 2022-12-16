@@ -1,4 +1,3 @@
-import re
 import sys
 
 import tomlkit
@@ -17,7 +16,8 @@ from psutil import cpu_count
 import pandas as pd
 
 from slrkit_utils.argument_parser import ArgParse
-from utils import substring_index, STOPWORD_PLACEHOLDER, assert_column
+from utils import STOPWORD_PLACEHOLDER, assert_column
+from preprocess import tuple_to_nested_dict
 
 
 PHYSICAL_CPUS = cpu_count(logical=False)
@@ -111,59 +111,66 @@ def load_ngrams(terms_file, labels=('keyword', 'relevant')):
     return ngrams
 
 
-def check_ngram(doc, idx):
-    for dd in doc:
-        r = range(dd[0][0], dd[0][1])
-        yield idx[0] in r or idx[1] in r
+def is_relevant(word, relevant_prefix):
+    """Returns the word if relevant or None."""
+    if len(word) <= 1:
+        return None
+    if word[0] == relevant_prefix and word[-1] == relevant_prefix:
+        return word[1:-1]
+    return None
 
 
-def filter_doc(d: str, ngram_len, terms, placeholder, relevant_prefix):
-    additional = []
-    end = False
-    idx = 0
-    d = re.sub(rf'\B{placeholder}\B', ' ', d)
-    while not end:
-        i = d.find(relevant_prefix, idx)
-        if i < 0:
-            end = True
+def matching_term(term_as_list, terms_dict_lookup):
+    """Checks if there is any match between the term and the list of terms."""
+    curr_dict = terms_dict_lookup
+    matched_words = []
+    for w in term_as_list:
+        if w in curr_dict:
+            matched_words.append(w)
+            curr_dict = curr_dict[w]
         else:
-            stop = d.find(relevant_prefix, i+1)
-            if stop > 0:
-                additional.append(((i+1, stop), d[i+1:stop]))
-                idx = stop + 1
+            break
+    if len(matched_words) == len(term_as_list):
+        return matched_words
+    return None
+
+
+def filter_doc(text: str, ngram_len, terms, placeholder, relevant_prefix):
+    accepted_words = []
+    text_list = text.split(' ')
+    terms_dict_lookup = {}
+    for n in terms:
+        rel_words_list = {tuple(w.split(' ')) for w in terms[n]}
+        terms_dict_lookup[n] = tuple_to_nested_dict(rel_words_list)
+    for i in range(len(text_list)):
+        # check if it is a "special" word
+        rel = is_relevant(text_list[i], relevant_prefix)
+        if rel is not None:
+            accepted_words.append(rel)
+            continue
+        # generates the n-grams starting from the current word
+        for n in ngram_len:
+            if i <= len(text_list) - n:
+                ngram = text_list[i:i + n]
             else:
-                end = True
-
-    doc = []
-    flag = False
-    for n in ngram_len:
-        for t in terms[n]:
-            for idx in substring_index(d, t):
-                if flag and any(check_ngram(doc, idx)):
-                    continue
-
-                doc.append((idx, t.replace(' ', '_')))
-
-        flag = True
-
-    doc.extend(additional)
-    doc.sort(key=lambda dd: dd[0])
-    return [t[1] for t in doc]
-
-
-def load_terms(terms_file, labels=('keyword', 'relevant')):
-    term_labels, terms = load_term_data(terms_file)
-    zipped = zip(terms, term_labels)
-    good = [x for x in zipped if x[1] in labels]
-    good_set = set()
-    for x in good:
-        good_set.add(x[0])
-
-    return good_set
+                continue
+            # skip all n-grams containing a placeholder for stopwords
+            if placeholder in ngram:
+                continue
+            # accept if the n-gram matches one of the terms
+            mt = matching_term(ngram, terms_dict_lookup[n])
+            if mt is not None:
+                accepted_words.append('_'.join(ngram))
+    return accepted_words
 
 
 def linear_filtering(documents, ngram_len,
                      terms, placeholder, relevant_prefix):
+    """Filters documents sequentially.
+
+    Useful for debugging purposes, since it avoids the complexity
+    of the parallelism.
+    """
     logger = logging.getLogger('debug_logger')
     docs = []
     for i, d in enumerate(documents):
@@ -175,6 +182,10 @@ def linear_filtering(documents, ngram_len,
 
 def parallel_filtering(documents, ngram_len,
                        terms, placeholder, relevant_prefix):
+    """Filters documents in parallel.
+
+    Default, more efficient approach.
+    """
     with Pool(processes=PHYSICAL_CPUS) as pool:
         docs = pool.starmap(filter_doc,
                             zip(documents,
@@ -200,10 +211,10 @@ def filter_docs(terms_file, preproc_file,
     msg = f"Filtering data from '{target_col}' in {preproc_file}"
     src_docs = docs[target_col].to_list()
     logger.debug(msg)
-    # filtered_docs = linear_filtering(src_docs, ngram_len, terms,
-    #                                  placeholder, relevant_prefix)
-    filtered_docs = parallel_filtering(src_docs, ngram_len, terms,
-                                       placeholder, relevant_prefix)
+    filtered_docs = linear_filtering(src_docs, ngram_len, terms,
+                                     placeholder, relevant_prefix)
+    # filtered_docs = parallel_filtering(src_docs, ngram_len, terms,
+    #                                    placeholder, relevant_prefix)
     joined = []
     for elem in filtered_docs:
         joined.append(' '.join(elem))
