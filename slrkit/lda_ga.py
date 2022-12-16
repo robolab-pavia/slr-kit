@@ -29,9 +29,10 @@ from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel, LdaModel
 
 from slrkit_utils.argument_parser import ArgParse
-from lda import (PHYSICAL_CPUS, MIN_ALPHA_VAL, prepare_documents,
-                  prepare_topics, output_topics, save_toml_files)
-from utils import STOPWORD_PLACEHOLDER, setup_logger
+from lda import (PHYSICAL_CPUS, MIN_ALPHA_VAL,
+                 prepare_topics, output_topics, save_toml_files,
+                 load_documents)
+from utils import setup_logger
 
 EPSILON = 1e-7
 
@@ -327,40 +328,30 @@ def init_argparser():
     epilog = 'The script tests different lda models with different ' \
              'parameters and it tries to find the best model using a GA.'
     parser = ArgParse(description='Performs the LDA on a dataset', epilog=epilog)
-    parser.add_argument('preproc_file', action='store', type=Path,
-                        help='path to the the preprocess file with the text to '
+    parser.add_argument('postproc_file', action='store', type=Path,
+                        help='Path to the postprocess file with the text to '
                              'elaborate.', input=True)
-    parser.add_argument('terms_file', action='store', type=Path,
-                        help='path to the file with the classified terms.',
-                        input=True)
     parser.add_argument('ga_params', action='store', type=Path,
                         help='path to the file with the parameters for the ga.')
     parser.add_argument('outdir', action='store', type=Path, nargs='?',
                         default=Path.cwd(), help='path to the directory where '
                                                  'to save the results.')
     parser.add_argument('--text-column', '-t', action='store', type=str,
-                        default='abstract_lem', dest='target_column',
-                        help='Column in preproc_file to process. '
-                             'If omitted %(default)r is used.')
+                        default='abstract_filtered', dest='target_column',
+                        help='Column in postproc_file to process. '
+                             'Default: %(default)r.')
     parser.add_argument('--title-column', action='store', type=str,
                         default='title', dest='title',
                         help='Column in preproc_file to use as document title. '
                              'If omitted %(default)r is used.')
     parser.add_argument('--seed', type=int, default=123,
-                        help='Seed to be used in training. Default %(default)r')
-    parser.add_argument('--placeholder', '-p',
-                        default=STOPWORD_PLACEHOLDER,
-                        help='Placeholder for barrier word. Also used as a '
-                             'prefix for the relevant words. '
-                             'Default: %(default)s')
+                        help='Seed used for training. Default %(default)r')
     parser.add_argument('--delimiter', action='store', type=str,
                         default='\t', help='Delimiter used in preproc_file. '
                                            'Default %(default)r')
     parser.add_argument('--no_timestamp', action='store_true',
-                        help='if set, no timestamp is added to the topics file '
-                             'names')
-    parser.add_argument('--no-relevant', action='store_true',
-                        help='if set, use only the term labelled as keyword')
+                        help='if set, no timestamp is added to the '
+                             'topics file names')
     parser.add_argument('--logfile', default='slr-kit.log',
                         help='log file name. If omitted %(default)r is used',
                         logfile=True)
@@ -676,20 +667,16 @@ def prepare_ga_toolbox(max_no_below, params):
 def lda_ga_optimization(args):
     global logger
     logger = setup_logger('debug_logger', args.logfile, level=logging.DEBUG)
-    logger.info('==== lda_ga_grid_search started ====')
+    logger.info('==== lda_ga_optimization started ====')
 
-    relevant_prefix = args.placeholder
-    if args.no_relevant:
-        labels = ('keyword',)
-    else:
-        labels = ('keyword', 'relevant')
-
-    docs, titles = prepare_documents(args.preproc_file, args.terms_file,
-                                     labels, args.target_column, args.title,
-                                     delimiter=args.delimiter,
-                                     placeholder=args.placeholder,
-                                     relevant_prefix=relevant_prefix)
-
+    docs, titles = load_documents(args.postproc_file,
+                                  args.target_column,
+                                  args.title,
+                                  args.delimiter)
+    docs2 = []
+    for d in docs:
+        docs2.append(d.split(' '))
+    docs = docs2
     try:
         params = load_ga_params(args.ga_params)
     except ValueError as e:
@@ -746,7 +733,7 @@ def lda_ga_optimization(args):
     with pd.option_context('display.width', 80,
                            'display.float_format', '{:,.3f}'.format):
         print(df)
-    logger.info('==== lda_ga_grid_search ended ====')
+    logger.info('==== lda_ga_optimization ended ====')
 
 
 def main():
