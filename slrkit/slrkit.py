@@ -46,9 +46,6 @@ SCRIPTS = {
     'optimize_lda': {'module': 'lda_ga',
                      'depends': ['postprocess'],
                      'additional_init': True, 'no_config': False},
-    'lda_grid_search': {'module': 'lda_grid_search',
-                        'depends': ['preprocess', 'terms_generate'],
-                        'additional_init': False, 'no_config': False},
     'stopwords': {'module': 'stopword_extractor',
                   'depends': ['terms_generate'],
                   'additional_init': False, 'no_config': True},
@@ -705,36 +702,6 @@ def run_optimize_lda(args):
     multiprocessing.set_start_method('spawn')
     os.putenv('PYTHONHASHSEED', '0')
     p = multiprocessing.Process(target=lda_ga_optimization, args=(cmd_args, ))
-    p.start()
-    p.join()
-
-
-def run_lda_grid_search(args):
-    os.chdir(args.cwd)
-    confname = 'lda_grid_search.toml'
-    config_dir, meta = check_project(args.cwd)
-    config = load_configfile(config_dir / confname)
-    from lda_grid_search import lda_grid_search, init_argparser as lda_gs_argparse
-    script_args = lda_gs_argparse().slrkit_arguments
-    cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
-                                                   script_args)
-    msgs = check_dependencies(inputs, 'lda_grid_search', args.cwd)
-    if msgs:
-        for m in msgs:
-            print(m)
-        sys.exit(1)
-
-    # check the seed parameter: if it is set to '' (no seed set) change it to
-    # None. In this way the lda code will work
-    if cmd_args.seed == '':
-        cmd_args.seed = None
-
-    # this is required to set the PYTHONHASHSEED variable from our code and
-    # ensure the reproducibility of the lda train
-    import multiprocessing
-    multiprocessing.set_start_method('spawn')
-    os.putenv('PYTHONHASHSEED', '0')
-    p = multiprocessing.Process(target=lda_grid_search, args=(cmd_args, ))
     p.start()
     p.join()
 
