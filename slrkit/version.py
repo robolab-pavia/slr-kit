@@ -1,1 +1,1 @@
-__slrkit_version__ = '1.1.0'
+__slrkit_version__ = '1.2.0'

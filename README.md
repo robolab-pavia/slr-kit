@@ -63,19 +63,20 @@ If `slr-kit` was installed from the git repository, you can launch the `slrkit` 
 Use the `-h` or `--help` option to generate the following help:
 
 ```
-$ slrkit -h
-usage: slrkit [-h] [-C path]
-                 {init,import,journals,acronyms,preprocess,terms,fawoc,topics,report,record,stopwords,build,readme}
+$ slrkit --help
+usage: slrkit [-h] [-C path] [--version]
+              {init,import,journals,acronyms,preprocess,terms,fawoc,postprocess,topics,report,record,stopwords,build,readme}
                  ...
 
 slrkit project handling tool
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -C path               Change directory to 'path' before running the specified command.
+  --version, -V         show program's version number and exit
 
 slrkit commands:
-  {init,import,journals,acronyms,preprocess,terms,fawoc,topics,report,record,stopwords,build,readme}
+  {init,import,journals,acronyms,preprocess,terms,fawoc,postprocess,topics,report,record,stopwords,build,readme}
     init                Initialize a slr-kit project
     import              Import a bibliographic database converting to the csv format used by slr-kit.
     journals            Subcommand to extract and filter a list of journals. This command accepts a
@@ -86,6 +87,7 @@ slrkit commands:
                         command accepts a subcommand. If none is given, "generate" is assumed.
     fawoc               Run fawoc in a slr-kit project. This command accepts a subcommand. If none is
                         given "terms" is assumed.
+    postprocess         Run the postprocess stage in a slr-kit project
     topics              Subcommand to extract the topics from the documents in a slrkit project. This
                         command requires a subcommand.
     report              Run the report creation script in a slr-kit project.
@@ -97,7 +99,7 @@ slrkit commands:
                         file. The README.md is also committed to the git repository.
 ```
 
-Each sub-command is explained in details the [slrkit.md](docs/slrkit.md) documentation file.
+Each sub-command is explained in details the [slrkit.md](docs/scripts.md) documentation file.
 
 # The workflow on data from scratch (basic version)
 
@@ -195,6 +197,15 @@ FAWOC is an interactive terminal program that allows to quickly (well, some time
 
 For this basic example, you can distinguish the terms between RELEVANT (pressing `r`) and NOISE (press `n`) terms.
 If you make some mistake, press `u` to undo.
+
+## Postprocessing (automatic)
+
+This operation processes the documents by managing the terms classified in the previous stage.
+Run it with
+
+```
+slrkit postprocess
+```
 
 ## Extraction of topics (automatic)
 

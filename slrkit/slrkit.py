@@ -17,18 +17,18 @@ from version import __slrkit_version__
 SLRKIT_DIR = pathlib.Path(__file__).parent
 STOPWORDS_DIR = SLRKIT_DIR / 'default_stopwords'
 SCRIPTS = {
-    'import': {'module': '.import_biblio', 'depends': [],
+    'import': {'module': 'import_biblio', 'depends': [],
                'additional_init': False, 'no_config': False},
-    'journals_extract': {'module': '.journal_lister', 'depends': ['import'],
+    'journals_extract': {'module': 'journal_lister', 'depends': ['import'],
                          'additional_init': False, 'no_config': False},
-    'journals_filter': {'module': '.filter_paper',
+    'journals_filter': {'module': 'filter_paper',
                         'depends': ['import', 'journals_extract'],
                         'additional_init': False, 'no_config': False},
-    'acronyms': {'module': '.acronyms', 'depends': ['import'],
+    'acronyms': {'module': 'acronyms', 'depends': ['import'],
                  'additional_init': False, 'no_config': False},
-    'preprocess': {'module': '.preprocess', 'depends': ['import'],
+    'preprocess': {'module': 'preprocess', 'depends': ['import'],
                    'additional_init': True, 'no_config': False},
-    'terms_generate': {'module': '.gen_terms', 'depends': ['preprocess'],
+    'terms_generate': {'module': 'gen_terms', 'depends': ['preprocess'],
                        'additional_init': False, 'no_config': False},
     'fawoc_terms': {'module': 'fawoc.fawoc', 'depends': ['terms_generate'],
                     'additional_init': False, 'no_config': False},
@@ -36,17 +36,17 @@ SCRIPTS = {
                        'additional_init': False, 'no_config': False},
     'fawoc_journals': {'module': 'fawoc.fawoc', 'depends': ['journals_extract'],
                        'additional_init': False, 'no_config': False},
-    'lda': {'module': '.lda', 'depends': ['preprocess', 'terms_generate'],
+    'postprocess': {'module': 'postprocess',
+                    'depends': ['preprocess', 'terms_generate'],
+                    'additional_init': False, 'no_config': False},
+    'lda': {'module': 'lda', 'depends': ['postprocess'],
             'additional_init': False, 'no_config': False},
-    'report': {'module': '.topic_report', 'depends': ['import'],
+    'report': {'module': 'topic_report', 'depends': ['import'],
                'additional_init': False, 'no_config': False},
-    'optimize_lda': {'module': '.lda_ga',
-                     'depends': ['preprocess', 'terms_generate'],
+    'optimize_lda': {'module': 'lda_ga',
+                     'depends': ['postprocess'],
                      'additional_init': True, 'no_config': False},
-    'lda_grid_search': {'module': '.lda_grid_search',
-                        'depends': ['preprocess', 'terms_generate'],
-                        'additional_init': False, 'no_config': False},
-    'stopwords': {'module': '.stopword_extractor',
+    'stopwords': {'module': 'stopword_extractor',
                   'depends': ['terms_generate'],
                   'additional_init': False, 'no_config': True},
 }
@@ -543,6 +543,24 @@ def run_preproc(args):
     preprocess(cmd_args)
 
 
+def run_postprocess(args):
+    confname = 'postprocess.toml'
+    config_dir, meta = check_project(args.cwd)
+    config = load_configfile(config_dir / confname)
+    from postprocess import postprocess, init_argparser as postproc_argparse
+    script_args = postproc_argparse().slrkit_arguments
+    cmd_args, inputs, _ = prepare_script_arguments(config, config_dir,
+                                                   confname, script_args)
+    msgs = check_dependencies(inputs, 'postprocess', args.cwd)
+    if msgs:
+        for m in msgs:
+            print(m)
+        sys.exit(1)
+
+    os.chdir(args.cwd)
+    postprocess(cmd_args)
+
+
 def run_terms(args):
     if args.terms_operation is None or args.terms_operation == 'generate':
         confname = 'terms_generate.toml'
@@ -574,10 +592,7 @@ def run_topics(args):
     elif args.topics == 'extract':
         run_lda(args)
     elif args.topics == 'optimize':
-        if not args.grid_search:
-            run_optimize_lda(args)
-        else:
-            run_lda_grid_search(args)
+        run_optimize_lda(args)
     else:
         msg = 'Error: unknown sub-command {!r} for command "topics"'
         print(msg.format(args.topics))
@@ -687,36 +702,6 @@ def run_optimize_lda(args):
     multiprocessing.set_start_method('spawn')
     os.putenv('PYTHONHASHSEED', '0')
     p = multiprocessing.Process(target=lda_ga_optimization, args=(cmd_args, ))
-    p.start()
-    p.join()
-
-
-def run_lda_grid_search(args):
-    os.chdir(args.cwd)
-    confname = 'lda_grid_search.toml'
-    config_dir, meta = check_project(args.cwd)
-    config = load_configfile(config_dir / confname)
-    from lda_grid_search import lda_grid_search, init_argparser as lda_gs_argparse
-    script_args = lda_gs_argparse().slrkit_arguments
-    cmd_args, inputs, _ = prepare_script_arguments(config, config_dir, confname,
-                                                   script_args)
-    msgs = check_dependencies(inputs, 'lda_grid_search', args.cwd)
-    if msgs:
-        for m in msgs:
-            print(m)
-        sys.exit(1)
-
-    # check the seed parameter: if it is set to '' (no seed set) change it to
-    # None. In this way the lda code will work
-    if cmd_args.seed == '':
-        cmd_args.seed = None
-
-    # this is required to set the PYTHONHASHSEED variable from our code and
-    # ensure the reproducibility of the lda train
-    import multiprocessing
-    multiprocessing.set_start_method('spawn')
-    os.putenv('PYTHONHASHSEED', '0')
-    p = multiprocessing.Process(target=lda_grid_search, args=(cmd_args, ))
     p.start()
     p.join()
 
@@ -1161,11 +1146,7 @@ def subparser_topics_optimize(subparser):
     parser_optimize_lda = subparser.add_parser('optimize',
                                                help=help_str,
                                                description=help_str)
-    # parser_optimize_lda.add_argument('--grid-search', action='store_true',
-    #                                  help='if set, the optimization is '
-    #                                       'performed using a slower grid '
-    #                                       'search algorithm')
-    parser_optimize_lda.set_defaults(grid_search=False)
+    parser_optimize_lda.set_defaults()
 
 
 def subparser_report(subparser):
@@ -1272,6 +1253,13 @@ def subparser_preproc(subparser):
     parser_preproc.set_defaults(func=run_preproc)
 
 
+def subparser_postproc(subparser):
+    help_str = 'Run the postprocess stage in a slr-kit project'
+    parser_postproc = subparser.add_parser('postprocess', help=help_str,
+                                           description=help_str)
+    parser_postproc.set_defaults(func=run_postprocess)
+
+
 def subparser_acronyms(subparser):
     help_str = 'Extract acronyms from texts.'
     parser_acronyms = subparser.add_parser('acronyms', help=help_str,
@@ -1373,6 +1361,8 @@ def init_argparser():
     subparser_terms(subparser)
     # fawoc
     subparser_fawoc(subparser)
+    # postprocess
+    subparser_postproc(subparser)
     # lda
     subparser_topics(subparser)
     # report

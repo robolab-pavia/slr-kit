@@ -14,8 +14,6 @@ import json
 import math
 import logging
 from datetime import datetime
-from itertools import repeat
-from multiprocessing import Pool
 from pathlib import Path
 
 import pandas as pd
@@ -25,7 +23,7 @@ from gensim.models.coherencemodel import CoherenceModel
 from psutil import cpu_count
 
 from slrkit_utils.argument_parser import ArgParse
-from utils import substring_index, STOPWORD_PLACEHOLDER, assert_column
+from utils import assert_column
 from join_lda_info import join_lda_info
 
 PHYSICAL_CPUS = cpu_count(logical=False)
@@ -48,23 +46,20 @@ def init_argparser():
              "assigned to each document in" \
              "<outdir>/lda_docs-topics_<date>_<time>.json"
     parser = ArgParse(description='Performs the LDA on a dataset', epilog=epilog)
-    parser.add_argument('preproc_file', action='store', type=Path,
-                        help='path to the the preprocess file with the text to '
+    parser.add_argument('postproc_file', action='store', type=Path,
+                        help='path to the postprocess file with the text to '
                              'elaborate.', input=True)
-    parser.add_argument('terms_file', action='store', type=Path,
-                        help='path to the file with the classified terms.',
-                        input=True)
     parser.add_argument('outdir', action='store', type=Path, nargs='?',
                         default=Path.cwd(), help='path to the directory where '
                                                  'to save the results.')
     parser.add_argument('--text-column', '-t', action='store', type=str,
                         default='abstract_lem', dest='target_column',
-                        help='Column in preproc_file to process. '
-                             'If omitted %(default)r is used.')
+                        help='Column to process in input file. '
+                             'Default: %(default)r.')
     parser.add_argument('--title-column', action='store', type=str,
                         default='title', dest='title',
-                        help='Column in preproc_file to use as document title. '
-                             'If omitted %(default)r is used.')
+                        help='Column in the input file to use as document title. '
+                             'Default: %(default)r.')
     parser.add_argument('--topics', action='store', type=int,
                         default=20, help='Number of topics. If omitted '
                                          '%(default)s is used')
@@ -92,8 +87,6 @@ def init_argparser():
                         help='if set, the lda model is saved to directory '
                              '<outdir>/lda_model. The model is saved '
                              'with name "model.')
-    parser.add_argument('--no-relevant', action='store_true',
-                        help='if set, use only the term labelled as keyword')
     parser.add_argument('--load-model', action='store',
                         help='Path to a directory where a previously trained '
                              'model is saved. Inside this directory the model '
@@ -103,11 +96,6 @@ def init_argparser():
     parser.add_argument('--no_timestamp', action='store_true',
                         help='if set, no timestamp is added to the topics file '
                              'names')
-    parser.add_argument('--placeholder', '-p',
-                        default=STOPWORD_PLACEHOLDER,
-                        help='Placeholder for barrier word. Also used as a '
-                             'prefix for the relevant words. '
-                             'Default: %(default)s')
     parser.add_argument('--delimiter', action='store', type=str,
                         default='\t', help='Delimiter used in preproc_file. '
                                            'Default %(default)r')
@@ -127,214 +115,6 @@ def load_term_data(terms_file):
         terms = words_dataset['keyword'].to_list()
     term_labels = words_dataset['label'].to_list()
     return term_labels, terms
-
-
-def load_ngrams(terms_file, labels=('keyword', 'relevant')):
-    term_labels, terms = load_term_data(terms_file)
-    zipped = zip(terms, term_labels)
-    good = [x[0] for x in zipped if x[1] in labels]
-    ngrams = {1: set()}
-    for x in good:
-        n = x.count(' ') + 1
-        try:
-            ngrams[n].add(x)
-        except KeyError:
-            ngrams[n] = {x}
-
-    return ngrams
-
-
-def check_ngram(doc, idx):
-    for dd in doc:
-        r = range(dd[0][0], dd[0][1])
-        yield idx[0] in r or idx[1] in r
-
-
-def filter_doc(d: str, ngram_len, terms, placeholder, relevant_prefix):
-    additional = []
-    end = False
-    idx = 0
-    d = re.sub(rf'\B{placeholder}\B', ' ', d)
-    while not end:
-        i = d.find(relevant_prefix, idx)
-        if i < 0:
-            end = True
-        else:
-            stop = d.find(relevant_prefix, i+1)
-            if stop > 0:
-                additional.append(((i+1, stop), d[i+1:stop]))
-                idx = stop + 1
-            else:
-                end = True
-
-    doc = []
-    flag = False
-    for n in ngram_len:
-        for t in terms[n]:
-            for idx in substring_index(d, t):
-                if flag and any(check_ngram(doc, idx)):
-                    continue
-
-                doc.append((idx, t.replace(' ', '_')))
-
-        flag = True
-
-    doc.extend(additional)
-    doc.sort(key=lambda dd: dd[0])
-    return [t[1] for t in doc]
-
-
-def load_terms(terms_file, labels=('keyword', 'relevant')):
-    term_labels, terms = load_term_data(terms_file)
-    zipped = zip(terms, term_labels)
-    good = [x for x in zipped if x[1] in labels]
-    good_set = set()
-    for x in good:
-        good_set.add(x[0])
-
-    return good_set
-
-
-def save_filtered_column(preproc_file, filtered_list, optional_filtered_col,
-                         delimiter='\t'):
-    try:
-        dataset = pd.read_csv(preproc_file,
-                              delimiter=delimiter,
-                              encoding='utf-8')
-    except FileNotFoundError as err:
-        msg = 'Error: file {!r} not found'
-        sys.exit(msg.format(err.filename))
-    joined = []
-    for elem in filtered_list:
-        joined.append(' '.join(elem))
-    dataset[optional_filtered_col] = joined
-    dataset.to_csv(preproc_file, sep=delimiter, index_label='id')
-
-
-def linear_filtering(documents, ngram_len, terms, placeholder, relevant_prefix):
-    logger = logging.getLogger('debug_logger')
-    docs = []
-    for i, d in enumerate(documents):
-        result = filter_doc(d, ngram_len, terms, placeholder, relevant_prefix)
-        docs.append(result)
-        logger.debug(f'Completed document: {i}/{len(documents)}')
-    return docs
-
-
-def parallel_filtering(documents, ngram_len, terms, placeholder, relevant_prefix):
-    with Pool(processes=PHYSICAL_CPUS) as pool:
-        docs = pool.starmap(filter_doc,
-                            zip(documents,
-                                repeat(ngram_len),
-                                repeat(terms),
-                                repeat(placeholder),
-                                repeat(relevant_prefix)))
-    return docs
-
-
-def generate_filtered_docs_ngrams(terms_file, preproc_file,
-                                  target_col='abstract_lem', title_col='title',
-                                  optional_filtered_col='abstract_filtered',
-                                  delimiter='\t',
-                                  labels=('keyword', 'relevant'),
-                                  placeholder=STOPWORD_PLACEHOLDER,
-                                  relevant_prefix=STOPWORD_PLACEHOLDER):
-    logger = logging.getLogger('debug_logger')
-    terms = load_ngrams(terms_file, labels)
-    ngram_len = sorted(terms, reverse=True)
-    src_docs, titles, filtered_docs = load_documents(preproc_file,
-                                                     target_col,
-                                                     title_col,
-                                                     optional_filtered_col,
-                                                     delimiter)
-    # TODO: the logic should be improved to regenerate the filtered text
-    # if the terms file is newer that the preproc file; otherwise this
-    # would require the user to manually delete the column from the
-    # preproc file to trigger the regeneration of the filtered text
-    # MAYBE this could be made interactive, or at least an alert
-    # could be printed and an option to force the re-generation
-    # could be provided
-    if filtered_docs is not None:
-        docs = filtered_docs
-        msg = (
-            f"Using data from column "
-            f"'{optional_filtered_col}' in {preproc_file}"
-        )
-        print(msg)
-        logger.debug(msg)
-    else:
-        msg = f"Filtering data from '{target_col}' in {preproc_file}"
-        print(msg)
-        logger.debug(msg)
-        docs = linear_filtering(src_docs, ngram_len, terms, placeholder, relevant_prefix)
-        # docs = parallel_filtering(src_docs, ngram_len, terms, placeholder, relevant_prefix)
-        msg = (
-            f"Saving filtered data in column "
-            f"'{optional_filtered_col}' of {preproc_file}"
-        )
-        print(msg)
-        logger.debug(msg)
-        save_filtered_column(preproc_file, docs, optional_filtered_col,
-                             delimiter=delimiter)
-    return docs, titles
-
-
-def load_additional_terms(input_file):
-    """
-    Loads a list of keyword terms from a file
-
-    This functions skips all the lines that starts with a '#'.
-    Each term is split in a tuple of strings
-
-    :param input_file: file to read
-    :type input_file: str
-    :return: the loaded terms as a set of strings
-    :rtype: set[str]
-    """
-    with open(input_file, 'r', encoding='utf-8') as f:
-        rel_words_list = f.read().splitlines()
-
-    rel_words_list = {w.replace(' ', '_')
-                      for w in rel_words_list
-                      if w != '' and w[0] != '#'}
-    return rel_words_list
-
-
-def prepare_documents(preproc_file, terms_file, labels,
-                      target_col='abstract_lem', title_col='title',
-                      delimiter='\t', placeholder=STOPWORD_PLACEHOLDER,
-                      relevant_prefix=STOPWORD_PLACEHOLDER):
-    """
-    Elaborates the documents preparing the bag of word representation
-
-    :param preproc_file: path to the csv file with the lemmatized abstracts
-    :type preproc_file: str or Path
-    :param terms_file: path to the csv file with the classified terms
-    :type terms_file: str or Path
-    :param target_col: name of the column in preproc_file with the document text
-    :type target_col: str
-    :param title_col: name of the column used as document title
-    :type title_col: str
-    :param delimiter: delimiter used in preproc_file
-    :type delimiter: str
-    :param labels: use only the terms classified with the labels specified here
-    :type labels: tuple[str]
-    :param placeholder: placeholder for stop-words
-    :type placeholder: str
-    :param relevant_prefix: prefix used to mark relevant terms
-    :type relevant_prefix: str
-    :return: the documents as bag of words and the document titles
-    :rtype: tuple[list[list[str]], list[str]]
-    """
-    ret = generate_filtered_docs_ngrams(terms_file, preproc_file,
-                                        target_col=target_col,
-                                        title_col=title_col,
-                                        delimiter=delimiter,
-                                        labels=labels,
-                                        placeholder=placeholder,
-                                        relevant_prefix=relevant_prefix)
-    docs, titles = ret
-    return docs, titles
 
 
 def prepare_corpus(docs, no_above, no_below):
@@ -493,7 +273,7 @@ def prepare_topics(model, docs, titles, dictionary):
     return topics, docs_topics, avg_topic_coherence
 
 
-def load_documents(preproc_file, target_col, title_col, optional_filtered_col,
+def load_documents(preproc_file, target_col, title_col,
                    delimiter):
     try:
         dataset = pd.read_csv(preproc_file,
@@ -507,16 +287,8 @@ def load_documents(preproc_file, target_col, title_col, optional_filtered_col,
     dataset.fillna('', inplace=True)
     titles = dataset[title_col].to_list()
     documents = dataset[target_col].to_list()
-    # processes the optional_filtered_col if present
-    if optional_filtered_col in dataset:
-        filtered_list = dataset[optional_filtered_col].to_list()
-        filtered_split = []
-        for s in filtered_list:
-            s_split = s.split(' ')
-            filtered_split.append(s_split)
-    else:
-        filtered_split = None
-    return documents, titles, filtered_split
+    docs_split = [d.split(' ') for d in documents]
+    return docs_split, titles
 
 
 def output_topics(topics, docs_topics, outdir, file_prefix, uid,
@@ -582,8 +354,7 @@ def save_toml_files(args, results_df, result_dir):
     toml_dir.mkdir(exist_ok=True)
     for _, row in results_df.iterrows():
         conf = tomlkit.document()
-        conf.add('preproc_file', str(args.preproc_file))
-        conf.add('terms_file', str(args.terms_file))
+        conf.add('postproc_file', str(args.postproc_file))
         conf.add('outdir', str(args.outdir))
         conf.add('text-column', args.target_column)
         conf.add('title-column', args.title)
@@ -597,34 +368,23 @@ def save_toml_files(args, results_df, result_dir):
         else:
             conf.add('seed', row['seed'])
         conf.add('model', False)
-        conf.add('no-relevant', False)
         u = row['uuid']
         conf.add('load-model', str(result_dir / 'models' / u))
-        conf.add('placeholder', args.placeholder)
         conf.add('delimiter', args.delimiter)
         with open(toml_dir / ''.join([u, '.toml']), 'w') as file:
             file.write(tomlkit.dumps(conf))
 
 
 def lda(args):
-    terms_file = args.terms_file
-    preproc_file = args.preproc_file
+    postproc_file = args.postproc_file
     output_dir = args.outdir
     output_dir.mkdir(exist_ok=True)
 
-    placeholder = args.placeholder
-    relevant_prefix = placeholder
-
-    if args.no_relevant:
-        labels = ('keyword',)
-    else:
-        labels = ('keyword', 'relevant')
-
-    docs, titles = prepare_documents(preproc_file, terms_file,
-                                     labels, args.target_column, args.title,
-                                     delimiter=args.delimiter,
-                                     placeholder=placeholder,
-                                     relevant_prefix=relevant_prefix)
+    print('Loading data')
+    docs, titles = load_documents(postproc_file,
+                                  args.target_column,
+                                  args.title,
+                                  args.delimiter)
 
     if args.load_model is not None:
         lda_path = Path(args.load_model)
