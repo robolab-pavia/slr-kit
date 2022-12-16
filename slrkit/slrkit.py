@@ -595,10 +595,7 @@ def run_topics(args):
     elif args.topics == 'extract':
         run_lda(args)
     elif args.topics == 'optimize':
-        if not args.grid_search:
-            run_optimize_lda(args)
-        else:
-            run_lda_grid_search(args)
+        run_optimize_lda(args)
     else:
         msg = 'Error: unknown sub-command {!r} for command "topics"'
         print(msg.format(args.topics))
@@ -1182,11 +1179,7 @@ def subparser_topics_optimize(subparser):
     parser_optimize_lda = subparser.add_parser('optimize',
                                                help=help_str,
                                                description=help_str)
-    # parser_optimize_lda.add_argument('--grid-search', action='store_true',
-    #                                  help='if set, the optimization is '
-    #                                       'performed using a slower grid '
-    #                                       'search algorithm')
-    parser_optimize_lda.set_defaults(grid_search=False)
+    parser_optimize_lda.set_defaults()
 
 
 def subparser_report(subparser):
