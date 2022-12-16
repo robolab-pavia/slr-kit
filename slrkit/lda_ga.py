@@ -673,10 +673,6 @@ def lda_ga_optimization(args):
                                   args.target_column,
                                   args.title,
                                   args.delimiter)
-    docs2 = []
-    for d in docs:
-        docs2.append(d.split(' '))
-    docs = docs2
     try:
         params = load_ga_params(args.ga_params)
     except ValueError as e:
