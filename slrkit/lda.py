@@ -459,11 +459,8 @@ def load_documents(preproc_file, target_col, title_col,
     dataset.fillna('', inplace=True)
     titles = dataset[title_col].to_list()
     documents = dataset[target_col].to_list()
-    # TODO: make it more pythonic
-    docs2 = []
-    for d in documents:
-        docs2.append(d.split(' '))
-    return docs2, titles
+    docs_split = [d.split(' ') for d in documents]
+    return docs_split, titles
 
 
 def output_topics(topics, docs_topics, outdir, file_prefix, uid,
