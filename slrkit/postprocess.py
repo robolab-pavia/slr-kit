@@ -100,7 +100,7 @@ def load_keywords(terms_file, labels=('keyword', 'relevant')):
 
 
 def is_relevant(word, relevant_prefix):
-    """Returns the word if relevant or None."""
+    """Returns the word if relevant, None otherwise."""
     if len(word) <= 1:
         return None
     if word[0] == relevant_prefix and word[-1] == relevant_prefix:
@@ -126,6 +126,7 @@ def matching_term(term_as_list, terms_dict_lookup):
 def filter_doc(text: str, ngram_len, terms, placeholder, relevant_prefix):
     accepted_words = []
     text_list = text.split(' ')
+    # generates a lookup structure to perform a quicker replacement
     terms_dict_lookup = {}
     for n in terms:
         rel_words_list = {tuple(w.split(' ')) for w in terms[n]}
