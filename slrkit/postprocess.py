@@ -1,6 +1,5 @@
 import re
 import sys
-import uuid
 
 import tomlkit
 
@@ -9,10 +8,7 @@ if not sys.warnoptions:
     import warnings
     warnings.simplefilter('ignore')
 
-import json
-import math
 import logging
-from datetime import datetime
 from itertools import repeat
 from multiprocessing import Pool
 from pathlib import Path
