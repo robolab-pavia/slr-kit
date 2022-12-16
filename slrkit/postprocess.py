@@ -200,10 +200,10 @@ def filter_docs(terms_file, preproc_file,
     msg = f"Filtering data from '{target_col}' in {preproc_file}"
     src_docs = docs[target_col].to_list()
     logger.debug(msg)
-    filtered_docs = linear_filtering(src_docs, ngram_len, terms,
-                                     placeholder, relevant_prefix)
-    # filtered_docs = parallel_filtering(src_docs, ngram_len, terms,
-    #                                    placeholder, relevant_prefix)
+    # filtered_docs = linear_filtering(src_docs, ngram_len, terms,
+    #                                  placeholder, relevant_prefix)
+    filtered_docs = parallel_filtering(src_docs, ngram_len, terms,
+                                       placeholder, relevant_prefix)
     joined = []
     for elem in filtered_docs:
         joined.append(' '.join(elem))
