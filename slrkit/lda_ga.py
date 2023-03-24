@@ -659,11 +659,13 @@ def lda_ga_optimization(args):
 
     # ga preparation
     num_docs = len(titles)
-    tenth_of_titles = num_docs // 10
     # set the bound used by LdaIndividual to check the topics and no_below values
     max_no_below = params['limits']['max_no_below']
     if max_no_below == -1:
-        max_no_below = tenth_of_titles
+        if num_docs >= 10:
+            max_no_below = num_docs // 10
+        else:
+            max_no_below = 1
     elif max_no_below >= num_docs:
         sys.exit('max_no_below cannot be >= of the number of documents')
 
