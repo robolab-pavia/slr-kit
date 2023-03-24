@@ -339,7 +339,7 @@ def language_specific_regex(text, lang='en'):
         out_text = re.sub('[.;:!?()"\']', ' ' + barrier_string + ' ', out_text)
         # Remove special characters (not the hyphen) and digits
         # also preserve the '__' used by some placeholders
-        return re.sub(r'(\d|[^-\w])+|(?<=[^_])_(?=[^_])', ' ', out_text)
+        return re.sub(r'([^-\w])+|(?<=[^_])_(?=[^_])', ' ', out_text)
     if lang == 'it':
         # punctuation
         # remove commas
@@ -421,6 +421,14 @@ def relevant_generator(relevant, relevant_prefix):
                 yield f'{relevant_prefix}{"_".join(rel)}{relevant_prefix}', rel
 
 
+def is_number(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+
+
 def preprocess_item(item, relevant_terms, stopwords, acronyms, language='en',
                     placeholder=STOPWORD_PLACEHOLDER,
                     relevant_prefix=RELEVANT_PREFIX, regex_df=None):
@@ -487,7 +495,10 @@ def preprocess_item(item, relevant_terms, stopwords, acronyms, language='en',
     # replace extended acronyms
     text = replace_ngram(text, acronyms_generator(acronyms, relevant_prefix))
 
-    text2 = [lem_word for _, lem_word in lem.lemmatize(text)]
+    # remove numbers
+    text1 = [w for w in text if not is_number(w)]
+    # lemmatize
+    text2 = [lem_word for _, lem_word in lem.lemmatize(text1)]
 
     # mark relevant terms
     if len(relevant_terms) > 0:
