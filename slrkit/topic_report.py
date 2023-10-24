@@ -125,8 +125,8 @@ def prepare_papers(abstract_path, json_path):
 
     for paper in good_papers:
         for key in paper['topics']:
-            if int(key) not in topics_list:
-                topics_list.append(int(key))
+            if key not in topics_list:
+                topics_list.append(key)
 
     topics_list.sort()
 
@@ -146,7 +146,7 @@ def report_year(papers_list, topics_list):
     :rtype: dict
     """
 
-    topics_dict = collections.defaultdict(dict)
+    topics_dict = {t: {} for t in topics_list}
 
     for topic_id in topics_list:
         for paper in papers_list:
