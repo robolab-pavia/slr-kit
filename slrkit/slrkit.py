@@ -1032,6 +1032,9 @@ def run_record(args):
             with open(p, 'w') as file:
                 file.write(content)
 
+    # who knows why the '.' directory is added to the list
+    # this causes the commit of the .git directory, which is bad
+    files_to_record = [x for x in files_to_record if x != '.']
     files_to_record.append('README.md')
     git_add_files(files_to_record, repo, must_exists=False)
     if git_commit(repo, args.message):
