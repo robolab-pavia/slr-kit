@@ -266,13 +266,14 @@ def plot_years(topics_dict, dirname, plot_size, templates):
         for topic in islice(topics_dict, i*plot_size, (i+1)*plot_size):
             sorted_dic = sorted(topics_dict[topic].items())
             x, y = zip(*sorted_dic)
-
-            plt.plot(x, y, label='topic ' + str(topic))
-            plt.title(f'topics yearly graph (part {i + 1})')
+            x = [str(val) for val in x]
+            plt.plot(x, y, label=f'topic {topic}')
+            plt.title(f'Topics yearly trend (part {i + 1}/{rows})')
             plt.xlabel('Year')
             plt.ylabel('# of papers (weighted by coherence)')
             plt.grid(True)
             plt.legend()
+            plt.setp(plt.gca().get_xticklabels(), rotation=30, horizontalalignment='right', fontsize='x-small')
             plt.tight_layout()
             plt.savefig(dirname / f'reportyear{i + 1}')
 
@@ -285,12 +286,14 @@ def plot_years(topics_dict, dirname, plot_size, templates):
         for topic in islice(topics_dict, i * plot_size, (i + 1) * plot_size):
             sorted_dic = sorted(topics_dict[topic].items())
             x, y = zip(*sorted_dic)
-            ax[i].plot(x, y, label='topic ' + str(topic))
+            x = [str(val) for val in x]
+            ax[i].plot(x, y, label=f'topic {topic}')
             ax[i].grid(True)
-            ax[i].set_title(f'topics yearly graph (part {i + 1})')
+            ax[i].set_title(f'Topics yearly trend (part {i + 1}/{rows})')
             ax[i].set_xlabel('Year')
             ax[i].set_ylabel('# of papers (weighted by coherence)')
             ax[i].legend()
+            plt.setp(ax[i].get_xticklabels(), rotation=30, horizontalalignment='right', fontsize='x-small')
 
     fig.tight_layout()
     plt.savefig(dirname / YEARFIGURE)
