@@ -268,13 +268,13 @@ def plot_years(topics_dict, dirname, plot_size, templates):
             x, y = zip(*sorted_dic)
 
             plt.plot(x, y, label='topic ' + str(topic))
-            plt.title('topics yearly graph (part {0})'.format(i + 1))
+            plt.title(f'topics yearly graph (part {i + 1})')
             plt.xlabel('Year')
             plt.ylabel('# of papers (weighted by coherence)')
             plt.grid(True)
             plt.legend()
             plt.tight_layout()
-            plt.savefig(dirname / 'reportyear{0}'.format(i+1))
+            plt.savefig(dirname / f'reportyear{i + 1}')
 
         plt.clf()
 
@@ -287,7 +287,7 @@ def plot_years(topics_dict, dirname, plot_size, templates):
             x, y = zip(*sorted_dic)
             ax[i].plot(x, y, label='topic ' + str(topic))
             ax[i].grid(True)
-            ax[i].set_title('topics yearly graph (part {0})'.format(i+1))
+            ax[i].set_title(f'topics yearly graph (part {i + 1})')
             ax[i].set_xlabel('Year')
             ax[i].set_ylabel('# of papers (weighted by coherence)')
             ax[i].legend()
