@@ -125,8 +125,8 @@ def prepare_papers(abstract_path, json_path):
 
     for paper in good_papers:
         for key in paper['topics']:
-            if int(key) not in topics_list:
-                topics_list.append(int(key))
+            if key not in topics_list:
+                topics_list.append(key)
 
     topics_list.sort()
 
@@ -317,7 +317,7 @@ def create_topic_year_list(topics_dict, max_year, min_year):
 
 def create_journal_topic_list(journals_topic, topics_dict):
     first_line = ['Journal']
-    topics_list = list(range(0, len(topics_dict)))
+    topics_list = list(topics_dict.keys())
     first_line.extend(topics_list)
     journal_topic_list = [first_line]
     for journal in journals_topic:
