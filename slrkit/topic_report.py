@@ -28,6 +28,10 @@ TEX_REPORT = 'report.tex'
 YEARFIGURE = 'reportyear.png'
 TEMPLATES_DIRNAME = 'report_templates'
 TABLES_DIRNAME = 'tables'
+CSV_DIRNAME = 'csv'
+JOURNALTOPIC_CSV = 'journaltopic.csv'
+JOURNALYEAR_CSV = 'journalyear.csv'
+YEARTOPIC_CSV = 'yeartopic.csv'
 PLACEHOLDERFIGURE = 'placeholder.png'
 
 
@@ -462,18 +466,26 @@ def prepare_tables(topics_dict, journals_topic, journals_year, topic_terms_list,
     """
     tables: pathlib.Path = dirname / TABLES_DIRNAME
     tables.mkdir(exist_ok=True)
+    csv_dir: pathlib.Path = dirname / CSV_DIRNAME
+    csv_dir.mkdir(exist_ok=True)
 
     save_latex_table(topic_terms_list, tables / TOPICTERMS_TEX, False, True)
 
     topic_year_list = create_topic_year_list(topics_dict, max_year, min_year)
     save_latex_table(topic_year_list, tables / YEARTOPIC_TEX, False, False)
+    df = pd.DataFrame(topic_year_list[1:], columns=topic_year_list[0])
+    df.to_csv(csv_dir / YEARTOPIC_CSV, sep='\t', index=False)
 
     journal_topic_list = create_journal_topic_list(journals_topic, topics_dict)
     save_latex_table(journal_topic_list, tables / JOURNALTOPIC_TEX, True, False)
+    df = pd.DataFrame(journal_topic_list[1:], columns=journal_topic_list[0])
+    df.to_csv(csv_dir / JOURNALTOPIC_CSV, sep='\t', index=False)
 
     journal_year_list = create_journal_year_list(journals_year, max_year,
                                                  min_year)
     save_latex_table(journal_year_list, tables / JOURNALYEAR_TEX, True, False)
+    df = pd.DataFrame(journal_year_list[1:], columns=journal_year_list[0])
+    df.to_csv(csv_dir / JOURNALYEAR_CSV, sep='\t', index=False)
 
     save_markdown_report(topic_year_list, journal_topic_list, journal_year_list,
                          topic_terms_list, dirname / MD_REPORT, md_template_path)
