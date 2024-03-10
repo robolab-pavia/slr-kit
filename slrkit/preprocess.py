@@ -1,4 +1,5 @@
 import abc
+import copy
 import logging
 import re
 import sys
@@ -12,6 +13,8 @@ import pandas as pd
 
 from nltk.stem.wordnet import WordNetLemmatizer
 from psutil import cpu_count
+
+from schwartz_hearst import extract_abbreviation_definition_pairs
 
 from slrkit_utils.argument_parser import (AppendMultipleFilesAction,
                                           AppendMultiplePairsAction,
@@ -176,6 +179,9 @@ def init_argparser():
                              'followed by the term itself with each space '
                              'changed with the "_" character and then another '
                              'stopword placeholder.')
+    parser.add_argument('--no-parallel',
+                        action='store_false',
+                        help='Do not run in parallel - for debugging purposes')
     parser.add_argument('--acronyms', '-a',
                         help='TSV files with the approved acronyms')
     parser.add_argument('--target-column', '-t', action='store', type=str,
@@ -260,28 +266,6 @@ def replace_ngram(text, n_grams):
                 end = True
 
     return text2
-
-
-def acronyms_abbr_generator(acronyms, prefix_suffix=STOPWORD_PLACEHOLDER):
-    """
-    Generator that yields the acronyms abbreviation and the relative placeholder for replace_ngram
-
-    The acronyms Dataframe must have the following format:
-    * a column 'acronym' with the extended acronym;
-    * a column 'abbrev' with the acronym abbreviation.
-    The placeholder for each acronym is <prefix_suffix><abbreviation><prefix_suffix>
-
-    :param acronyms: the acronyms to replace in each document. Must have two
-        columns 'acronym' and 'abbrev'. See above for the format.
-    :type acronyms: pd.DataFrame
-    :param prefix_suffix: prefix and suffix used to create the placeholder
-    :type prefix_suffix: str
-    :return: a generator that yields the placeholder and the acronym
-    :rtype: Generator[tuple[str, tuple[str]], Any, None]
-    """
-    for _, row in acronyms.iterrows():
-        sub = f'{prefix_suffix}{row["abbrev"]}{prefix_suffix}'
-        yield sub, (row['abbrev'],)
 
 
 def acronyms_generator(acronyms, prefix_suffix=STOPWORD_PLACEHOLDER):
@@ -431,7 +415,7 @@ def is_number(s):
 
 def preprocess_item(item, relevant_terms, stopwords, acronyms, language='en',
                     placeholder=STOPWORD_PLACEHOLDER,
-                    relevant_prefix=RELEVANT_PREFIX, regex_df=None):
+                    relevant_prefix=RELEVANT_PREFIX, regex_df=None, acro_dict=None):
     """
     Preprocess the text of a document.
 
@@ -477,17 +461,18 @@ def preprocess_item(item, relevant_terms, stopwords, acronyms, language='en',
     # barrier_string as placeholder because is preserved and substituted with
     # the proper string by the regex function
     text = item
+    acro_from_text = extract_abbreviation_definition_pairs(doc_text=text)
     pl_list = []
-    for i, (pl, abbr) in enumerate(acronyms_abbr_generator(acronyms, barrier_string)):
-        text = re.sub(rf'\b{abbr[0]}\b', f'@{i}@', text)
-        pl_list.append(pl)
+    for a in acro_from_text:
+        text = re.sub(rf'\b{a}\b', f'@{acro_dict[a]}@', text)
+        pl_list.append((a, acro_dict[a]))
 
     # Convert to lowercase
     text = text.lower()
-    for i, pl in enumerate(pl_list):
-        text = re.sub(rf'@{i}@', pl, text)
+    # Replace placeholders for acronyms
+    for pl in pl_list:
+        text = re.sub(rf'@{pl[1]}@', f"{barrier_string}{pl[0]}{barrier_string}", text)
 
-    del pl_list
     # apply some regex to clean the text
     text = regex(text, placeholder, language, regex_df=regex_df)
     text = text.split(' ')
@@ -541,7 +526,8 @@ def find_replacement(text, replacements, relevant_prefix):
 
 def process_corpus(dataset, relevant_terms, stopwords, acronyms, language='en',
                    placeholder=STOPWORD_PLACEHOLDER,
-                   relevant_prefix=RELEVANT_PREFIX, regex_df=None):
+                   relevant_prefix=RELEVANT_PREFIX, regex_df=None,
+                   parallel=True):
     """
     Process a corpus of documents.
 
@@ -568,15 +554,27 @@ def process_corpus(dataset, relevant_terms, stopwords, acronyms, language='en',
     :return: the corpus processed
     :rtype: list[str]
     """
-    with Pool(processes=PHYSICAL_CPUS) as pool:
-        corpus = pool.starmap(preprocess_item, zip(dataset,
-                                                   repeat(relevant_terms),
-                                                   repeat(stopwords),
-                                                   repeat(acronyms),
-                                                   repeat(language),
-                                                   repeat(placeholder),
-                                                   repeat(relevant_prefix),
-                                                   repeat(regex_df)))
+
+    acro_dict = acronyms.to_dict()["abbrev"]
+    acro_dict = {v: k for k, v in acro_dict.items()}
+    if parallel:
+        with Pool(processes=PHYSICAL_CPUS) as pool:
+            corpus = pool.starmap(preprocess_item, zip(dataset,
+                                                       repeat(relevant_terms),
+                                                       repeat(stopwords),
+                                                       repeat(acronyms),
+                                                       repeat(language),
+                                                       repeat(placeholder),
+                                                       repeat(relevant_prefix),
+                                                       repeat(regex_df),
+                                                       repeat(acro_dict)))
+    else:
+        corpus = []
+        for i, item in enumerate(dataset):
+            print(f"Processing item {i}/{len(dataset)} | {item[:60]}...")
+            new_text = preprocess_item(item, relevant_terms, stopwords, acronyms, language, placeholder, relevant_prefix, regex_df, acro_dict)
+            corpus.append(new_text)
+
     return corpus
 
 
@@ -778,7 +776,8 @@ def preprocess(args):
     corpus = process_corpus(dataset[target_column], rel_terms, stopwords,
                             acronyms, language=args.language,
                             placeholder=placeholder,
-                            relevant_prefix=relevant_prefix, regex_df=regex_df)
+                            relevant_prefix=relevant_prefix, regex_df=regex_df,
+                            parallel=args.no_parallel)
     stop = timer()
     elapsed_time = stop - start
     debug_logger.debug('Corpus processed')
