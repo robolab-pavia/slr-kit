@@ -2,7 +2,7 @@ import re
 import sys
 
 import pandas as pd
-from RISparser import readris
+import rispy
 
 from slrkit_utils.argument_parser import ArgParse
 
@@ -65,7 +65,7 @@ def ris_citations(notes):
 def ris2csv(args):
     try:
         with open(args.input_file, 'r', encoding='utf-8') as bibliography_file:
-            entries = readris(bibliography_file)
+            entries = rispy.load(bibliography_file)
             risdf = pd.DataFrame(entries)
     except FileNotFoundError:
         import pathlib
