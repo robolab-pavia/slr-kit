@@ -461,10 +461,9 @@ def preprocess_item(item, relevant_terms, stopwords, acronyms, language='en',
     # barrier_string as placeholder because is preserved and substituted with
     # the proper string by the regex function
     text = item
-    acro_from_text = extract_abbreviation_definition_pairs(doc_text=text)
     pl_list = []
-    for a in acro_from_text:
-        text = re.sub(rf'\b{a}\b', f'@{acro_dict[a]}@', text)
+    for a in acro_dict:
+        text = re.sub(rf'\b{re.escape(a)}\b', f'@{acro_dict[a]}@', text)
         pl_list.append((a, acro_dict[a]))
 
     # Convert to lowercase
