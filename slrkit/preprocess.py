@@ -777,7 +777,7 @@ def preprocess(args):
                             acronyms, language=args.language,
                             placeholder=placeholder,
                             relevant_prefix=relevant_prefix, regex_df=regex_df,
-                            parallel=args.no_parallel)
+                            parallel=not args.no_parallel)
     stop = timer()
     elapsed_time = stop - start
     debug_logger.debug('Corpus processed')
