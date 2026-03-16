@@ -523,6 +523,10 @@ def find_replacement(text, replacements, relevant_prefix):
     return maxreplen, replacement_string
 
 
+def wrapper(args):
+    return preprocess_item(*args)
+
+
 def process_corpus(dataset, relevant_terms, stopwords, acronyms, language='en',
                    placeholder=STOPWORD_PLACEHOLDER,
                    relevant_prefix=RELEVANT_PREFIX, regex_df=None,
@@ -557,16 +561,23 @@ def process_corpus(dataset, relevant_terms, stopwords, acronyms, language='en',
     acro_dict = acronyms.to_dict()["abbrev"]
     acro_dict = {v: k for k, v in acro_dict.items()}
     if parallel:
+        args = zip(dataset,
+                   repeat(relevant_terms),
+                   repeat(stopwords),
+                   repeat(acronyms),
+                   repeat(language),
+                   repeat(placeholder),
+                   repeat(relevant_prefix),
+                   repeat(regex_df),
+                   repeat(acro_dict))
+        N = 10
+        total = len(dataset)
+        corpus = []
         with Pool(processes=PHYSICAL_CPUS) as pool:
-            corpus = pool.starmap(preprocess_item, zip(dataset,
-                                                       repeat(relevant_terms),
-                                                       repeat(stopwords),
-                                                       repeat(acronyms),
-                                                       repeat(language),
-                                                       repeat(placeholder),
-                                                       repeat(relevant_prefix),
-                                                       repeat(regex_df),
-                                                       repeat(acro_dict)))
+            for i, result in enumerate(pool.imap_unordered(wrapper, args, chunksize=10), 1):
+                corpus.append(result)
+                if i % N == 0:
+                    print(f"Processed {i}/{total}")
     else:
         corpus = []
         for i, item in enumerate(dataset):
