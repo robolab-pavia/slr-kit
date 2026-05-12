@@ -732,7 +732,8 @@ def preprocess(args):
         msg = 'Error: file {!r} not found'
         sys.exit(msg.format(err.filename))
 
-    dataset.fillna('', inplace=True)
+    str_cols = dataset.select_dtypes(include='object').columns
+    dataset[str_cols] = dataset[str_cols].fillna('')
     assert_column(args.datafile, dataset, target_column)
     # filter the paper using the information from the filter_paper script
     try:
