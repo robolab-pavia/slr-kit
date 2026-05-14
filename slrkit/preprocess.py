@@ -469,15 +469,23 @@ def preprocess_item(item, relevant_terms, stopwords, acronyms, language='en',
     # Convert to lowercase
     text = text.lower()
     # Replace placeholders for acronyms
+    acro_found = []
     for pl in pl_list:
-        text = re.sub(rf'@{pl[1]}@', f"{barrier_string}{pl[0]}{barrier_string}", text)
+        new_text = re.sub(rf'@{pl[1]}@', f"{barrier_string}{pl[0]}{barrier_string}", text)
+        # remembers which acronyms have been found in the text
+        if new_text != text:
+            text = new_text
+            acro_found.append(pl[0])
+
+    # filter the acronyms
+    filtered_acro = acronyms[acronyms['abbrev'].isin(acro_found)]
 
     # apply some regex to clean the text
     text = regex(text, placeholder, language, regex_df=regex_df)
     text = text.split(' ')
 
-    # replace extended acronyms
-    text = replace_ngram(text, acronyms_generator(acronyms, relevant_prefix))
+    # replace extended acronyms (only the ones that have been found in the original text)
+    text = replace_ngram(text, acronyms_generator(filtered_acro, relevant_prefix))
 
     # remove numbers
     text1 = [w for w in text if not is_number(w)]
