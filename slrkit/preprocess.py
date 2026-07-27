@@ -237,63 +237,60 @@ def load_stopwords(input_file):
 
 def replace_ngram(text, n_grams):
     """
-    Replace the given n-grams with a placeholder in the specified text
-
-    The n-grams and their placeholder are taken from the generator n_grams, that
-    must be a generator that yields a tuple (placeholder, n-gram). Each n-gram
-    must be a tuple of strings.
+    Replace occurrences of n-grams with a placeholder in the given text.
 
     :param text: the text to search
     :type text: list[str]
-    :param n_grams: generator that yields n-grams and their placeholder
-    :type n_grams: Generator[tuple[str, tuple[str]], Any, None]
+    :param n_grams: iterable/generator yielding (placeholder, n-gram) pairs,
+                    where each n-gram is a tuple of strings
+    :type n_grams: Iterable[tuple[str, tuple[str, ...]]]
     :return: the transformed text
     :rtype: list[str]
     """
-    text2 = list(text)
-    for placeholder, ngram in n_grams:
-        end = False
-        index = -1
-        length = len(ngram)
-        while not end:
-            try:
-                # index + 1 to skip the previous match
-                index = text2.index(ngram[0], index + 1)
-                if tuple(text2[index:index + length]) == ngram:
-                    # found!
-                    text2[index:index + length] = [placeholder]
-            except ValueError:
-                end = True
+    text = list(text)
+    n = len(text)
+    result = []
+    i = 0
+    while i < n:
+        for placeholder, ngram in n_grams:
+            length = len(ngram)
+            if i + length <= n and tuple(text[i:i + length]) == ngram:
+                result.append(placeholder)
+                i += length
+                break
+        else:
+            result.append(text[i])
+            i += 1
+    return result
 
-    return text2
 
-
-def acronyms_generator(acronyms, prefix_suffix=STOPWORD_PLACEHOLDER):
+def acronyms_list(acronyms, prefix_suffix=STOPWORD_PLACEHOLDER):
     """
-    Generator that yields acronyms and the relative placeholder for replace_ngram
-
+    Build the list of acronyms and their placeholder for replace_ngram.
     The acronyms Dataframe must have the following format:
     * a column 'acronym' with the extended acronym;
     * a column 'abbrev' with the acronym abbreviation.
     The placeholder for each acronym is <prefix_suffix><abbreviation><prefix_suffix>
-    The function yields for each acronym: the extended acronym and the extended
-    acronym with all the word separated by '-'.
-    Each acronym is yielded as a tuple of strings.
-
+    For each acronym, two entries are produced: the extended acronym (as
+    separate words) and the extended acronym with all words joined by '-'.
+    Each acronym is given as a tuple of strings.
     :param acronyms: the acronyms to replace in each document. Must have two
         columns 'acronym' and 'abbrev'. See above for the format.
     :type acronyms: pd.DataFrame
     :param prefix_suffix: prefix and suffix used to create the placeholder
     :type prefix_suffix: str
-    :return: a generator that yields the placeholder and the acronym
-    :rtype: Generator[tuple[str, tuple[str]], Any, None]
+    :return: a list of (placeholder, acronym) pairs
+    :rtype: list[tuple[str, tuple[str, ...]]]
     """
+    result = []
     for _, row in acronyms.iterrows():
         extended = tuple(row['acronym'].split())
         sub = f'{prefix_suffix}{row["abbrev"]}{prefix_suffix}'
-        yield sub, extended
+        result.append((sub, (row["abbrev"],)))
+        result.append((sub, extended))
         alt = ('-'.join(extended),)
-        yield sub, alt
+        result.append((sub, alt))
+    return result
 
 
 def language_specific_regex(text, lang='en'):
@@ -484,8 +481,10 @@ def preprocess_item(item, relevant_terms, stopwords, acronyms, language='en',
     text = regex(text, placeholder, language, regex_df=regex_df)
     text = text.split(' ')
 
+    n_grams = acronyms_list(filtered_acro, relevant_prefix)
+
     # replace extended acronyms (only the ones that have been found in the original text)
-    text = replace_ngram(text, acronyms_generator(filtered_acro, relevant_prefix))
+    text = replace_ngram(text, n_grams)
 
     # remove numbers
     text1 = [w for w in text if not is_number(w)]
