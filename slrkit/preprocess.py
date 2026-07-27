@@ -287,9 +287,9 @@ def acronyms_list(acronyms, prefix_suffix=STOPWORD_PLACEHOLDER):
         extended = tuple(row['acronym'].split())
         sub = f'{prefix_suffix}{row["abbrev"]}{prefix_suffix}'
         result.append((sub, (row["abbrev"],)))
-        result.append((sub, extended))
-        alt = ('-'.join(extended),)
-        result.append((sub, alt))
+        #result.append((sub, extended))
+        #alt = ('-'.join(extended),)
+        #result.append((sub, alt))
     return result
 
 
@@ -482,6 +482,9 @@ def preprocess_item(item, relevant_terms, stopwords, acronyms, language='en',
     text = text.split(' ')
 
     n_grams = acronyms_list(filtered_acro, relevant_prefix)
+
+    print(filtered_acro)
+    print(n_grams)
 
     # replace extended acronyms (only the ones that have been found in the original text)
     text = replace_ngram(text, n_grams)
