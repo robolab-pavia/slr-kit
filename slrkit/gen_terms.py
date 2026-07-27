@@ -152,7 +152,9 @@ def gen_terms(args):
         sys.exit(msg.format(err.filename))
 
     assert_column(args.datafile, dataset, target_column)
-    dataset.fillna('', inplace=True)
+    # TODO: this breaks with pandas 2.1+; temporarily commented; perhaps not required
+    # It's probably better to leave the dealing with empty cells downstream the pipeline
+    # dataset.fillna('', inplace=True)
 
     msg = 'Dataset loaded {} items'
     debug_logger.debug(msg.format(len(dataset[target_column])))
